@@ -1,11 +1,12 @@
 # Routes
 
-GET         /webSocket                                  controllers.Application.webSocket(email: String)
-GET         /json/user                                  controllers.Application.getUser(email: String)
+GET        /webSocket                                       controllers.Application.webSocket(email: String)
+GET        /json/user                                       controllers.Application.getUser(email: String)
+GET        /json/user/:userId/groups/recent                 controllers.Application.getRecentGroups(userId: Long)
+GET        /json/user/:userId/topics/recent                 controllers.Application.getAllRecentTopics(userId: Long)
+GET        /json/user/:userId/topics/:groupId/recent        controllers.Application.getGroupRecentTopics(userId: Long, groupId: String)
 
-GET         /ping                                       controllers.Application.ping
+GET        /assets/*file                                    controllers.Assets.at(path="/public", file)
+GET        /webjars/*file                                   controllers.WebJarAssets.at(file)
 
-GET         /assets/*file                               controllers.Assets.at(path="/public", file)
-GET         /webjars/*file                              controllers.WebJarAssets.at(file)
-
-GET         /                                           controllers.Application.index
+GET        /                                                controllers.Application.index
