@@ -1,0 +1,18 @@
+@(title: String, head: Html = Html(""))(body: Html)
+
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>@title</title>
+        <script src="@routes.WebJarAssets.at(WebJarAssets.locate("jquery.min.js"))"></script>
+        <script src="@routes.WebJarAssets.at(WebJarAssets.locate("jquery.cookie.js"))"></script>
+        <link rel="stylesheet" href="@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap.css"))">
+        @head
+    </head>
+    <body>
+        @body
+
+        <script src="@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap.min.js"))"></script>
+    </body>
+</html>
