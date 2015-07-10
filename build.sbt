@@ -24,6 +24,8 @@ libraryDependencies ++= Seq(
   ws
 )
 
+unmanagedBase <<= baseDirectory { base => base / "lib" }
+
 fork in Test := false
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)

@@ -20,11 +20,11 @@ class DBSpec extends Specification {
         }
         val g = gQ.first
 
-        val uQ = dao.users.filter(_.email === "test@test")
+        val uQ = dao.users.filter(_.login === "test")
         uQ.firstOption match {
           case Some(_) =>
           case None =>
-            dao.users += new User(login = "test", email = "test@test", name = "Test", avatar = None)
+            dao.users += new User(login = "test", name = "Test", avatar = None)
         }
         val u = uQ.first
 
@@ -36,14 +36,14 @@ class DBSpec extends Specification {
 
         tQ.list.size must equalTo(1)
 
-        val mQ = dao.messages.filter(_.topicId === tId)
-        mQ.delete
+        val cQ = dao.comments.filter(_.topicId === tId)
+        cQ.delete
 
-        dao.messages += new Message(groupId = g.id, topicId = tId, userId = u.id, date = new DateTime(), text = "test")
+        dao.comments += new Comment(groupId = g.id, topicId = tId, userId = u.id, date = new DateTime(), text = "test")
 
-        mQ.list.size must equalTo(1)
+        cQ.list.size must equalTo(1)
 
-        mQ.delete
+        cQ.delete
         tQ.delete
         uQ.delete
         gQ.delete

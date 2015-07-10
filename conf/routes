@@ -1,12 +1,17 @@
 # Routes
 
-GET        /webSocket                                       controllers.Application.webSocket(email: String)
-GET        /json/user                                       controllers.Application.getUser(email: String)
-GET        /json/user/:userId/groups/recent                 controllers.Application.getRecentGroups(userId: Long)
-GET        /json/user/:userId/topics/recent                 controllers.Application.getAllRecentTopics(userId: Long)
-GET        /json/user/:userId/topics/:groupId/recent        controllers.Application.getGroupRecentTopics(userId: Long, groupId: String)
+GET        /webSocket                                  controllers.Application.webSocket(email: String)
+GET        /json/user                                  controllers.Application.getUser(email: String)
+GET        /json/user/:userId/groups                   controllers.Application.getGroups(userId: Long)
+GET        /json/user/:userId/topics                   controllers.Application.getAllTopics(userId: Long)
+GET        /json/user/:userId/topics/:groupId          controllers.Application.getGroupTopics(userId: Long, groupId: String)
+GET        /json/user/:userId/messages/:topicId        controllers.Application.getMessages(userId: Long, topicId: Long)
 
-GET        /assets/*file                                    controllers.Assets.at(path="/public", file)
-GET        /webjars/*file                                   controllers.WebJarAssets.at(file)
+GET        /logout                                     controllers.Application.logout
 
-GET        /                                                controllers.Application.index
+GET        /auth/callback                              controllers.Auth.callback(code: Option[String], state: Option[String])
+
+GET        /assets/*file                               controllers.Assets.at(path="/public", file)
+GET        /webjars/*file                              controllers.WebJarAssets.at(file)
+
+GET        /                                           controllers.Application.index

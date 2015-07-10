@@ -1,13 +1,20 @@
-@(webSocketUrl: String)
+@import play.api.libs.json.JsValue
+@(user: User, groups: JsValue, webSocketUrl: String)
 
 @head = {
     <link rel="stylesheet" href="@routes.Assets.at("stylesheets/index.css")"/>
-    <script src="@routes.Assets.at("javascripts/index.js")"></script>
     <script>
+        var userId = @{user.id};
         var webSocketUrl = "@Html(webSocketUrl)";
+        var groups = @{Html(groups.toString)};
     </script>
+    <script src="@routes.Assets.at("javascripts/index.js")"></script>
 }
 
 @main("JetChat", head) {
     <h1>JetChat</h1>
+
+    <p>Hello, @{user.name}</p>
+
+    <p><a href="@routes.Application.logout">Logout</a></p>
 }
