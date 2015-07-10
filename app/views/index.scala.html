@@ -3,7 +3,7 @@
 
 @head = {
     <link rel="stylesheet" href="@routes.Assets.at("stylesheets/index.css")"/>
-    <link rel="stylesheet" href="@routes.WebJarAssets.at(WebJarAssets.locate("font-awesome.min.css"))">
+    <script src="@routes.WebJarAssets.at(WebJarAssets.locate("jquery-dateFormat.min.js"))"></script>
     <script>
         var userId = @{user.id};
         var userName = "@{user.name}";

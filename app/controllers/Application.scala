@@ -96,11 +96,14 @@ object Application extends Controller {
   def getGroupTopics(userId: Long, groupId: String) = getTopics(userId, Some(groupId))
 
   def getTopics(userId: Long, groupId: Option[String]) = DBAction { implicit rs =>
-    val topics = (for {((topic, comment), user) <- dao.topics leftJoin dao.comments on { case (topic, comment) => comment.topicId === topic.id } leftJoin dao.users on { case ((topic, comment), user) => topic.userId === user.id }} yield (comment, topic, user)).filter { case (comment, topic, user) => groupId match {
+    val topics = (for {((topic, comment), user) <- dao.topics outerJoin dao.comments on { case (topic, comment) => comment.topicId === topic.id } leftJoin dao.users on { case ((topic, comment), user) => topic.userId === user.id }} yield (comment, topic, user)).filter { case (comment, topic, user) => groupId match {
       case Some(id) => topic.groupId === id
       case None => topic.groupId === topic.groupId
     }
-    }.groupBy { case (comment, topic, user) => (topic.id, topic.date, topic.groupId, topic.text, user.id, user.name) }.map { case ((tId, tDate, gId, tText, uId, uName), g) => (tId, tDate, gId, tText, uId, uName, g.map(_._1.id).countDistinct, g.map(_._1.date).max) }.sortBy(_._8.desc).list.map { case (tId, tDate, gId, tText, uId, uName, c, d) => (tId, tDate, gId, tText, uId, uName) -> c }
+    }.groupBy { case (comment, topic, user) => (topic.id, topic.date, topic.groupId, topic.text, user.id, user.name) }.map { case ((tId, tDate, gId, tText, uId, uName), g) => (tId, tDate, gId, tText, uId, uName, g.map(_._1.id).countDistinct, g.map(_._1.date).max) }.list.sortBy(columns => columns._8 match {
+      case Some(maxCommentDate) => - maxCommentDate.getMillis
+      case None => - columns._2.getMillis
+    }).map { case (tId, tDate, gId, tText, uId, uName, c, d) => (tId, tDate, gId, tText, uId, uName) -> c }
 
     Ok(Json.toJson(topics.map { case ((tId, tDate, gId, tText, uId, uName), c) =>
       JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(tId), "date" -> Json.toJson(tDate), "groupId" -> JsString(gId), "text" -> JsString(tText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(uName))))), "messages" -> JsNumber(c)))
@@ -117,16 +120,21 @@ object Application extends Controller {
           case Some(value) => Seq("avatar" -> JsString(value))
           case None => Seq()
         })
-      JsObject(Seq("id" -> JsNumber(message.id),
+      val fields = Seq("id" -> JsNumber(message.id),
         "groupId" -> JsString(message.groupId),
         "user" -> JsObject(userJson),
         "date" -> JsNumber(message.date.getMillis),
-        "text" -> JsString(message.text)))
+        "text" -> JsString(message.text)) ++ (message match {
+        case c: Comment =>
+          Seq("topicId" -> JsNumber(c.topicId))
+        case _ => Seq()
+      })
+      JsObject(fields)
     }))
   }
 
   def submitTopic = DBAction(parse.json) { implicit rs =>
-    val userId = (rs.body \ "userId").asInstanceOf[JsNumber].value.toLong
+    val userId = (rs.body \ "user" \ "id").asInstanceOf[JsNumber].value.toLong
     val groupId = (rs.body \ "groupId").asInstanceOf[JsString].value
     val text = (rs.body \ "text").asInstanceOf[JsString].value
     val date = new DateTime()
@@ -148,7 +156,7 @@ object Application extends Controller {
   }
 
   def submitComment = DBAction(parse.json) { implicit rs =>
-    val userId = (rs.body \ "userId").asInstanceOf[JsNumber].value.toLong
+    val userId = (rs.body \ "user" \ "id").asInstanceOf[JsNumber].value.toLong
     val groupId = (rs.body \ "groupId").asInstanceOf[JsString].value
     val topicId = (rs.body \ "topicId").asInstanceOf[JsNumber].value.toLong
     val text = (rs.body \ "text").asInstanceOf[JsString].value

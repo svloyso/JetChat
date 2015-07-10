@@ -1,9 +1,9 @@
 body {
-    font-family: Arial, serif;
-    font-size: 13px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 13.20px;
 }
 
-input {
+input, textarea {
     outline: 0 none
 }
 
@@ -52,6 +52,7 @@ input {
 
 #topic-pane {
     padding: 0;
+    overflow: scroll;
 }
 
 #topic-pane li {
@@ -64,8 +65,35 @@ input {
     background-color: #cbe9f7;
 }
 
+#topic-pane li .info, #message-pane li .info {
+    color: #8c8c8c;
+}
+
+#topic-pane li .info .author, #topic-pane li .info .group,
+#message-pane li .info .author, #message-pane li .info .group{
+    font-size: 12px;
+    font-weight: 500;
+}
+
+#message-pane li .details {
+    margin-left: 30pt;
+}
+
+#message-pane li .details .text {
+    padding: 4px 0;
+    line-height: 120%;
+}
+
+#message-pane li {
+    margin-bottom: 15px;
+}
+
+#message-pane li.same-user {
+    margin-top: -12px;
+}
+
 #new-topic-pane {
-    padding: 15px 0;
+    padding: 10px 0;
 }
 
 #new-topic {
@@ -96,7 +124,7 @@ input {
     display: inline-block;
     margin-right: 5px;
     float: left;
-    margin-top: 1px;
+    margin-top: 2px;
 }
 
 #new-topic.enabled #plus {
@@ -116,7 +144,7 @@ input {
 input.search-query {
     padding-left: 20px;
 
-    font-family: Arial, serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 13px;
     padding-top: 5px;
     padding-bottom: 5px;
@@ -143,4 +171,40 @@ input.search-query {
     left: 0;
     opacity: .5;
     z-index: 1000;
+}
+
+#message-pane {
+    padding: 15px 12px;
+    overflow: scroll;
+}
+
+#message-pane .avatar {
+    width: 22px;
+    height: 22px;
+    margin-left: 10px;
+}
+
+#message-pane li.topic .avatar {
+    width: 24pt;
+    height: 24pt;
+    margin-left: 0;
+}
+
+#message-pane li.topic .text {
+    font-size: 14px;
+}
+
+#message-bar {
+    min-width: 350px;
+}
+
+#message-bar #input {
+    height: 50px;
+    margin: 0 15px 10px 50px;
+    display: inline-block;
+    border: 1px solid #e1e1e1;
+}
+
+#message-pane li {
+    list-style: none;
 }
