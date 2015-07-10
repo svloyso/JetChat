@@ -3,8 +3,11 @@
 
 @head = {
     <link rel="stylesheet" href="@routes.Assets.at("stylesheets/index.css")"/>
+    <link rel="stylesheet" href="@routes.WebJarAssets.at(WebJarAssets.locate("font-awesome.min.css"))">
     <script>
         var userId = @{user.id};
+        var userName = "@{user.name}";
+        var userAvatar = "@{user.avatar}";
         var webSocketUrl = "@Html(webSocketUrl)";
         var groups = @{Html(groups.toString)};
     </script>
@@ -12,9 +15,9 @@
 }
 
 @main("JetChat", head) {
-    <h1>JetChat</h1>
+    @*<h1>JetChat</h1>
 
     <p>Hello, @{user.name}</p>
 
-    <p><a href="@routes.Application.logout">Logout</a></p>
+    <p><a href="@routes.Application.logout">Logout</a></p>*@
 }

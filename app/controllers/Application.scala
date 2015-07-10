@@ -2,11 +2,11 @@ package controllers
 
 import actors.WebSocketActor
 import akka.actor.PoisonPill
-import models.{Topic, User}
+import models.{Comment, Topic, User}
 import models.current._
 import myUtils.MyPostgresDriver.simple._
 import org.joda.time.DateTime
-import play.api.Play
+import play.api.{Logger, Play}
 import play.api.Play.current
 import play.api.db.slick._
 import play.api.libs.concurrent.Akka
@@ -96,7 +96,7 @@ object Application extends Controller {
   def getGroupTopics(userId: Long, groupId: String) = getTopics(userId, Some(groupId))
 
   def getTopics(userId: Long, groupId: Option[String]) = DBAction { implicit rs =>
-    val topics = (for {((comment, topic), user) <- dao.comments leftJoin dao.topics on { case (comment, topic) => comment.topicId === topic.id } leftJoin dao.users on { case ((comment, topic), user) => topic.userId === user.id }} yield (comment, topic, user)).filter { case (comment, topic, user) => groupId match {
+    val topics = (for {((topic, comment), user) <- dao.topics leftJoin dao.comments on { case (topic, comment) => comment.topicId === topic.id } leftJoin dao.users on { case ((topic, comment), user) => topic.userId === user.id }} yield (comment, topic, user)).filter { case (comment, topic, user) => groupId match {
       case Some(id) => topic.groupId === id
       case None => topic.groupId === topic.groupId
     }
@@ -108,7 +108,7 @@ object Application extends Controller {
   }
 
   def getMessages(userId: Long, topicId: Long) = DBAction { implicit rs =>
-    val topic = (dao.topics.filter(topic => topic.userId === userId) leftJoin dao.users on { case (t, user) => t.userId === user.id }).first
+    val topic = (dao.topics.filter(_.id === topicId) leftJoin dao.users on { case (t, user) => t.userId === user.id }).first
     val comments = (dao.comments.filter(comment => comment.topicId === topicId) leftJoin dao.users on { case (comment, user) => comment.userId === user.id }).sortBy(_._1.date).list
     val messages = comments.+:(topic)
     Ok(Json.toJson(messages.map { case (message, user) =>
@@ -123,5 +123,51 @@ object Application extends Controller {
         "date" -> JsNumber(message.date.getMillis),
         "text" -> JsString(message.text)))
     }))
+  }
+
+  def submitTopic = DBAction(parse.json) { implicit rs =>
+    val userId = (rs.body \ "userId").asInstanceOf[JsNumber].value.toLong
+    val groupId = (rs.body \ "groupId").asInstanceOf[JsString].value
+    val text = (rs.body \ "text").asInstanceOf[JsString].value
+    val date = new DateTime()
+    val id = (dao.topics returning dao.topics.map(_.id)) += new Topic(groupId = groupId, userId = userId, date = date, text = text)
+    Logger.debug(s"Submitted topic: $userId, $groupId, $text")
+    val webSocketActor = Akka.system.actorSelection("/user/*.*")
+    val user = dao.users.filter(_.id === userId).first
+    val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
+      (user.avatar match {
+        case Some(value) => Seq("avatar" -> JsString(value))
+        case None => Seq()
+      })
+    webSocketActor ! JsObject(Seq("id" -> JsNumber(id),
+      "groupId" -> JsString(groupId),
+      "user" -> JsObject(userJson),
+      "date" -> JsNumber(date.getMillis),
+      "text" -> JsString(text)))
+    Ok(Json.toJson(JsNumber(id)))
+  }
+
+  def submitComment = DBAction(parse.json) { implicit rs =>
+    val userId = (rs.body \ "userId").asInstanceOf[JsNumber].value.toLong
+    val groupId = (rs.body \ "groupId").asInstanceOf[JsString].value
+    val topicId = (rs.body \ "topicId").asInstanceOf[JsNumber].value.toLong
+    val text = (rs.body \ "text").asInstanceOf[JsString].value
+    val date = new DateTime()
+    val id = (dao.comments returning dao.comments.map(_.id)) += new Comment(groupId = groupId, userId = userId, topicId = topicId, date = date, text = text)
+    Logger.debug(s"Submitted comment: $userId, $groupId, $topicId, $text")
+    val webSocketActor = Akka.system.actorSelection("/user/*.*")
+    val user = dao.users.filter(_.id === userId).first
+    val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
+      (user.avatar match {
+        case Some(value) => Seq("avatar" -> JsString(value))
+        case None => Seq()
+      })
+    webSocketActor ! JsObject(Seq("id" -> JsNumber(id),
+      "groupId" -> JsString(groupId),
+      "topicId" -> JsNumber(topicId),
+      "user" -> JsObject(userJson),
+      "date" -> JsNumber(date.getMillis),
+      "text" -> JsString(text)))
+    Ok(Json.toJson(JsNumber(id)))
   }
 }

@@ -1,17 +1,20 @@
 # Routes
 
-GET        /webSocket                                  controllers.Application.webSocket(email: String)
-GET        /json/user                                  controllers.Application.getUser(email: String)
-GET        /json/user/:userId/groups                   controllers.Application.getGroups(userId: Long)
-GET        /json/user/:userId/topics                   controllers.Application.getAllTopics(userId: Long)
-GET        /json/user/:userId/topics/:groupId          controllers.Application.getGroupTopics(userId: Long, groupId: String)
-GET        /json/user/:userId/messages/:topicId        controllers.Application.getMessages(userId: Long, topicId: Long)
+GET         /webSocket                                  controllers.Application.webSocket(email: String)
+GET         /json/user                                  controllers.Application.getUser(email: String)
+GET         /json/user/:userId/groups                   controllers.Application.getGroups(userId: Long)
+GET         /json/user/:userId/topics                   controllers.Application.getAllTopics(userId: Long)
+GET         /json/user/:userId/topics/:groupId          controllers.Application.getGroupTopics(userId: Long, groupId: String)
+GET         /json/user/:userId/messages/:topicId        controllers.Application.getMessages(userId: Long, topicId: Long)
 
-GET        /logout                                     controllers.Application.logout
+POST        /json/topic/add                             controllers.Application.submitTopic
+POST        /json/comment/add                           controllers.Application.submitComment
 
-GET        /auth/callback                              controllers.Auth.callback(code: Option[String], state: Option[String])
+GET         /logout                                     controllers.Application.logout
 
-GET        /assets/*file                               controllers.Assets.at(path="/public", file)
-GET        /webjars/*file                              controllers.WebJarAssets.at(file)
+GET         /auth/callback                              controllers.Auth.callback(code: Option[String], state: Option[String])
 
-GET        /                                           controllers.Application.index
+GET         /assets/*file                               controllers.Assets.at(path="/public", file)
+GET         /webjars/*file                              controllers.WebJarAssets.at(file)
+
+GET         /                                           controllers.Application.index

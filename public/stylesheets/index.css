@@ -1,0 +1,146 @@
+body {
+    font-family: Arial, serif;
+    font-size: 13px;
+}
+
+input {
+    outline: 0 none
+}
+
+#side-bar {
+    padding: 20px 0;
+    width: 200px;
+    height: 100%;
+    background-color: #e9eaed;
+    border-right: 1px solid #e6e6e6;
+}
+
+#topic-bar {
+    padding: 20px 0;
+    width: 350px;
+    height: 100%;
+    position: absolute;
+    left: 200px;
+    top: 0;
+    background-color: #f5f5f5;
+}
+
+#message-bar {
+    height: 100%;
+    position: absolute;
+    left: 550px;
+    top: 0;
+}
+
+#group-pane {
+    padding: 0;
+}
+
+#group-pane li {
+    list-style: none;
+    cursor: pointer;
+    padding: 3px 20px 3px;
+}
+
+#group-pane li.selected {
+    background-color: #cbe9f7;
+}
+
+#group-pane #all-chats {
+    margin-bottom: 6px;
+}
+
+#topic-pane {
+    padding: 0;
+}
+
+#topic-pane li {
+    list-style: none;
+    cursor: pointer;
+    padding: 5px 20px 5px;
+}
+
+#topic-pane li.selected {
+    background-color: #cbe9f7;
+}
+
+#new-topic-pane {
+    padding: 15px 0;
+}
+
+#new-topic {
+    cursor: pointer;
+    padding: 5px 20px;
+}
+
+#new-topic {
+    color: #9c9c9c;
+    cursor: default;
+    width: 100%;
+    display: block;
+}
+
+#new-topic:hover {
+    text-decoration: none;
+}
+
+#new-topic.enabled {
+    color: #0077cc;
+    cursor: pointer;
+}
+
+#new-topic #plus {
+    background-image: url('/assets/images/plus-gray.png');
+    width: 13px;
+    height: 13px;
+    display: inline-block;
+    margin-right: 5px;
+    float: left;
+    margin-top: 1px;
+}
+
+#new-topic.enabled #plus {
+    background-image: url('/assets/images/plus-blue.png');
+}
+
+#new-topic.selected #plus, {
+    background-image: url('/assets/images/plus-gray.png');
+}
+
+#new-topic.selected {
+    color: black;
+    cursor: default;
+    background-color: #cbe9f7;
+}
+
+input.search-query {
+    padding-left: 20px;
+
+    font-family: Arial, serif;
+    font-size: 13px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    border: none;
+    width: 300px;
+    background-color: transparent;
+}
+
+#search-pane {
+    position: relative;
+    display: inline-block;
+    margin: 0 20px;
+}
+
+#search-pane:before {
+    font-family: 'Glyphicons Halflings';
+    font-size: 14px;
+    display: block;
+    width: 14px;
+    height: 14px;
+    content: "\e003";
+    position: absolute;
+    top: 2px;
+    left: 0;
+    opacity: .5;
+    z-index: 1000;
+}
