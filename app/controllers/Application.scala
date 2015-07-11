@@ -242,6 +242,7 @@ def getGroupsJsValue(userId: Long) (): JsValue = {
     val groupId = (rs.body).asInstanceOf[JsString].value
     dao.groups += new Group(groupId)
     Logger.debug(s"Adding group: $groupId")
+    Akka.system.actorSelection("/user/*.*") ! JsObject(Seq("newGroup" -> JsString(groupId)))
     Ok
   }
 }

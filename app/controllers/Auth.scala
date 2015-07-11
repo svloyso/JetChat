@@ -11,6 +11,8 @@ import jetbrains.jetpass.client.hub.HubClient
 import jetbrains.jetpass.client.oauth2.OAuth2Client
 import jetbrains.jetpass.client.oauth2.auth.OAuth2CodeFlow
 import models.User
+import play.api.libs.concurrent.Akka
+import play.api.libs.json.{JsNumber, JsString, JsObject}
 import play.api.mvc.{Cookie, RequestHeader, Action, Controller}
 
 import scala.concurrent.Future
@@ -71,6 +73,12 @@ object Auth extends Controller {
       user match {
         case None =>
           dao.users += new User(login = hubUser.getLogin, name = hubUser.getName, avatar = Option(hubUser.getAvatar.getUrl))
+          val u = dao.users.filter(_.login === hubUser.getLogin).first
+          Akka.system.actorSelection("/user/*.*") ! JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(u.id), "name" -> JsString(u.name), "login" -> JsString(u.login)) ++
+            (u.avatar match {
+              case Some(value) => Seq("avatar" -> JsString(value))
+              case None => Seq()
+            }))))
         case _ =>
       }
     }

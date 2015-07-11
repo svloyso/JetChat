@@ -37,6 +37,7 @@ $(document).ready(function () {
     allGroupItem.appendTo(groupPane);
 
     function addGroup(group, insert) {
+        addedGroups[group] = true;
         var groupItem = $("<li>").attr("data-group", group).append($("<span class='group-header'>").text("#")).append($("<span>").text(group));
         if (selectedGroup == group) {
             groupItem.addClass("selected");
@@ -58,6 +59,8 @@ $(document).ready(function () {
         return groupItem;
     }
 
+    var addedGroups = {};
+
     $.each(groups, function (group, count) {
         addGroup(group);
     });
@@ -78,21 +81,21 @@ $(document).ready(function () {
             window.createGroup = function () {
                 var groupId = $(".new-group-popover .group-name").val().trim();
                 if (groupId && !/\s/.test(groupId)) {
+                    hideAllPopovers();
+                    isVisible = false;
+                    var groupItem = addGroup(groupId, true);
+                    $("#group-pane").find("li").removeClass("selected");
+                    groupItem.addClass("selected");
+                    selectedUser = null;
+                    selectedGroup = groupId;
+                    onGroupSelection();
+                    onTopicSelection();
                     $.ajax({
                         type: "POST",
                         url: "/json/group/add",
                         data: JSON.stringify(groupId),
                         contentType: "application/json",
-                        success: function () {
-                            hideAllPopovers();
-                            isVisible = false;
-                            var groupItem = addGroup(groupId, true);
-                            $("#group-pane").find("li").removeClass("selected");
-                            groupItem.addClass("selected");
-                            selectedUser = null;
-                            selectedGroup = groupId;
-                            onGroupSelection();
-                            onTopicSelection();
+                        success: function (id) {
                         },
                         fail: function (e) {
                             console.error(e);
@@ -134,20 +137,23 @@ $(document).ready(function () {
 
     groupPane.append(newGroupButton);
 
+    function addUser(user) {
+        var userItem = $("<li>").attr("data-user", user.id).append($("<span>").text(user.name));
+        userItem.click(function () {
+            $("#group-pane").find("li").removeClass("selected");
+            $(this).addClass("selected");
+            selectedUser = user.id;
+            selectedGroup = null;
+            onGroupSelection();
+            onTopicSelection();
+            input.attr("placeholder", "Message…");
+        });
+        userItem.appendTo(groupPane);
+    }
+
     users.forEach(function (user) {
         if (user.id != userId) {
-            var uId = user.id;
-            var userItem = $("<li>").attr("data-user", user.id).append($("<span>").text(user.name));
-            userItem.click(function () {
-                $("#group-pane").find("li").removeClass("selected");
-                $(this).addClass("selected");
-                selectedUser = uId;
-                selectedGroup = null;
-                onGroupSelection();
-                onTopicSelection();
-                input.attr("placeholder", "Message…");
-            });
-            userItem.appendTo(groupPane);
+            addUser(user);
         }
     });
 
@@ -334,7 +340,9 @@ $(document).ready(function () {
         if (!sameUser) {
             details.append(info);
         }
-        details.append($("<div class='text'>").text(m.text));
+        var text = $("<div class='text'>").text(m.text);
+        emojify.run(text[0]);
+        details.append(text);
         var message = $("<div class='message'>")
             .append(details);
         messageItem.append(message);
@@ -461,6 +469,11 @@ $(document).ready(function () {
                     if (selectedTopic == d.topicId && !addedMessages[d.text]) {
                         addMessage(d);
                     }
+                } else if (d.newGroup && !addedGroups[d.newGroup]) {
+                    addGroup(d.newGroup, true)
+                } else if (d.newUser) {
+                    users.push(d.newUser);
+                    addUser(d.newUser);
                 } else if (!d.toUser) {
                     if (selectedGroup == d.groupId && !addedTopics[d.id]) {
                         addTopic({topic: d}, true);
@@ -486,6 +499,20 @@ $(document).ready(function () {
             console.error("Websocket error: " + error);
         };
     }
+
+    emojify.setConfig({
+        emojify_tag_type : 'div',           // Only run emojify.js on this element
+        only_crawl_id    : null,            // Use to restrict where emojify.js applies
+        img_dir          : 'assets/emoji/images/basic',  // Directory for emoji images
+        ignored_tags     : {                // Ignore the following tags
+            'SCRIPT'  : 1,
+            'TEXTAREA': 1,
+            'A'       : 1,
+            'PRE'     : 1,
+            'CODE'    : 1
+        }
+    });
+    emojify.run();
 });
 
 window.setInterval(function() {
