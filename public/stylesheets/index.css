@@ -66,6 +66,10 @@ input, textarea {
     overflow: scroll;
 }
 
+#group-pane, #message-roll {
+    overflow: scroll;
+}
+
 #topic-pane li {
     list-style: none;
     cursor: pointer;
@@ -274,6 +278,7 @@ input.search-query {
 #message-roll {
     position: absolute;
     bottom: 70px;
+    width: 100%;
 }
 
 #message-pane li .info .user {

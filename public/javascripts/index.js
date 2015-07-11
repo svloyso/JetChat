@@ -6,6 +6,7 @@ $(document).ready(function () {
         $("#group-pane").height($(window).height() - 80);
         $("#topic-pane").height($(window).height() - 100);
         $("#message-pane").height($(window).height() - 100);
+        $("#message-roll").css({maxHeight: ($(window).height() - 95) + "px"});
         $("#message-bar").find("#input").width($("#message-bar").width() - 85);
     });
 
@@ -347,6 +348,7 @@ $(document).ready(function () {
             .append(details);
         messageItem.append(message);
         messageItem.appendTo(messageRoll);
+        messageRoll.scrollTop(messageRoll[0].scrollHeight);
     }
 
     function onGroupSelection() {
