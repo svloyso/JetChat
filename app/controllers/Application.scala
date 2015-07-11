@@ -2,7 +2,7 @@ package controllers
 
 import actors.WebSocketActor
 import akka.actor.PoisonPill
-import models.{Comment, Topic, User}
+import models.{Group, Comment, Topic, User}
 import models.current._
 import myUtils.MyPostgresDriver.simple._
 import org.joda.time.DateTime
@@ -133,7 +133,7 @@ object Application extends Controller {
     }))
   }
 
-  def submitTopic = DBAction(parse.json) { implicit rs =>
+  def addTopic = DBAction(parse.json) { implicit rs =>
     val userId = (rs.body \ "user" \ "id").asInstanceOf[JsNumber].value.toLong
     val groupId = (rs.body \ "groupId").asInstanceOf[JsString].value
     val text = (rs.body \ "text").asInstanceOf[JsString].value
@@ -155,7 +155,7 @@ object Application extends Controller {
     Ok(Json.toJson(JsNumber(id)))
   }
 
-  def submitComment = DBAction(parse.json) { implicit rs =>
+  def addComment = DBAction(parse.json) { implicit rs =>
     val userId = (rs.body \ "user" \ "id").asInstanceOf[JsNumber].value.toLong
     val groupId = (rs.body \ "groupId").asInstanceOf[JsString].value
     val topicId = (rs.body \ "topicId").asInstanceOf[JsNumber].value.toLong
@@ -177,5 +177,12 @@ object Application extends Controller {
       "date" -> JsNumber(date.getMillis),
       "text" -> JsString(text)))
     Ok(Json.toJson(JsNumber(id)))
+  }
+
+  def addGroup = DBAction(parse.json) { implicit rs =>
+    val groupId = (rs.body).asInstanceOf[JsString].value
+    dao.groups += new Group(groupId)
+    Logger.debug(s"Adding group: $groupId")
+    Ok
   }
 }

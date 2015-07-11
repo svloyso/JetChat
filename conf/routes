@@ -7,8 +7,9 @@ GET         /json/user/:userId/topics                   controllers.Application.
 GET         /json/user/:userId/topics/:groupId          controllers.Application.getGroupTopics(userId: Long, groupId: String)
 GET         /json/user/:userId/messages/:topicId        controllers.Application.getMessages(userId: Long, topicId: Long)
 
-POST        /json/topic/add                             controllers.Application.submitTopic
-POST        /json/comment/add                           controllers.Application.submitComment
+POST        /json/topic/add                             controllers.Application.addTopic
+POST        /json/comment/add                           controllers.Application.addComment
+POST        /json/group/add                             controllers.Application.addGroup
 
 GET         /logout                                     controllers.Application.logout
 

@@ -32,7 +32,7 @@ $(document).ready(function () {
     });
     allGroupItem.appendTo(groupPane);
 
-    $.each(groups, function (group, count) {
+    function addGroup(group, insert) {
         var groupItem = $("<li>").attr("data-group", group).append($("<span class='group-header'>").text("#")).append($("<span>").text(group));
         if (selectedGroup == group) {
             groupItem.addClass("selected");
@@ -45,8 +45,88 @@ $(document).ready(function () {
             onGroupSelection();
             onTopicSelection();
         });
-        groupItem.appendTo(groupPane);
+        if (insert) {
+            groupItem.insertBefore(groupPane.find("#new-group"));
+        } else {
+            groupItem.appendTo(groupPane);
+        }
+        return groupItem;
+    }
+
+    $.each(groups, function (group, count) {
+        addGroup(group);
     });
+
+    var isVisible = false;
+
+    var hideAllPopovers = function() {
+        $('#new-group').each(function() {
+            $(this).popover('hide');
+        });
+    };
+
+    var newGroupButton = $("<a id='new-group'>").text("New group").popover({
+        html: true,
+        trigger: 'manual',
+        content: function() {
+            var pane = $("<div class='new-group-popover'>");
+            window.createGroup = function () {
+                var groupId = $(".new-group-popover .group-name").val().trim();
+                if (groupId && !/\s/.test(groupId)) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/json/group/add",
+                        data: JSON.stringify(groupId),
+                        contentType: "application/json",
+                        success: function () {
+                            hideAllPopovers();
+                            isVisible = false;
+                            var groupItem = addGroup(groupId, true);
+                            $("#group-pane").find("li").removeClass("selected");
+                            groupItem.addClass("selected");
+                            selectedGroup = groupId;
+                            onGroupSelection();
+                            onTopicSelection();
+                        },
+                        fail: function (e) {
+                            console.error(e);
+                        }
+                    })
+                }
+            };
+            var groupInput = $("<input type='text' class='group-name' placeholder='Name…'>").attr("onkeypress", "if (event.keyCode == 13) createGroup()");
+            var groupLabel = $("<div class='group-label'>").text("Must be 21 characters or less. No spaces or periods.");
+            var button = $("<a class='btn btn-default btn-sm'>").text("Create group").attr("onclick", "createGroup()");
+            pane.append(groupInput);
+            pane.append(groupLabel);
+            pane.append(button);
+            return $("<div>").append(pane).html();
+        }
+    }).on('shown.bs.popover', function () {
+        $(".new-group-popover .group-name").focus();
+    }).on('click', function(e) {
+        // if any other popovers are visible, hide them
+        if(isVisible) {
+            hideAllPopovers();
+        }
+
+        $(this).popover('show');
+
+        // handle clicking on the popover itself
+        $('.popover').off('click').on('click', function(e) {
+            e.stopPropagation(); // prevent event for bubbling up => will not get caught with document.onclick
+        });
+
+        isVisible = true;
+        e.stopPropagation();
+    });
+
+    $(document).on('click', function(e) {
+        hideAllPopovers();
+        isVisible = false;
+    });
+
+    groupPane.append(newGroupButton);
     sideBar.append(groupPane);
     $(document.body).append(sideBar);
 
@@ -152,7 +232,7 @@ $(document).ready(function () {
         addedTopics[t.topic.id] = true;
         var topicItem = $("<li>").attr("data-group", t.topic.groupId).attr("data-topic", t.topic.id);
         topicItem.append($("<div class='text'>").text(t.topic.text));
-        var info = $("<div class='info'>").append($("<span class='author'>").text(t.topic.user.name)).append(" in ")
+        var info = $("<div class='info'>").append($("<span class='author'>").text(t.topic.user.name)).append(" in #")
             .append($("<span class='group'>").text(t.topic.groupId)).append("&nbsp;&nbsp;").append($("<span class='pretty date'>").
                 text($.format.prettyDate(t.topic.date)).attr("data-date", t.topic.date));
         topicItem.append(info);
@@ -200,7 +280,7 @@ $(document).ready(function () {
         }
         var info = $("<div class='info'>")
             .append($("<span class='author'>").text(m.user.name));
-        info.append(" in ").append($($("<span class='group'>").text(m.groupId)));
+        info.append(" in #").append($($("<span class='group'>").text(m.groupId)));
         info.append("&nbsp;&nbsp;").append($("<span class='pretty date'>").
             text($.format.prettyDate(m.date)).attr("data-date", m.date));
 
@@ -232,7 +312,9 @@ $(document).ready(function () {
                     addTopic(t)
                 });
                 if (selectedTopic == null) {
-                    newTopicButton.addClass("selected");
+                    if (newTopic) {
+                        newTopicButton.addClass("selected");
+                    }
                     input.attr("placeholder", "Topic…");
                 }
             },
@@ -281,8 +363,10 @@ $(document).ready(function () {
         }
         if (selectedGroup || selectedTopic) {
             input.addClass("enabled");
+            input.show();
             input.focus();
         } else {
+            input.hide();
             input.removeClass("enabled");
         }
     }
