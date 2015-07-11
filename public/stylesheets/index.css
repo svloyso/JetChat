@@ -263,6 +263,14 @@ input.search-query {
     border-color: #eee;
 }
 
+#message-roll-header {
+    background-color: white;
+    position: fixed;
+    width: 100%;
+    margin-top: -20px;
+    padding-top: 20px;
+}
+
 #message-roll {
     position: absolute;
     bottom: 70px;

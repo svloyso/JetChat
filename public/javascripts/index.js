@@ -264,8 +264,8 @@ $(document).ready(function () {
     topicBar.append(topicPane);
     $(document.body).append(topicBar);
 
-    messagePane.append(messageRollHeader);
     messagePane.append(messageRoll);
+    messagePane.append(messageRollHeader);
     messageBar.append(messagePane);
     messageBar.append(input);
     $(document.body).append(messageBar);
@@ -324,9 +324,6 @@ $(document).ready(function () {
         }
         var info = $("<div class='info'>")
             .append($("<span class='author'>").text(m.user.name));
-        if (m.groupId) {
-            info.append(" in #").append($($("<span class='group'>").text(m.groupId)));
-        }
         info.append("&nbsp;&nbsp;").append($("<span class='pretty date'>").
             text($.format.prettyDate(m.date)).attr("data-date", m.date));
 
