@@ -43,6 +43,25 @@ class DBSpec extends Specification {
 
         cQ.list.size must equalTo(1)
 
+        val uQ2 = dao.users.filter(_.login === "test2")
+        uQ2.firstOption match {
+          case Some(_) =>
+          case None =>
+            dao.users += new User(login = "test2", name = "Test 2", avatar = None)
+        }
+        val u2 = uQ2.first
+
+        val dmQ = dao.directMessages.filter(dm => dm.fromUserId === u.id && dm.toUserId === u2.id)
+        dmQ.delete
+
+        val dmId = (dao.directMessages returning dao.directMessages.map(_.id)) +=
+          new DirectMessage(fromUserId = u.id, toUserId = u2.id, date = new DateTime(), text = "test")
+
+        dmQ.list.size must equalTo(1)
+
+
+        dmQ.delete
+        uQ2.delete
         cQ.delete
         tQ.delete
         uQ.delete

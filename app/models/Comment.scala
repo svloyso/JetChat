@@ -3,7 +3,7 @@ package models
 import myUtils.{MyPostgresDriver, WithMyDriver}
 import org.joda.time.DateTime
 
-case class Comment(id: Long = 0, groupId: String, topicId: Long, userId: Long, date: DateTime, text: String) extends Message
+case class Comment(id: Long = 0, groupId: String, topicId: Long, userId: Long, date: DateTime, text: String) extends AbstractGroupMessage
 
 trait CommentsComponent extends WithMyDriver {
 

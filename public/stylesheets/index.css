@@ -134,7 +134,7 @@ a:hover {
 #group-pane #new-group {
     display: inline-block;
     margin-top: 5px;
-    padding: 5px 20px;
+    padding: 5px 20px 15px;
     font-size: 12px;
 }
 
@@ -195,7 +195,7 @@ input.search-query {
 }
 
 #message-pane {
-    padding: 15px 12px;
+    padding: 15px 12px 15px 25px;
     overflow: scroll;
 }
 
@@ -216,6 +216,7 @@ input.search-query {
 }
 
 #message-bar {
+    max-width: 700px;
     min-width: 350px;
 }
 
@@ -260,5 +261,10 @@ input.search-query {
 .new-group-popover .btn:hover {
     background-color: #f9f9f9;
     border-color: #eee;
+}
 
+#message-pane li .info .user {
+    font-size: 15px;
+    font-weight: bold;
+    color: black;
 }

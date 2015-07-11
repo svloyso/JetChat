@@ -1,5 +1,5 @@
 @import play.api.libs.json.JsValue
-@(user: User, groups: JsValue, webSocketUrl: String)
+@(user: User, users: JsValue, groups: JsValue, webSocketUrl: String)
 
 @head = {
     <link rel="stylesheet" href="@routes.Assets.at("stylesheets/index.css")"/>
@@ -9,6 +9,7 @@
         var userName = "@{user.name}";
         var userAvatar = "@{user.avatar}";
         var webSocketUrl = "@Html(webSocketUrl)";
+        var users = @{Html(users.toString)};
         var groups = @{Html(groups.toString)};
     </script>
     <script src="@routes.Assets.at("javascripts/index.js")"></script>

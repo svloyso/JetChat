@@ -2,7 +2,7 @@ package controllers
 
 import actors.WebSocketActor
 import akka.actor.PoisonPill
-import models.{Group, Comment, Topic, User}
+import models._
 import models.current._
 import myUtils.MyPostgresDriver.simple._
 import org.joda.time.DateTime
@@ -31,7 +31,8 @@ object Application extends Controller {
           dao.users.filter(_.login === cookie.value).firstOption match {
             case Some(user) =>
               val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL().replaceAll("http", "ws")
-              Future.successful(Ok(views.html.index(user, getGroupsJsValue(user.id), webSocketUrl)))
+              Future.successful(Ok(views.html.index(user, getUsersJsValue(user.id),
+                getGroupsJsValue(user.id), webSocketUrl)))
             case None =>
               Future.successful(Redirect(Auth.getAuthUrl).discardingCookies(DiscardingCookie("user")))
           }
@@ -67,7 +68,13 @@ object Application extends Controller {
     Ok(Json.toJson(dao.users.filter(_.login === login).firstOption))
   }
 
-  def getGroupsJsValue(userId: Long) (): JsValue = {
+  def getUsersJsValue(userId: Long) (): JsValue = {
+    DB.withSession { implicit session =>
+      Json.toJson(dao.users.list)
+    }
+  }
+
+def getGroupsJsValue(userId: Long) (): JsValue = {
     DB.withSession { implicit session =>
       val groups = dao.groups.list.map(_.id -> 0).toMap
       val groupTopics = dao.topics.filter(topic => topic.userId === userId)
@@ -133,13 +140,36 @@ object Application extends Controller {
     }))
   }
 
+  def getDirectMessages(fromUserId: Long, toUserId: Long) = DBAction { implicit rs =>
+    val messages = (for { ((dm, fromUser), toUser) <- dao.directMessages.filter(dm => (dm.fromUserId === fromUserId && dm.toUserId === toUserId) ||
+      (dm.fromUserId === toUserId && dm.toUserId === fromUserId)) leftJoin dao.users on { case (dm, fromUser) => dm.fromUserId === fromUser.id } leftJoin dao.users on { case ((dm, fromUser), toUser) => dm.toUserId === toUser.id }} yield (dm, fromUser, toUser)).sortBy(_._1.date).list
+    Ok(Json.toJson(messages.map { case (dm, fromUser, toUser) =>
+      val fromUserJson = Seq("id" -> JsNumber(fromUser.id), "name" -> JsString(fromUser.name), "login" -> JsString(fromUser.login)) ++
+        (fromUser.avatar match {
+          case Some(value) => Seq("avatar" -> JsString(value))
+          case None => Seq()
+        })
+      val toUserJson = Seq("id" -> JsNumber(toUser.id), "name" -> JsString(toUser.name), "login" -> JsString(toUser.login)) ++
+        (toUser.avatar match {
+          case Some(value) => Seq("avatar" -> JsString(value))
+          case None => Seq()
+        })
+      val fields = Seq("id" -> JsNumber(dm.id),
+        "user" -> JsObject(fromUserJson),
+        "toUser" -> JsObject(toUserJson),
+        "date" -> JsNumber(dm.date.getMillis),
+        "text" -> JsString(dm.text))
+      JsObject(fields)
+    }))
+  }
+
   def addTopic = DBAction(parse.json) { implicit rs =>
     val userId = (rs.body \ "user" \ "id").asInstanceOf[JsNumber].value.toLong
     val groupId = (rs.body \ "groupId").asInstanceOf[JsString].value
     val text = (rs.body \ "text").asInstanceOf[JsString].value
     val date = new DateTime()
     val id = (dao.topics returning dao.topics.map(_.id)) += new Topic(groupId = groupId, userId = userId, date = date, text = text)
-    Logger.debug(s"Submitted topic: $userId, $groupId, $text")
+    Logger.debug(s"Adding topic: $userId, $groupId, $text")
     val webSocketActor = Akka.system.actorSelection("/user/*.*")
     val user = dao.users.filter(_.id === userId).first
     val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
@@ -162,7 +192,7 @@ object Application extends Controller {
     val text = (rs.body \ "text").asInstanceOf[JsString].value
     val date = new DateTime()
     val id = (dao.comments returning dao.comments.map(_.id)) += new Comment(groupId = groupId, userId = userId, topicId = topicId, date = date, text = text)
-    Logger.debug(s"Submitted comment: $userId, $groupId, $topicId, $text")
+    Logger.debug(s"Adding comment: $userId, $groupId, $topicId, $text")
     val webSocketActor = Akka.system.actorSelection("/user/*.*")
     val user = dao.users.filter(_.id === userId).first
     val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
@@ -176,6 +206,35 @@ object Application extends Controller {
       "user" -> JsObject(userJson),
       "date" -> JsNumber(date.getMillis),
       "text" -> JsString(text)))
+    Ok(Json.toJson(JsNumber(id)))
+  }
+
+  def addDirectMessage = DBAction(parse.json) { implicit rs =>
+    val fromUserId = (rs.body \ "user" \ "id").asInstanceOf[JsNumber].value.toLong
+    val toUserId = (rs.body \ "toUser" \ "id").asInstanceOf[JsNumber].value.toLong
+    val text = (rs.body \ "text").asInstanceOf[JsString].value
+    val date = new DateTime()
+    val id = (dao.directMessages returning dao.directMessages.map(_.id)) += new DirectMessage(fromUserId = fromUserId, toUserId = toUserId, date = date, text = text)
+    Logger.debug(s"Adding direct message: $fromUserId, $toUserId, $text")
+    val user = dao.users.filter(_.id === fromUserId).first
+    val toUser = dao.users.filter(_.id === toUserId).first
+    val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
+      (user.avatar match {
+        case Some(value) => Seq("avatar" -> JsString(value))
+        case None => Seq()
+      })
+    val toUserJson = Seq("id" -> JsNumber(toUser.id), "name" -> JsString(toUser.name), "login" -> JsString(toUser.login)) ++
+      (toUser.avatar match {
+        case Some(value) => Seq("avatar" -> JsString(value))
+        case None => Seq()
+      })
+    val message = JsObject(Seq("id" -> JsNumber(id),
+      "user" -> JsObject(userJson),
+      "toUser" -> JsObject(toUserJson),
+      "date" -> JsNumber(date.getMillis),
+      "text" -> JsString(text)))
+    Akka.system.actorSelection("/user/" + user.login + ".*") ! message
+    Akka.system.actorSelection("/user/" + toUser.login + ".*") ! message
     Ok(Json.toJson(JsNumber(id)))
   }
 

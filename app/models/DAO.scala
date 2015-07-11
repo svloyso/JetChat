@@ -3,7 +3,7 @@ package models
 import myUtils.MyPostgresDriver
 import play.api.db.slick.DB
 
-class DAO(override val driver: MyPostgresDriver) extends UsersComponent with GroupsComponent with TopicsComponent with CommentsComponent {
+class DAO(override val driver: MyPostgresDriver) extends UsersComponent with GroupsComponent with TopicsComponent with CommentsComponent with DirectMessagesComponent {
 
   import driver.simple._
 
@@ -11,6 +11,7 @@ class DAO(override val driver: MyPostgresDriver) extends UsersComponent with Gro
   val groups = TableQuery(new GroupsTable(_))
   val topics = TableQuery(new TopicsTable(_))
   val comments = TableQuery(new CommentsTable(_))
+  val directMessages = TableQuery(new DirectMessagesTable(_))
 }
 
 object current {

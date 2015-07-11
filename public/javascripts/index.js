@@ -17,8 +17,10 @@ $(document).ready(function () {
     var selectedGroup = null;
     var selectedTopicGroup = null;
     var selectedTopic = null;
+    var selectedUser = null;
     var newTopic = false;
     var newMessage = false;
+    var newDirectMessage = false;
 
     var allGroupItem = $("<li id='all-chats'>").append($("<span>").text("All Chats"));
     if (selectedGroup == null) {
@@ -27,6 +29,7 @@ $(document).ready(function () {
     allGroupItem.click(function () {
         $("#group-pane").find("li").removeClass("selected");
         $(this).addClass("selected");
+        selectedUser = null;
         selectedGroup = null;
         onGroupSelection();
         onTopicSelection();
@@ -42,6 +45,7 @@ $(document).ready(function () {
         groupItem.click(function () {
             $("#group-pane").find("li").removeClass("selected");
             $(this).addClass("selected");
+            selectedUser = null;
             selectedGroup = $(this).attr("data-group");
             onGroupSelection();
             onTopicSelection();
@@ -85,6 +89,7 @@ $(document).ready(function () {
                             var groupItem = addGroup(groupId, true);
                             $("#group-pane").find("li").removeClass("selected");
                             groupItem.addClass("selected");
+                            selectedUser = null;
                             selectedGroup = groupId;
                             onGroupSelection();
                             onTopicSelection();
@@ -128,6 +133,24 @@ $(document).ready(function () {
     });
 
     groupPane.append(newGroupButton);
+
+    users.forEach(function (user) {
+        if (user.id != userId) {
+            var uId = user.id;
+            var userItem = $("<li>").attr("data-user", user.id).append($("<span>").text(user.name));
+            userItem.click(function () {
+                $("#group-pane").find("li").removeClass("selected");
+                $(this).addClass("selected");
+                selectedUser = uId;
+                selectedGroup = null;
+                onGroupSelection();
+                onTopicSelection();
+                input.attr("placeholder", "Message…");
+            });
+            userItem.appendTo(groupPane);
+        }
+    });
+
     sideBar.append(groupPane);
     $(document.body).append(sideBar);
 
@@ -137,13 +160,6 @@ $(document).ready(function () {
     var searchPane = $("<div id='search-pane' class='form-inline'>")
         .append($("<div class='btn-group'>").append($("<input id='search' type='text' class='search-query' placeholder='Search people, groups and topics.&hellip;' autocomplete='off'>")));
 
-    /*<form id="form-search" class="form-inline">
-        <div class="btn-group">
-        <input id="search" type="search" required class="form-control search-query" placeholder="Search" autocomplete="off">
-        <span id="search-clear" class="glyphicon glyphicon-remove"></span>
-        </div>
-        </form>
-            */
     var newTopicButton = $("<a id='new-topic'>").append($("<span id='plus'>")).append($("<span>").text("New topic")).click(function () {
         if ($(this).hasClass("enabled")) {
             selectedTopic = null;
@@ -166,52 +182,75 @@ $(document).ready(function () {
     var messagePane = $("<div id='message-pane'>");
     var input = $("<textarea id='input' autocomplete='off'>");
     input.keypress(function (e) {
-        if (e.which == 13 && (newTopic || newMessage)) {
+        if (e.which == 13 && (newTopic || newMessage || newDirectMessage)) {
             if (input.val().trim()) {
-                var data = {
-                    "user": {
-                        "id": userId,
-                        "name": userName,
-                        "avatar": userAvatar
-                    },
-                    "date": new Date().getMilliseconds(),
-                    "groupId": newTopic ? selectedGroup : selectedTopicGroup,
-                    "text": input.val()
-                };
-                if (newMessage) {
-                    data["topicId"] = selectedTopic;
-                    addMessage(data);
-                }
-                $.ajax({
-                    type: "POST",
-                    url: newTopic ? "/json/topic/add" : "/json/comment/add",
-                    data: JSON.stringify(data),
-                    contentType: "application/json",
-                    success: function (id) {
-                        if (newTopic) {
-                            addTopic({
-                                topic: {
-                                    id: id,
-                                    userId: userId,
-                                    groupId: data.groupId,
-                                    text: data.text,
-                                    date: new Date().getMilliseconds(),
-                                    user: {
-                                        id: userId,
-                                        name: userName
-                                    }
-                                }
-                            });
-                            selectedGroup = null;
-                            selectedTopic = id;
-                            selectedTopicGroup = data.groupId;
-                            onTopicSelection();
-                        }
-                    },
-                    fail: function (e) {
-                        console.error(e);
+                if (newTopic || newMessage) {
+                    var data = {
+                        "user": {
+                            "id": userId,
+                            "name": userName,
+                            "avatar": userAvatar
+                        },
+                        "date": new Date().getMilliseconds(),
+                        "groupId": newTopic ? selectedGroup : selectedTopicGroup,
+                        "text": input.val()
+                    };
+                    if (newMessage) {
+                        data["topicId"] = selectedTopic;
+                        addMessage(data);
                     }
-                });
+                    $.ajax({
+                        type: "POST",
+                        url: newTopic ? "/json/topic/add" : "/json/comment/add",
+                        data: JSON.stringify(data),
+                        contentType: "application/json",
+                        success: function (id) {
+                            if (newTopic) {
+                                addTopic({
+                                    topic: {
+                                        id: id,
+                                        userId: userId,
+                                        groupId: data.groupId,
+                                        text: data.text,
+                                        date: new Date().getMilliseconds(),
+                                        user: {
+                                            id: userId,
+                                            name: userName
+                                        }
+                                    }
+                                });
+                                selectedGroup = null;
+                                selectedTopic = id;
+                                selectedTopicGroup = data.groupId;
+                                onTopicSelection();
+                            }
+                        },
+                        fail: function (e) {
+                            console.error(e);
+                        }
+                    });
+                } else {
+                    var user = users.filter(function (u) { return u.id == userId })[0];
+                    var toUser = users.filter(function (u) { return u.id == selectedUser })[0];
+                    var data = {
+                        "user": user,
+                        "toUser": toUser,
+                        "date": new Date().getMilliseconds(),
+                        "text": input.val()
+                    };
+                    addMessage(data);
+                    $.ajax({
+                        type: "POST",
+                        url: "/json/direct/add",
+                        data: JSON.stringify(data),
+                        contentType: "application/json",
+                        success: function (id) {
+                        },
+                        fail: function (e) {
+                            console.error(e);
+                        }
+                    })
+                }
                 input.val("");
             }
             e.preventDefault();
@@ -271,7 +310,7 @@ $(document).ready(function () {
             }
         }
         var messageItem = $("<li class='clearfix'>").attr("data-user", m.user.id);
-        if (!m.topicId || sameUserTopic) {
+        if ((!m.topicId && !m.toUser) || sameUserTopic) {
             messageItem.addClass("topic");
         }
         if (!sameUser) {
@@ -281,7 +320,9 @@ $(document).ready(function () {
         }
         var info = $("<div class='info'>")
             .append($("<span class='author'>").text(m.user.name));
-        info.append(" in #").append($($("<span class='group'>").text(m.groupId)));
+        if (m.groupId) {
+            info.append(" in #").append($($("<span class='group'>").text(m.groupId)));
+        }
         info.append("&nbsp;&nbsp;").append($("<span class='pretty date'>").
             text($.format.prettyDate(m.date)).attr("data-date", m.date));
 
@@ -305,25 +346,57 @@ $(document).ready(function () {
             newTopicButton.removeClass("enabled");
             newTopicButton.removeClass("selected");
         }
-        $.ajax({
-            type: "GET",
-            url: "/json/user/" + userId + "/topics" + (selectedGroup ? "/" + selectedGroup : ""),
-            success: function (topics) {
-                topicPane.html("");
-                topics.forEach(function (t) {
-                    addTopic(t)
-                });
-                if (selectedTopic == null) {
-                    if (newTopic) {
-                        newTopicButton.addClass("selected");
+        if (!selectedUser) {
+            topicBar.show();
+            messageBar.css({
+                left: "550px"
+            });
+            $.ajax({
+                type: "GET",
+                url: "/json/user/" + userId + "/topics" + (selectedGroup ? "/" + selectedGroup : ""),
+                success: function (topics) {
+                    topicPane.html("");
+                    topics.forEach(function (t) {
+                        addTopic(t)
+                    });
+                    if (selectedTopic == null) {
+                        if (newTopic) {
+                            newTopicButton.addClass("selected");
+                        }
+                        input.attr("placeholder", "Topic…");
                     }
-                    input.attr("placeholder", "Topic…");
+                },
+                fail: function (e) {
+                    console.error(e);
                 }
-            },
-            fail: function (e) {
-                console.error(e);
-            }
-        })
+            })
+        } else {
+            topicBar.hide();
+            messageBar.css({
+                left: "200px"
+            });
+            var user = users.filter(function (u) { return u.id == selectedUser })[0];
+            messagePane.html("");
+            var userHeaderItem = $("<li class='clearfix topic'>").attr("data-user", user.id);
+            userHeaderItem.append($("<img class='img avatar pull-left'>").attr("src", user.avatar));
+            var message = $("<div class='message'>")
+                .append($("<div class='details'>").append($("<div class='info'>")
+                    .append($("<span class='user'>").text(user.name))));
+            userHeaderItem.append(message);
+            messagePane.append(userHeaderItem);
+            $.ajax({
+                type: "GET",
+                url: "/json/user/" + userId + "/direct/" + selectedUser,
+                success: function (messages) {
+                    messages.forEach(function (m) {
+                        addMessage(m);
+                    });
+                },
+                fail: function (e) {
+                    console.error(e);
+                }
+            })
+        }
     }
 
     function onTopicSelection() {
@@ -343,7 +416,7 @@ $(document).ready(function () {
                     console.error(e);
                 }
             })
-        } else {
+        } else if (!selectedUser) {
             messagePane.html("");
         }
         if (selectedGroup) {
@@ -363,7 +436,8 @@ $(document).ready(function () {
                 newMessage = false;
             }
         }
-        if (selectedGroup || selectedTopic) {
+        newDirectMessage = selectedUser;
+        if (selectedGroup || selectedTopic || selectedUser) {
             input.addClass("enabled");
             input.show();
             input.focus();
@@ -382,11 +456,15 @@ $(document).ready(function () {
                     if (selectedTopic == d.topicId && !addedMessages[d.text]) {
                         addMessage(d);
                     }
-                } else {
+                } else if (!d.toUser) {
                     if (selectedGroup == d.groupId && !addedTopics[d.id]) {
                         addTopic({topic: d}, true);
                     } else if (!selectedGroup || (selectedTopic && selectedTopicGroup == d.groupId)) {
                         addTopic({topic: d}, true);
+                    }
+                } else {
+                    if ((selectedUser == d.user.id || selectedUser == d.toUser.id) && !addedMessages[d.text]) {
+                        addMessage(d);
                     }
                 }
             }
