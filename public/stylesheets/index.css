@@ -263,8 +263,13 @@ input.search-query {
     border-color: #eee;
 }
 
+#message-roll {
+    position: absolute;
+    bottom: 70px;
+}
+
 #message-pane li .info .user {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: bold;
     color: black;
 }

@@ -180,6 +180,8 @@ $(document).ready(function () {
     var messageBar = $("<div id='message-bar'>");
 
     var messagePane = $("<div id='message-pane'>");
+    var messageRollHeader = $("<div id='message-roll-header'>");
+    var messageRoll = $("<div id='message-roll'>");
     var input = $("<textarea id='input' autocomplete='off'>");
     input.keypress(function (e) {
         if (e.which == 13 && (newTopic || newMessage || newDirectMessage)) {
@@ -191,7 +193,7 @@ $(document).ready(function () {
                             "name": userName,
                             "avatar": userAvatar
                         },
-                        "date": new Date().getMilliseconds(),
+                        "date": new Date().getTime(),
                         "groupId": newTopic ? selectedGroup : selectedTopicGroup,
                         "text": input.val()
                     };
@@ -212,7 +214,7 @@ $(document).ready(function () {
                                         userId: userId,
                                         groupId: data.groupId,
                                         text: data.text,
-                                        date: new Date().getMilliseconds(),
+                                        date: new Date().getTime(),
                                         user: {
                                             id: userId,
                                             name: userName
@@ -235,7 +237,7 @@ $(document).ready(function () {
                     var data = {
                         "user": user,
                         "toUser": toUser,
-                        "date": new Date().getMilliseconds(),
+                        "date": new Date().getTime(),
                         "text": input.val()
                     };
                     addMessage(data);
@@ -262,6 +264,8 @@ $(document).ready(function () {
     topicBar.append(topicPane);
     $(document.body).append(topicBar);
 
+    messagePane.append(messageRollHeader);
+    messagePane.append(messageRoll);
     messageBar.append(messagePane);
     messageBar.append(input);
     $(document.body).append(messageBar);
@@ -302,8 +306,8 @@ $(document).ready(function () {
         addedMessages[m.text] = true;
         var sameUser = false;
         var sameUserTopic = false;
-        if (!messagePane.is(':empty')) {
-            var lastItem = messagePane.children().last();
+        if (!messageRoll.is(':empty')) {
+            var lastItem = messageRoll.children().last();
             if (parseInt(lastItem.attr("data-user")) == m.user.id) {
                 sameUser = true;
                 sameUserTopic = lastItem.hasClass("topic")
@@ -334,8 +338,7 @@ $(document).ready(function () {
         var message = $("<div class='message'>")
             .append(details);
         messageItem.append(message);
-        messageItem.appendTo(messagePane);
-        messagePane.scrollTop(messagePane[0].scrollHeight);
+        messageItem.appendTo(messageRoll);
     }
 
     function onGroupSelection() {
@@ -376,14 +379,15 @@ $(document).ready(function () {
                 left: "200px"
             });
             var user = users.filter(function (u) { return u.id == selectedUser })[0];
-            messagePane.html("");
+            messageRollHeader.html("");
+            messageRoll.html("");
             var userHeaderItem = $("<li class='clearfix topic'>").attr("data-user", user.id);
             userHeaderItem.append($("<img class='img avatar pull-left'>").attr("src", user.avatar));
             var message = $("<div class='message'>")
                 .append($("<div class='details'>").append($("<div class='info'>")
                     .append($("<span class='user'>").text(user.name))));
             userHeaderItem.append(message);
-            messagePane.append(userHeaderItem);
+            messageRollHeader.append(userHeaderItem);
             $.ajax({
                 type: "GET",
                 url: "/json/user/" + userId + "/direct/" + selectedUser,
@@ -407,7 +411,7 @@ $(document).ready(function () {
                 type: "GET",
                 url: "/json/user/" + userId + "/messages/" + selectedTopic,
                 success: function (messages) {
-                    messagePane.html("");
+                    messageRoll.html("");
                     messages.forEach(function (m) {
                         addMessage(m);
                     });
@@ -417,7 +421,8 @@ $(document).ready(function () {
                 }
             })
         } else if (!selectedUser) {
-            messagePane.html("");
+            messageRollHeader.html("");
+            messageRoll.html("");
         }
         if (selectedGroup) {
             if (selectedTopic) {
