@@ -224,7 +224,7 @@ input.search-query {
     height: 50px;
     margin: 0 15px 10px 50px;
     display: inline-block;
-    border: 1px solid #e1e1e1;
+    border: 1px solid #0077cc;
 }
 
 .new-group-popover .group-name {
