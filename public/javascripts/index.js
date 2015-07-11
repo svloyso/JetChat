@@ -29,6 +29,7 @@ $(document).ready(function () {
         $(this).addClass("selected");
         selectedGroup = null;
         onGroupSelection();
+        onTopicSelection();
     });
     allGroupItem.appendTo(groupPane);
 
@@ -302,6 +303,7 @@ $(document).ready(function () {
             newTopicButton.addClass("enabled");
         } else {
             newTopicButton.removeClass("enabled");
+            newTopicButton.removeClass("selected");
         }
         $.ajax({
             type: "GET",
