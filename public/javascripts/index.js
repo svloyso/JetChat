@@ -181,13 +181,16 @@ $(document).ready(function () {
     function addMessage(m) {
         addedMessages[m.text] = true;
         var sameUser = false;
+        var sameUserTopic = false;
         if (!messagePane.is(':empty')) {
-            if (parseInt(messagePane.children().last().attr("data-user")) == m.user.id) {
+            var lastItem = messagePane.children().last();
+            if (parseInt(lastItem.attr("data-user")) == m.user.id) {
                 sameUser = true;
+                sameUserTopic = lastItem.hasClass("topic")
             }
         }
         var messageItem = $("<li class='clearfix'>").attr("data-user", m.user.id);
-        if (!m.topicId  ) {
+        if (!m.topicId || sameUserTopic) {
             messageItem.addClass("topic");
         }
         if (!sameUser) {

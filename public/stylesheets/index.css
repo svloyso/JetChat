@@ -80,7 +80,7 @@ input, textarea {
     color: #8c8c8c;
 }
 
-#topic-pane li .info {
+#topic-pane li .info, #message-pane li .info {
     font-size: 12px;
 }
 
@@ -103,7 +103,7 @@ input, textarea {
 }
 
 #message-pane li.same-user {
-    margin-top: -10px;
+    margin-top: -13px;
 }
 
 #new-topic-pane {
@@ -205,7 +205,7 @@ input.search-query {
 }
 
 #message-pane li.topic .text {
-    font-size: 14px;
+    font-size: 15px;
 }
 
 #message-bar {
