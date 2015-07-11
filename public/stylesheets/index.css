@@ -287,9 +287,13 @@ input.search-query {
     color: black;
 }
 
-.emoji {
+#message-pane .emoji {
     width: 1.5em;
     height: 1.5em;
     display: inline-block;
     margin-bottom: -0.25em;
+}
+
+#message-pane .preview {
+    max-height: 128px;
 }

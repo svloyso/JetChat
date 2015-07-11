@@ -341,7 +341,8 @@ $(document).ready(function () {
         if (!sameUser) {
             details.append(info);
         }
-        var text = $("<div class='text'>").text(m.text);
+        var text = $("<div class='text'>").html(linkify(m.text));
+        imagify(text);
         emojify.run(text[0]);
         details.append(text);
         var message = $("<div class='message'>")
@@ -516,6 +517,25 @@ $(document).ready(function () {
     });
     emojify.run();
 });
+
+var __urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+
+function linkify(text) {
+    return text.replace(__urlRegex, function (match) {
+        return '<a class="linkified" href="'+match+'" target="_blank">'+match+'</a>';
+    });
+}
+
+function imagify(text) {
+    $(text).find(".linkified").each(function (i, a) {
+        var _a = a;
+        var img = $("<img>");
+        img.load(function () {
+            $(_a).replaceWith($("<a target='_blank'>").append($(img)).attr("href", _a.href));
+        }).attr("src", _a.href).addClass("").
+            attr("class", "preview");
+    })
+}
 
 window.setInterval(function() {
     $(".pretty").map(function() {
