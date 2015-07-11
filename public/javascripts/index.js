@@ -2,14 +2,16 @@ $(document).ready(function () {
     window.setInterval(function() {
         $("#message-bar").width($(window).width() - 200 - 350);
         $("#message-bar").height($(window).height());
-        $("#side-bar").height($(window).height() - 40);
-        $("#group-pane").height($(window).height() - 40);
+        $("#side-bar").height($(window).height());
+        $("#group-pane").height($(window).height() - 80);
         $("#topic-pane").height($(window).height() - 100);
         $("#message-pane").height($(window).height() - 100);
         $("#message-bar").find("#input").width($("#message-bar").width() - 85);
     });
 
     var sideBar = $("<div id='side-bar'>");
+
+    sideBar.append($("<div id='header'>").text("JetBrains"));
 
     var groupPane = $("<ul id='group-pane'>");
     var selectedGroup = null;
@@ -31,7 +33,7 @@ $(document).ready(function () {
     allGroupItem.appendTo(groupPane);
 
     $.each(groups, function (group, count) {
-        var groupItem = $("<li>").attr("data-group", group).append($("<span>").text(group));
+        var groupItem = $("<li>").attr("data-group", group).append($("<span class='group-header'>").text("#")).append($("<span>").text(group));
         if (selectedGroup == group) {
             groupItem.addClass("selected");
             selectedGroup = group;

@@ -8,11 +8,18 @@ input, textarea {
 }
 
 #side-bar {
-    padding: 20px 0;
     width: 200px;
     height: 100%;
     background-color: #e9eaed;
     border-right: 1px solid #e6e6e6;
+}
+
+#side-bar #header {
+    font-family: 'Arial black';
+    padding: 10px 20px;
+    font-size: 14pt;
+    font-weight: bold;
+    color: #333333;
 }
 
 #topic-bar {
@@ -33,13 +40,17 @@ input, textarea {
 }
 
 #group-pane {
-    padding: 0;
+    padding: 10px 0;
 }
 
 #group-pane li {
     list-style: none;
     cursor: pointer;
     padding: 3px 20px 3px;
+}
+
+#group-pane li .group-header {
+
 }
 
 #group-pane li.selected {
@@ -69,9 +80,12 @@ input, textarea {
     color: #8c8c8c;
 }
 
+#topic-pane li .info {
+    font-size: 12px;
+}
+
 #topic-pane li .info .author, #topic-pane li .info .group,
 #message-pane li .info .author, #message-pane li .info .group{
-    font-size: 12px;
     font-weight: 500;
 }
 
@@ -89,7 +103,7 @@ input, textarea {
 }
 
 #message-pane li.same-user {
-    margin-top: -12px;
+    margin-top: -10px;
 }
 
 #new-topic-pane {
