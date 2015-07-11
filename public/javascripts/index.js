@@ -22,7 +22,7 @@ $(document).ready(function () {
     var newMessage = false;
     var newDirectMessage = false;
 
-    var allGroupItem = $("<li id='all-chats'>").append($("<span>").text("All Chats"));
+    var allGroupItem = $("<li id='all-groups'>").append($("<span>").text("All Groups"));
     if (selectedGroup == null) {
         allGroupItem.addClass("selected");
     }
@@ -276,8 +276,11 @@ $(document).ready(function () {
         addedTopics[t.topic.id] = true;
         var topicItem = $("<li>").attr("data-group", t.topic.groupId).attr("data-topic", t.topic.id);
         topicItem.append($("<div class='text'>").text(t.topic.text));
-        var info = $("<div class='info'>").append($("<span class='author'>").text(t.topic.user.name)).append(" in #")
-            .append($("<span class='group'>").text(t.topic.groupId)).append("&nbsp;&nbsp;").append($("<span class='pretty date'>").
+        var info = $("<div class='info'>").append($("<span class='author'>").text(t.topic.user.name));
+        if (!selectedGroup) {
+            info.append(" in #").append($("<span class='group'>").text(t.topic.groupId));
+        }
+        info.append("&nbsp;&nbsp;").append($("<span class='pretty date'>").
                 text($.format.prettyDate(t.topic.date)).attr("data-date", t.topic.date));
         topicItem.append(info);
         if (selectedTopic == null) {
