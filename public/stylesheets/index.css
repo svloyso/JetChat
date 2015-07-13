@@ -297,3 +297,8 @@ input.search-query {
 #message-pane .preview {
     max-height: 128px;
 }
+
+/* Chrome only */
+::-webkit-scrollbar {
+    display: none;
+}
