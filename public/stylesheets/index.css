@@ -99,7 +99,7 @@ input, textarea {
 
 #message-pane li .details .text {
     padding: 4px 0;
-    line-height: 120%;
+    line-height: 145%;
 }
 
 #message-pane li {
@@ -278,7 +278,7 @@ input.search-query {
 #message-roll {
     position: absolute;
     bottom: 70px;
-    width: 100%;
+    /*width: 100%;*/
 }
 
 #message-pane li .info .user {
