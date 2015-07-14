@@ -22,7 +22,10 @@ import models.current.dao
 import myUtils.MyPostgresDriver.simple._
 
 object Auth extends Controller {
-  val BASE_URL = "https://hackathon15.labs.intellij.net/hub/"
+  lazy val HUB_BASE_URL = current.configuration.getString("hub.url").get
+
+  lazy val HUB_SECRET = current.configuration.getString("hub.secret").get
+  lazy val HUB_CLIENT_ID = current.configuration.getString("hub.clientId").get
 
   def hub(implicit request: RequestHeader): (HubClient, OAuth2Client, BaseAccountsClient, OAuth2CodeFlow) = hubP(RequestCredentials.DEFAULT)
 
@@ -38,11 +41,11 @@ object Auth extends Controller {
       override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String) = Unit
     }), new SecureRandom())
 
-    val hubClient = HubClient.builder(ClientBuilder.newBuilder().sslContext(sslContext)).baseUrl(BASE_URL).build()
+    val hubClient = HubClient.builder(ClientBuilder.newBuilder().sslContext(sslContext)).baseUrl(HUB_BASE_URL).build()
     val oauthClient = hubClient.getOAuthClient
 
     val codeFlowBuilder = oauthClient.codeFlow()
-    codeFlowBuilder.clientId("98fc1a4f-9fd2-48f9-89ed-0badcbc4ec22")
+    codeFlowBuilder.clientId(HUB_CLIENT_ID)
     codeFlowBuilder.redirectUri(controllers.routes.Auth.callback(None, None).absoluteURL())
 
     codeFlowBuilder.credentials(credentials)
@@ -52,7 +55,7 @@ object Auth extends Controller {
     // TODO: Store a random state in session
     codeFlowBuilder.state(controllers.routes.Application.index().absoluteURL())
 
-    (hubClient, oauthClient, hubClient.getAccountsClient, codeFlowBuilder.build())
+    (hubClient, oauthClient, hubClient.getAccountsClient(HUB_CLIENT_ID, HUB_SECRET), codeFlowBuilder.build())
   }
 
   def getAuthUrl(implicit request: RequestHeader): String = {
@@ -65,9 +68,9 @@ object Auth extends Controller {
 
   def callback(codeOpt: Option[String] = None, stateOpt: Option[String] = None) = Action.async { implicit request =>
     val codeHandler = hub._4.getCodeHandler
-    val codeResponseFlow = codeHandler.exchange("JpvTeOil6olS", codeOpt.get, stateOpt.get)
+    val codeResponseFlow = codeHandler.exchange(HUB_SECRET, codeOpt.get, stateOpt.get)
     val token = codeResponseFlow.getToken
-    val hubUser = hub._3.getUserClient.getUser(token.getUser, null)
+    val hubUser = hub._1.getAccountsClient(codeResponseFlow).getUserClient().me(null)
     DB.withSession { implicit session =>
       val user = dao.users.filter(_.login === hubUser.getLogin).firstOption
       user match {
