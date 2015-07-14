@@ -1,7 +1,7 @@
-CHAT
-====
+jetchat
+=======
 
-SSH clone URL: ssh://hackathon15.labs.intellij.net/CHAT.git
-HTTPS clone URL: https://hackathon15.labs.intellij.net/git/CHAT.git
+This repository SSH URL: ssh://git-hosting.labs.intellij.net/jetchat.git
+This repository HTTPS URL: https://git-hosting.labs.intellij.net/jetchat.git
 
-Develop with pleasure!
+Develop with pleasure(R)
