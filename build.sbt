@@ -1,3 +1,5 @@
+import NativePackagerKeys._ // with auto plugins this won't be necessary soon
+
 name := "jetchat"
 
 version := "1.0-SNAPSHOT"
@@ -28,4 +30,10 @@ unmanagedBase <<= baseDirectory { base => base / "lib" }
 
 fork in Test := false
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala)
+lazy val root = (project in file(".")).enablePlugins(PlayScala, DockerPlugin)
+
+dockerBaseImage := "java:8u45"
+
+maintainer := "nil"
+
+dockerExposedPorts in Docker := Seq(9000, 9000)
