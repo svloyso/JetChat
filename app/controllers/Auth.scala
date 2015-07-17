@@ -22,10 +22,10 @@ import models.current.dao
 import models.CustomDriver.simple._
 
 object Auth extends Controller {
-  lazy val HUB_BASE_URL = current.configuration.getString("hub.url").get
+  lazy val HUB_BASE_URL = current.configuration.getString("hub.url").getOrElse(System.getProperty("hub.url"))
 
-  lazy val HUB_SECRET = current.configuration.getString("hub.secret").get
-  lazy val HUB_CLIENT_ID = current.configuration.getString("hub.clientId").get
+  lazy val HUB_SECRET = current.configuration.getString("hub.secret").getOrElse(System.getProperty("hub.secret"))
+  lazy val HUB_CLIENT_ID = current.configuration.getString("hub.clientId").getOrElse(System.getProperty("hub.clientId"))
 
   def hub(implicit request: RequestHeader): (HubClient, OAuth2Client, BaseAccountsClient, OAuth2CodeFlow) = hubP(RequestCredentials.DEFAULT)
 
