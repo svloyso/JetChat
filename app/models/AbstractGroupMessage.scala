@@ -1,6 +1,6 @@
 package models
 
 trait AbstractGroupMessage extends AbstractMessage {
-  def groupId: String
+  def groupId: Long
   def userId: Long
 }

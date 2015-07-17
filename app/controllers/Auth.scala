@@ -19,7 +19,7 @@ import scala.concurrent.Future
 import play.api.Play.current
 import play.api.db.slick.DB
 import models.current.dao
-import myUtils.MyPostgresDriver.simple._
+import models.CustomDriver.simple._
 
 object Auth extends Controller {
   lazy val HUB_BASE_URL = current.configuration.getString("hub.url").get
@@ -70,7 +70,7 @@ object Auth extends Controller {
     val codeHandler = hub._4.getCodeHandler
     val codeResponseFlow = codeHandler.exchange(HUB_SECRET, codeOpt.get, stateOpt.get)
     val token = codeResponseFlow.getToken
-    val hubUser = hub._1.getAccountsClient(codeResponseFlow).getUserClient().me(null)
+    val hubUser = hub._1.getAccountsClient(codeResponseFlow).getUserClient.me(null)
     DB.withSession { implicit session =>
       val user = dao.users.filter(_.login === hubUser.getLogin).firstOption
       user match {

@@ -2,21 +2,22 @@ import org.joda.time.DateTime
 import org.specs2.mutable._
 
 import play.api.db.slick.DB
-import myUtils.MyPostgresDriver.simple._
 import play.api.test._
 import play.api.test.Helpers._
 import models._
 import models.current.dao
+import com.github.tototoshi.slick.MySQLJodaSupport._
+import models.CustomDriver.simple._
 
 class DBSpec extends Specification {
   "DB" should {
     "work as expected" in new WithApplication {
       DB.withSession { implicit s: Session =>
-        val gQ = dao.groups.filter(_.id === "test")
+        val gQ = dao.groups.filter(_.name === "test")
         gQ.firstOption match {
           case Some(_) =>case Some(_) =>
           case None =>
-            dao.groups += new Group("test")
+            dao.groups += new Group(name = "test")
         }
         val g = gQ.first
 

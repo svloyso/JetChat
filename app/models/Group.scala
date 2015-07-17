@@ -1,17 +1,18 @@
 package models
 
-import myUtils.{MyPostgresDriver, WithMyDriver}
-
-case class Group(id: String)
+case class Group(id: Long = 0, name: String)
 
 trait GroupsComponent extends WithMyDriver {
 
   import driver.simple._
 
-  class GroupsTable(tag: Tag) extends MyPostgresDriver.Table[Group](tag, "Group") {
-    def id = column[String]("id", O.PrimaryKey)
+  class GroupsTable(tag: Tag) extends CustomDriver.Table[Group](tag, "groups") {
+    def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+    def name = column[String]("name", O.NotNull)
 
-    def * = id <>(Group.apply, Group.unapply)
+    def nameIndex = index("group_name_index", name, unique = true)
+
+    def * = (id, name) <>(Group.tupled, Group.unapply)
   }
 
 }

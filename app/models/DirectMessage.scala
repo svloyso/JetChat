@@ -1,6 +1,5 @@
 package models
 
-import myUtils.{MyPostgresDriver, WithMyDriver}
 import org.joda.time.DateTime
 
 case class DirectMessage(id: Long = 0, fromUserId: Long, toUserId: Long, date: DateTime, text: String) extends AbstractMessage
@@ -8,16 +7,17 @@ case class DirectMessage(id: Long = 0, fromUserId: Long, toUserId: Long, date: D
 trait DirectMessagesComponent extends WithMyDriver {
 
   import driver.simple._
+  import com.github.tototoshi.slick.MySQLJodaSupport._
 
-  class DirectMessagesTable(tag: Tag) extends MyPostgresDriver.Table[DirectMessage](tag, "DirectMessage") {
+  class DirectMessagesTable(tag: Tag) extends CustomDriver.Table[DirectMessage](tag, "direct_messages") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
-    def fromUserId = column[Long]("fromUserId", O.NotNull)
-    def toUserId = column[Long]("toUserId", O.NotNull)
+    def fromUserId = column[Long]("from_user_id", O.NotNull)
+    def toUserId = column[Long]("to_user_id", O.NotNull)
     def date = column[DateTime]("date", O.NotNull)
     def text = column[String]("text", O.NotNull, O.DBType("text"))
 
-    def fromUser = foreignKey("from_user_fk", fromUserId, current.dao.users)(_.id)
-    def toUser = foreignKey("to_user_fk", toUserId, current.dao.users)(_.id)
+    def fromUser = foreignKey("dm_from_user_fk", fromUserId, current.dao.users)(_.id)
+    def toUser = foreignKey("dm_to_user_fk", toUserId, current.dao.users)(_.id)
 
     def * = (id, fromUserId, toUserId, date, text) <>(DirectMessage.tupled, DirectMessage.unapply)
   }

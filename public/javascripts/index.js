@@ -39,16 +39,17 @@ $(document).ready(function () {
 
     function addGroup(group, insert) {
         addedGroups[group] = true;
-        var groupItem = $("<li>").attr("data-group", group).append($("<span class='group-header'>").text("#")).append($("<span>").text(group));
+        var groupItem = $("<li>").attr("data-group", group.id).append($("<span" +
+            " class='group-header'>").text("#")).append($("<span>").text(group.name));
         if (selectedGroup == group) {
             groupItem.addClass("selected");
-            selectedGroup = group;
+            selectedGroup = group.id;
         }
         groupItem.click(function () {
             $("#group-pane").find("li").removeClass("selected");
             $(this).addClass("selected");
             selectedUser = null;
-            selectedGroup = $(this).attr("data-group");
+            selectedGroup = parseInt($(this).attr("data-group"));
             onGroupSelection();
             onTopicSelection();
         });
@@ -62,7 +63,7 @@ $(document).ready(function () {
 
     var addedGroups = {};
 
-    $.each(groups, function (group, count) {
+    groups.forEach(function (group) {
         addGroup(group);
     });
 
@@ -80,23 +81,23 @@ $(document).ready(function () {
         content: function() {
             var pane = $("<div class='new-group-popover'>");
             window.createGroup = function () {
-                var groupId = $(".new-group-popover .group-name").val().trim();
-                if (groupId && !/\s/.test(groupId)) {
+                var groupName = $(".new-group-popover .group-name").val().trim();
+                if (groupName && !/\s/.test(groupName)) {
                     hideAllPopovers();
                     isVisible = false;
-                    var groupItem = addGroup(groupId, true);
-                    $("#group-pane").find("li").removeClass("selected");
-                    groupItem.addClass("selected");
-                    selectedUser = null;
-                    selectedGroup = groupId;
-                    onGroupSelection();
-                    onTopicSelection();
                     $.ajax({
                         type: "POST",
                         url: "/json/group/add",
-                        data: JSON.stringify(groupId),
+                        data: JSON.stringify(groupName),
                         contentType: "application/json",
-                        success: function (id) {
+                        success: function (group) {
+                            var groupItem = addGroup(group, true);
+                            $("#group-pane").find("li").removeClass("selected");
+                            groupItem.addClass("selected");
+                            selectedUser = null;
+                            selectedGroup = group.id;
+                            onGroupSelection();
+                            onTopicSelection();
                         },
                         fail: function (e) {
                             console.error(e);
@@ -293,14 +294,14 @@ $(document).ready(function () {
         if (selectedTopic == null) {
             topicItem.addClass("selected");
             selectedTopic = t.topic.id;
-            selectedTopicGroup = t.topic.groupId;
+            selectedTopicGroup = t.topic.group.id;
             onTopicSelection();
         }
         topicItem.click(function () {
             $("#topic-pane").find("li").removeClass("selected");
             $(this).addClass("selected");
             selectedTopic = parseInt($(this).attr("data-topic"));
-            selectedTopicGroup = $(this).attr("data-group");
+            selectedTopicGroup = parseInt($(this).attr("data-group"));
             onTopicSelection();
         });
         if (prepend) {

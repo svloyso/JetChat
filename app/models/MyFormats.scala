@@ -1,14 +1,11 @@
-package myUtils
+package models
 
 import java.util.UUID
-import com.github.tminglei.slickpg.PgRangeSupportUtils
-import play.api.data.format.Formats
-import play.api.data.format.Formatter
-import play.api.data.FormError
-import com.vividsolutions.jts.io.{WKTReader, WKTWriter}
-import com.vividsolutions.jts.geom.Geometry
-import play.api.libs.json._
+
 import org.joda.time.LocalDateTime
+import play.api.data.FormError
+import play.api.data.format.{Formats, Formatter}
+import play.api.libs.json.{JsValue, Json, Reads, Writes}
 
 /**
  * my play form data formatters
@@ -41,14 +38,6 @@ object MyFormats {
     def unbind(key: String, value: UUID) = Map(key -> value.toString)
   }
 
-  def rangeFormat[T](parseFn: (String => T)): Formatter[Range[T]] = new Formatter[Range[T]] {
-    override val format = Some(("format.range", Nil))
-
-    def bind(key: String, data: Map[String, String]) =
-      parsing(PgRangeSupportUtils.mkRangeFn(parseFn), "error.range", Nil)(key, data)
-    def unbind(key: String, value: Range[T]) = Map(key -> value.toString)
-  }
-
   ///
   def strMapFormat = new Formatter[Map[String, String]] {
     override val format = Some(("format.jsonmap", Seq("{key1:value1, key2:value2, ...}")))
@@ -62,28 +51,6 @@ object MyFormats {
   implicit private val mapWrites = Writes.mapWrites[String]
   def toJsonStr(v: Map[String,String]): String = Json.stringify(Json.toJson(v))
   def fromJsonStr(s: String): Option[Map[String,String]] = Option(Json.fromJson(Json.parse(s)).get)
-
-  ///
-  def geometryFormat[T <: Geometry]: Formatter[T] = new Formatter[T] {
-    override val format = Some(("format.geometry", Nil))
-
-    def bind(key: String, data: Map[String, String]) =
-      parsing(fromWKT[T], "error.geometry", Nil)(key, data)
-    def unbind(key: String, value: T) = Map(key -> toWKT(value))
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  private val wktWriterHolder = new ThreadLocal[WKTWriter]
-  private val wktReaderHolder = new ThreadLocal[WKTReader]
-
-  private def toWKT(geom: Geometry): String = {
-    if (wktWriterHolder.get == null) wktWriterHolder.set(new WKTWriter())
-    wktWriterHolder.get.write(geom)
-  }
-  private def fromWKT[T](wkt: String): T = {
-    if (wktReaderHolder.get == null) wktReaderHolder.set(new WKTReader())
-    wktReaderHolder.get.read(wkt).asInstanceOf[T]
-  }
 
   /**
    * (copy from [[play.api.data.format.Formats#parsing]])

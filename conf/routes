@@ -4,7 +4,7 @@ GET         /webSocket                                     controllers.Applicati
 GET         /json/user                                     controllers.Application.getUser(email: String)
 GET         /json/user/:userId/groups                      controllers.Application.getGroups(userId: Long)
 GET         /json/user/:userId/topics                      controllers.Application.getAllTopics(userId: Long)
-GET         /json/user/:userId/topics/:groupId             controllers.Application.getGroupTopics(userId: Long, groupId: String)
+GET         /json/user/:userId/topics/:groupId             controllers.Application.getGroupTopics(userId: Long, groupId: Long)
 GET         /json/user/:userId/messages/:topicId           controllers.Application.getMessages(userId: Long, topicId: Long)
 
 GET         /json/user/:fromUserId/direct/:toUserId        controllers.Application.getDirectMessages(fromUserId: Long, toUserId: Long)

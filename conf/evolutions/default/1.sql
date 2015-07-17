@@ -1,29 +1,35 @@
+# --- Created by Slick DDL
+# To stop Slick DDL generation, remove this comment and start using Evolutions
 
 # --- !Ups
 
-create table "User" ("id" BIGSERIAL NOT NULL PRIMARY KEY, "login" VARCHAR(50) NOT NULL, "name" VARCHAR(255) NOT NULL, "avatar" VARCHAR(255));
-create table "Group" ("id" VARCHAR(50) NOT NULL PRIMARY KEY);
-create table "Topic" ("id" BIGSERIAL NOT NULL PRIMARY KEY, "userId" BIGINT NOT NULL, "groupId" VARCHAR(50) NOT NULL, "date" timestamptz NOT NULL, "text" text NOT NULL);
-create table "Comment" ("id" BIGSERIAL NOT NULL PRIMARY KEY, "topicId" BIGINT NOT NULL, "userId" BIGINT NOT NULL, "groupId" VARCHAR(50) NOT NULL, "date" timestamptz NOT NULL, "text" text NOT NULL);
-
-create unique index "login_index" on "User" ("login");
-
-alter table "Topic" add constraint "user_fk" foreign key("userId") references "User"("id") on update NO ACTION on delete NO ACTION;
-alter table "Topic" add constraint "group_fk" foreign key("groupId") references "Group"("id") on update NO ACTION on delete NO ACTION;
-alter table "Comment" add constraint "user_fk" foreign key("userId") references "User"("id") on update NO ACTION on delete NO ACTION;
-alter table "Comment" add constraint "group_fk" foreign key("groupId") references "Group"("id") on update NO ACTION on delete NO ACTION;
-alter table "Comment" add constraint "topic_fk" foreign key("topicId") references "Topic"("id") on update NO ACTION on delete NO ACTION;
+create table `comments` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`group_id` BIGINT NOT NULL,`topic_Id` BIGINT NOT NULL,`user_id` BIGINT NOT NULL,`date` TIMESTAMP NOT NULL,`text` text NOT NULL);
+create table `direct_messages` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`from_user_id` BIGINT NOT NULL,`to_user_id` BIGINT NOT NULL,`date` TIMESTAMP NOT NULL,`text` text NOT NULL);
+create table `groups` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`name` VARCHAR(254) NOT NULL);
+create unique index `group_name_index` on `groups` (`name`);
+create table `topics` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`group_id` BIGINT NOT NULL,`user_id` BIGINT NOT NULL,`date` TIMESTAMP NOT NULL,`text` text NOT NULL);
+create table `users` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`login` VARCHAR(254) NOT NULL,`name` VARCHAR(254) NOT NULL,`avatar` VARCHAR(254));
+create unique index `user_login_index` on `users` (`login`);
+alter table `comments` add constraint `comment_group_fk` foreign key(`group_id`) references `groups`(`id`) on update NO ACTION on delete NO ACTION;
+alter table `comments` add constraint `comment_topic_fk` foreign key(`topic_Id`) references `topics`(`id`) on update NO ACTION on delete NO ACTION;
+alter table `comments` add constraint `comment_user_fk` foreign key(`user_id`) references `users`(`id`) on update NO ACTION on delete NO ACTION;
+alter table `direct_messages` add constraint `dm_from_user_fk` foreign key(`from_user_id`) references `users`(`id`) on update NO ACTION on delete NO ACTION;
+alter table `direct_messages` add constraint `dm_to_user_fk` foreign key(`to_user_id`) references `users`(`id`) on update NO ACTION on delete NO ACTION;
+alter table `topics` add constraint `topic_group_fk` foreign key(`group_id`) references `groups`(`id`) on update NO ACTION on delete NO ACTION;
+alter table `topics` add constraint `topic_user_fk` foreign key(`user_id`) references `users`(`id`) on update NO ACTION on delete NO ACTION;
 
 # --- !Downs
 
-alter table "Comment" drop constraint "topic_fk";
-alter table "Comment" drop constraint "user_fk";
-alter table "Comment" drop constraint "group_fk";
-
-alter table "Topic" drop constraint "group_fk";
-alter table "Topic" drop constraint "user_fk";
-
-drop table "Topic";
-drop table "Group";
-drop table "User";
+ALTER TABLE topics DROP FOREIGN KEY topic_group_fk;
+ALTER TABLE topics DROP FOREIGN KEY topic_user_fk;
+ALTER TABLE direct_messages DROP FOREIGN KEY dm_from_user_fk;
+ALTER TABLE direct_messages DROP FOREIGN KEY dm_to_user_fk;
+ALTER TABLE comments DROP FOREIGN KEY comment_group_fk;
+ALTER TABLE comments DROP FOREIGN KEY comment_topic_fk;
+ALTER TABLE comments DROP FOREIGN KEY comment_user_fk;
+drop table `users`;
+drop table `topics`;
+drop table `groups`;
+drop table `direct_messages`;
+drop table `comments`;
 
