@@ -4,7 +4,7 @@ name := "jetchat"
 
 version := System.getProperty("build.number", "0.1-SNAPSHOT")
 
-organization := "jetbrains.com"
+organization := "com.jetbrains"
 
 scalaVersion := "2.11.5"
 
