@@ -2,11 +2,11 @@ import NativePackagerKeys._ // with auto plugins this won't be necessary soon
 
 name := "jetchat"
 
-version := "1.0-SNAPSHOT"
+version := System.getProperty("build.number", "0.1-SNAPSHOT")
+
+organization := "jetbrains.com"
 
 scalaVersion := "2.11.5"
-
-scalacOptions += "-Xexperimental"
 
 libraryDependencies ++= Seq(
   "org.webjars" %% "webjars-play" % "2.3.0-2",
@@ -32,6 +32,6 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala, DockerPlugin)
 
 dockerBaseImage := "java:8u45"
 
-maintainer := "nil"
+maintainer := "Andrey Cheptsov <andrey.cheptsov@jetbrains.com>"
 
 dockerExposedPorts in Docker := Seq(9000, 9000)
