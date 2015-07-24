@@ -3,7 +3,7 @@
 
 # --- !Ups
 
-create table `comments` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`group_id` BIGINT NOT NULL,`topic_Id` BIGINT NOT NULL,`user_id` BIGINT NOT NULL,`date` TIMESTAMP NOT NULL,`text` text NOT NULL);
+create table `comments` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`group_id` BIGINT NOT NULL,`topic_id` BIGINT NOT NULL,`user_id` BIGINT NOT NULL,`date` TIMESTAMP NOT NULL,`text` text NOT NULL);
 create table `direct_messages` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`from_user_id` BIGINT NOT NULL,`to_user_id` BIGINT NOT NULL,`date` TIMESTAMP NOT NULL,`text` text NOT NULL);
 create table `groups` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`name` VARCHAR(254) NOT NULL);
 create unique index `group_name_index` on `groups` (`name`);
@@ -11,7 +11,7 @@ create table `topics` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`group_id
 create table `users` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`login` VARCHAR(254) NOT NULL,`name` VARCHAR(254) NOT NULL,`avatar` VARCHAR(254));
 create unique index `user_login_index` on `users` (`login`);
 alter table `comments` add constraint `comment_group_fk` foreign key(`group_id`) references `groups`(`id`) on update NO ACTION on delete NO ACTION;
-alter table `comments` add constraint `comment_topic_fk` foreign key(`topic_Id`) references `topics`(`id`) on update NO ACTION on delete NO ACTION;
+alter table `comments` add constraint `comment_topic_fk` foreign key(`topic_id`) references `topics`(`id`) on update NO ACTION on delete NO ACTION;
 alter table `comments` add constraint `comment_user_fk` foreign key(`user_id`) references `users`(`id`) on update NO ACTION on delete NO ACTION;
 alter table `direct_messages` add constraint `dm_from_user_fk` foreign key(`from_user_id`) references `users`(`id`) on update NO ACTION on delete NO ACTION;
 alter table `direct_messages` add constraint `dm_to_user_fk` foreign key(`to_user_id`) references `users`(`id`) on update NO ACTION on delete NO ACTION;
