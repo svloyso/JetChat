@@ -34,4 +34,4 @@ dockerBaseImage := "java:8u45"
 
 maintainer := "Andrey Cheptsov <andrey.cheptsov@jetbrains.com>"
 
-dockerExposedPorts in Docker := Seq(9000, 9000)
+dockerExposedPorts in Docker := Seq(8080)
