@@ -38,9 +38,9 @@ $(document).ready(function () {
     allGroupItem.appendTo(groupPane);
 
     function addGroup(group, insert) {
-        addedGroups[group] = true;
         var groupItem = $("<li>").attr("data-group", group.id).append($("<span" +
             " class='group-header'>").text("#")).append($("<span>").text(group.name));
+        addedGroups[group.name] = groupItem;
         if (selectedGroup == group) {
             groupItem.addClass("selected");
             selectedGroup = group.id;
@@ -91,7 +91,12 @@ $(document).ready(function () {
                         data: JSON.stringify(groupName),
                         contentType: "application/json",
                         success: function (group) {
-                            var groupItem = addGroup(group, true);
+                            var groupItem;
+                            if (addedGroups[group.name]) {
+                                groupItem = addedGroups[group.name];
+                            } else {
+                                groupItem = addGroup(group, true);
+                            }
                             $("#group-pane").find("li").removeClass("selected");
                             groupItem.addClass("selected");
                             selectedUser = null;
@@ -216,19 +221,21 @@ $(document).ready(function () {
                         contentType: "application/json",
                         success: function (id) {
                             if (newTopic) {
-                                addTopic({
-                                    topic: {
-                                        id: id,
-                                        userId: userId,
-                                        groupId: data.groupId,
-                                        text: data.text,
-                                        date: new Date().getTime(),
-                                        user: {
-                                            id: userId,
-                                            name: userName
+                                if (!addedTopics[id]) {
+                                    addTopic({
+                                        topic: {
+                                            id: id,
+                                            userId: userId,
+                                            groupId: data.groupId,
+                                            text: data.text,
+                                            date: new Date().getTime(),
+                                            user: {
+                                                id: userId,
+                                                name: userName
+                                            }
                                         }
-                                    }
-                                });
+                                    });
+                                }
                                 selectedGroup = null;
                                 selectedTopic = id;
                                 selectedTopicGroup = data.groupId;
@@ -281,8 +288,8 @@ $(document).ready(function () {
     var addedTopics = {};
 
     function addTopic(t, prepend) {
-        addedTopics[t.topic.id] = true;
         var topicItem = $("<li>").attr("data-group", t.topic.groupId).attr("data-topic", t.topic.id);
+        addedTopics[t.topic.id] = topicItem;
         topicItem.append($("<div class='text'>").text(t.topic.text));
         var info = $("<div class='info'>").append($("<span class='author'>").text(t.topic.user.name));
         if (!selectedGroup) {
@@ -294,7 +301,7 @@ $(document).ready(function () {
         if (selectedTopic == null) {
             topicItem.addClass("selected");
             selectedTopic = t.topic.id;
-            selectedTopicGroup = t.topic.group.id;
+            selectedTopicGroup = t.topic.groupId;
             onTopicSelection();
         }
         topicItem.click(function () {
@@ -473,7 +480,7 @@ $(document).ready(function () {
                     if (selectedTopic == d.topicId && !addedMessages[d.text]) {
                         addMessage(d);
                     }
-                } else if (d.newGroup && !addedGroups[d.newGroup]) {
+                } else if (d.newGroup && !addedGroups[d.newGroup.name]) {
                     addGroup(d.newGroup, true)
                 } else if (d.newUser) {
                     users.push(d.newUser);

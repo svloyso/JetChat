@@ -21,7 +21,9 @@ libraryDependencies ++= Seq(
   "org.webjars" % "font-awesome" % "4.3.0-1",
   ws,
   "org.joda" % "joda-convert" % "1.6",
-  "com.github.tototoshi" %% "slick-joda-mapper" % "1.2.0"
+  "com.github.tototoshi" %% "slick-joda-mapper" % "1.2.0",
+  "com.typesafe.akka" %% "akka-cluster" % "2.3.4",
+  "com.typesafe.akka" %% "akka-contrib" % "2.3.4"
 )
 
 unmanagedBase <<= baseDirectory { base => base / "lib" }
