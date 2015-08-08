@@ -22,10 +22,14 @@ import models.current.dao
 import models.CustomDriver.simple._
 
 object Auth extends Controller {
-  lazy val HUB_BASE_URL = current.configuration.getString("hub.url").getOrElse(System.getProperty("hub.url"))
+  lazy val HUB_BASE_URL = current.configuration.getString("hub.url").getOrElse(System.getProperty("hub.url", ""))
+  lazy val HUB_SECRET = current.configuration.getString("hub.secret").getOrElse(System.getProperty("hub.secret", ""))
+  lazy val HUB_CLIENT_ID = current.configuration.getString("hub.clientId").getOrElse(System.getProperty("hub.clientId", ""))
 
-  lazy val HUB_SECRET = current.configuration.getString("hub.secret").getOrElse(System.getProperty("hub.secret"))
-  lazy val HUB_CLIENT_ID = current.configuration.getString("hub.clientId").getOrElse(System.getProperty("hub.clientId"))
+  lazy val HUB_MOCK_LOGIN = current.configuration.getString("hub.mock.user.login").getOrElse(System.getProperty("hub.mock.user.login", ""))
+  lazy val HUB_MOCK_NAME = current.configuration.getString("hub.mock.user.name").getOrElse(System.getProperty("hub.mock.user.name", ""))
+  lazy val HUB_MOCK_AVATAR = current.configuration.getString("hub.mock.user.avatar").getOrElse(System.getProperty("hub.mock.user.avatar", ""))
+
 
   def hub(implicit request: RequestHeader): (HubClient, OAuth2Client, BaseAccountsClient, OAuth2CodeFlow) = hubP(RequestCredentials.DEFAULT)
 

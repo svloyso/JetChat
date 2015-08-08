@@ -1,8 +1,11 @@
 package controllers
 
-import actors.WebSocketActor
+import actors.{ClusterEvent, WebSocketActor}
 import akka.actor.PoisonPill
+import akka.contrib.pattern.DistributedPubSubExtension
+import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import com.github.tototoshi.slick.MySQLJodaSupport._
+import controllers.Auth._
 import models.CustomDriver.simple._
 import models._
 import models.current._
@@ -25,6 +28,8 @@ object Application extends Controller {
   val TICK = JsString("Tick")
   val TACK = JsString("Tack")
 
+  val mediator = DistributedPubSubExtension(Akka.system).mediator
+
   def index = Action.async { implicit request =>
     request.cookies.get("user") match {
       case Some(cookie) =>
@@ -39,7 +44,25 @@ object Application extends Controller {
           }
         }
       case None =>
-        Future.successful(Redirect(Auth.getAuthUrl))
+        if (Auth.HUB_BASE_URL.nonEmpty) {
+          Future.successful(Redirect(Auth.getAuthUrl))
+        } else {
+          DB.withSession { implicit session =>
+            val user = dao.users.filter(_.login === HUB_MOCK_LOGIN).firstOption
+            user match {
+              case None =>
+                dao.users += new User(login = HUB_MOCK_LOGIN, name = HUB_MOCK_NAME, avatar = Option(HUB_MOCK_AVATAR))
+                val u = dao.users.filter(_.login === HUB_MOCK_LOGIN).first
+                mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(u.id), "name" -> JsString(u.name), "login" -> JsString(u.login)) ++
+                  (u.avatar match {
+                    case Some(value) => Seq("avatar" -> JsString(value))
+                    case None => Seq()
+                  }))))))
+              case _ =>
+            }
+          }
+          Future.successful(Redirect(controllers.routes.Application.index()).withCookies(Cookie("user", HUB_MOCK_LOGIN, httpOnly = false)))
+        }
     }
   }
 
@@ -75,7 +98,7 @@ object Application extends Controller {
     }
   }
 
-def getGroupsJsValue(userId: Long) (): JsValue = {
+  def getGroupsJsValue(userId: Long) (): JsValue = {
     DB.withSession { implicit session =>
       val groups = dao.groups.list.map(g => g.id -> (g.name, 0)).toMap
 
@@ -83,8 +106,8 @@ def getGroupsJsValue(userId: Long) (): JsValue = {
         .groupBy{ case (topic, group) => (group.id, group.name) }
         .map { case ((groupId, groupName), g) => (groupId, groupName, g.map(_._1.groupId).countDistinct) }.list
         .map { case (groupId, groupName, count) =>
-        groupId -> (groupName, count)
-      }.toMap
+          groupId -> (groupName, count)
+        }.toMap
 
       val groupComments = (dao.comments.filter(_.userId === userId) leftJoin dao.groups on { case (comment, group) => comment.groupId === group.id })
         .groupBy{ case (comment, group) => (group.id, group.name) }
@@ -115,11 +138,11 @@ def getGroupsJsValue(userId: Long) (): JsValue = {
   def getTopics(userId: Long, groupId: Option[Long]) = DBAction { implicit rs =>
     val userTopics = (dao.topics leftJoin dao.users on { case (topic, user) => topic.userId === user.id } leftJoin dao
       .groups on { case ((topic, user), group) => topic.groupId === group.id }).filter { case ((topic, user), group) => groupId match {
-    case Some(id) => topic.groupId === id
-    case None => topic.groupId === topic.groupId
-  }}.sortBy(_._1._1.date desc).map {
+      case Some(id) => topic.groupId === id
+      case None => topic.groupId === topic.groupId
+    }}.sortBy(_._1._1.date desc).map {
       case ((topic, user), group) =>
-      (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> 0}.list.toMap
+        (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> 0}.list.toMap
 
     val commentedTopics = (dao.comments leftJoin dao.topics on { case (comment, topic) =>
       comment.topicId === topic.id
@@ -137,7 +160,7 @@ def getGroupsJsValue(userId: Long) (): JsValue = {
     val total = (userTopics ++ commentedTopics).toSeq.sortBy(- _._1._2.getMillis)
     Ok(Json.toJson(JsArray(total.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), c) =>
       JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> Json.toJson(topicDate), "group" -> JsObject
-        (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
+      (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
         "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "messages" -> JsNumber(c)))
     })))
   }
@@ -198,18 +221,17 @@ def getGroupsJsValue(userId: Long) (): JsValue = {
     val date = new DateTime()
     val id = (dao.topics returning dao.topics.map(_.id)) += new Topic(groupId = groupId, userId = userId, date = date, text = text)
     Logger.debug(s"Adding topic: $userId, $groupId, $text")
-    val webSocketActor = Akka.system.actorSelection("/user/*.*")
     val user = dao.users.filter(_.id === userId).first
     val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
       (user.avatar match {
         case Some(value) => Seq("avatar" -> JsString(value))
         case None => Seq()
       })
-    webSocketActor ! JsObject(Seq("id" -> JsNumber(id),
+    mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("id" -> JsNumber(id),
       "groupId" -> JsNumber(groupId),
       "user" -> JsObject(userJson),
       "date" -> JsNumber(date.getMillis),
-      "text" -> JsString(text)))
+      "text" -> JsString(text)))))
     Ok(Json.toJson(JsNumber(id)))
   }
 
@@ -221,19 +243,18 @@ def getGroupsJsValue(userId: Long) (): JsValue = {
     val date = new DateTime()
     val id = (dao.comments returning dao.comments.map(_.id)) += new Comment(groupId = groupId, userId = userId, topicId = topicId, date = date, text = text)
     Logger.debug(s"Adding comment: $userId, $groupId, $topicId, $text")
-    val webSocketActor = Akka.system.actorSelection("/user/*.*")
     val user = dao.users.filter(_.id === userId).first
     val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
       (user.avatar match {
         case Some(value) => Seq("avatar" -> JsString(value))
         case None => Seq()
       })
-    webSocketActor ! JsObject(Seq("id" -> JsNumber(id),
+    mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("id" -> JsNumber(id),
       "groupId" -> JsNumber(groupId),
       "topicId" -> JsNumber(topicId),
       "user" -> JsObject(userJson),
       "date" -> JsNumber(date.getMillis),
-      "text" -> JsString(text)))
+      "text" -> JsString(text)))))
     Ok(Json.toJson(JsNumber(id)))
   }
 
@@ -261,8 +282,8 @@ def getGroupsJsValue(userId: Long) (): JsValue = {
       "toUser" -> JsObject(toUserJson),
       "date" -> JsNumber(date.getMillis),
       "text" -> JsString(text)))
-    Akka.system.actorSelection("/user/" + user.login + ".*") ! message
-    Akka.system.actorSelection("/user/" + toUser.login + ".*") ! message
+    mediator ! Publish("cluster-events", ClusterEvent(user.login, message))
+    mediator ! Publish("cluster-events", ClusterEvent(toUser.login, message))
     Ok(Json.toJson(JsNumber(id)))
   }
 
@@ -271,7 +292,7 @@ def getGroupsJsValue(userId: Long) (): JsValue = {
     val id = (dao.groups returning dao.groups.map(_.id)) += new Group(name = groupName)
     Logger.debug(s"Adding group: $groupName")
     val groupJson = JsObject(Seq("id" -> JsNumber(id), "name" -> JsString(groupName)))
-    Akka.system.actorSelection("/user/*.*") ! JsObject(Seq("newGroup" -> groupJson))
+    mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("newGroup" -> groupJson))))
     Ok(Json.toJson(groupJson))
   }
 }

@@ -1,34 +1,33 @@
+import java.net.URI
+
 import actors.ClusterEvent
-import akka.actor.{Actor, ActorLogging, AddressFromURIString}
+import akka.actor.{ActorSystem, Actor, ActorLogging, AddressFromURIString}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.Subscribe
+import mousio.etcd4j.EtcdClient
+import play.api.Logger
+import play.twirl.api.TemplateMagic.javaCollectionToScala
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
-
-import scala.collection.mutable.ListBuffer
 
 class ClusterListener extends Actor with ActorLogging {
   val mediator = DistributedPubSubExtension(context.system).mediator
 
-  val cluster = {
-    val seeds = new ListBuffer[String]()
-    try {
-      for (i <- 0 to 100) {
-        val seed = System.getProperty(s"akka.seed.$i")
-        if (seed != null) {
-          seeds += seed
-        } else {
-          throw new Exception()
-        }
-      }
-    } catch {
-      case _: Throwable => // ...
-    }
-    val cluster = Cluster(context.system)
-    cluster.joinSeedNodes(seeds.toList.map(AddressFromURIString(_)))
-    cluster
+  val cluster = Cluster(context.system)
+
+  val etcdPeers = System.getProperty("ETCDCTL_PEERS")
+  if (etcdPeers != null) {
+    Logger.debug("Connecting to etcd: " + etcdPeers)
+    val client = new EtcdClient(URI.create(if (etcdPeers.startsWith("http://")) etcdPeers else "http://" + etcdPeers))
+
+    cluster.joinSeedNodes(client.get("/jetchat").recursive().send().get().node.nodes.toList.map { case node =>
+      val ip = node.nodes.toList.find(_.key.endsWith("IP")).get.value
+      val port = node.nodes.toList.find(_.key.endsWith("PORT")).get.value
+      Logger.debug("A cluster seed discovered: " + ip + ":" + port)
+      AddressFromURIString("akka.tcp://application@" + ip + ":" + port)
+    })
   }
 
   override def preStart(): Unit = {

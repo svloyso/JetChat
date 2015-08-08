@@ -23,7 +23,8 @@ libraryDependencies ++= Seq(
   "org.joda" % "joda-convert" % "1.6",
   "com.github.tototoshi" %% "slick-joda-mapper" % "1.2.0",
   "com.typesafe.akka" %% "akka-cluster" % "2.3.4",
-  "com.typesafe.akka" %% "akka-contrib" % "2.3.4"
+  "com.typesafe.akka" %% "akka-contrib" % "2.3.4",
+  "org.mousio" % "etcd4j" % "2.7.0"
 )
 
 unmanagedBase <<= baseDirectory { base => base / "lib" }
