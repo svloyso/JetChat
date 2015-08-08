@@ -1,7 +1,7 @@
 import java.net.URI
 
 import actors.ClusterEvent
-import akka.actor.{ActorSystem, Actor, ActorLogging, AddressFromURIString}
+import akka.actor.{Actor, ActorLogging, AddressFromURIString}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.contrib.pattern.DistributedPubSubExtension
@@ -20,7 +20,8 @@ class ClusterListener extends Actor with ActorLogging {
   val etcdPeers = System.getProperty("ETCDCTL_PEERS")
   if (etcdPeers != null) {
     Logger.debug("Connecting to etcd: " + etcdPeers)
-    val client = new EtcdClient(URI.create(if (etcdPeers.startsWith("http://")) etcdPeers else "http://" + etcdPeers))
+    val addrs = etcdPeers.split(",").toList.map(addr => URI.create(if (addr.startsWith("http://")) addr else "http://" + addr))
+    val client = new EtcdClient(addrs:_*)
 
     cluster.joinSeedNodes(client.get("/jetchat").recursive().send().get().node.nodes.toList.map { case node =>
       val ip = node.nodes.toList.find(_.key.endsWith("IP")).get.value
