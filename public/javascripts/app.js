@@ -150,7 +150,7 @@ var TopicPane = React.createClass({
             self.setState({selectedGroup: selectedGroup});
             $.ajax({
                 type: "GET",
-                url: "/json/user/" + global.userId + "/topics" +
+                url: "/json/user/" + global.user.id + "/topics" +
                 (selectedGroup ? "/" + selectedGroup.id : ""),
                 success: function (topics) {
                     self.setState({topics: topics});
@@ -167,6 +167,18 @@ var TopicPane = React.createClass({
         });
         $(document).on("selectedTopic", function (event, selectedTopic) {
             self.setState({selectedTopic: selectedTopic});
+        });
+        $(document).on("newTopic", function (event, newTopic) {
+            if (self.state.topics.filter(function (m) {
+                    return m.id == newTopic.id
+                }).length == 0) {
+                self.setState(React.addons.update(self.state, {
+                    topics: {
+                        $splice: [[0, 0, {topic: newTopic}]]
+                    }
+                }));
+                $(document).trigger("selectedTopic", newTopic);
+            }
         });
     },
 
@@ -236,24 +248,85 @@ var MessageItem = React.createClass({
 var MessageBar = React.createClass({
     getInitialState: function () {
         return {
-            messages: []
+            messages: [],
+            selectedGroup: undefined,
+            selectedTopic: undefined
         };
     },
 
     componentWillMount: function () {
         var self = this;
+        $(document).on("selectedGroup", function (event, selectedGroup) {
+            self.setState({selectedGroup: selectedGroup});
+        });
         $(document).on("selectedTopic", function (event, selectedTopic) {
+            React.findDOMNode(self.refs.input).focus();
+            if (selectedTopic) {
+                $.ajax({
+                    type: "GET",
+                    url: "/json/user/" + global.user.id + "/messages/" + selectedTopic.id,
+                    success: function (messages) {
+                        self.setState({
+                            messages: messages,
+                            selectedTopic: selectedTopic
+                        });
+                    },
+                    fail: function (e) {
+                        console.error(e);
+                    }
+                })
+            } else {
+                self.setState({messages: [], selectedTopic: undefined});
+            }
+        });
+    },
+
+    onInputKeyPress: function (event) {
+        var self = this;
+        var input = React.findDOMNode(self.refs.input);
+        if (event.which == 13 && input.value.trim()) {
+            var data = {
+                "user": {
+                    "id": global.user.id,
+                    "name": global.user.name,
+                    "avatar": global.user.avatar
+                },
+                "date": new Date().getTime(),
+                "groupId": self.state.selectedTopic ? self.state.selectedTopic.group.id : self.state.selectedGroup.id,
+                "text": input.value
+            };
+            if (self.state.selectedTopic) {
+                data.topicId = self.state.selectedTopic.id;
+                this.setState(React.addons.update(self.state, {
+                    messages: {
+                        $push: [data]
+                    }
+                }));
+            }
+            input.value = "";
             $.ajax({
-                type: "GET",
-                url: "/json/user/" + global.userId + "/messages/" + selectedTopic.id,
-                success: function (messages) {
-                    self.setState({messages: messages});
+                type: "POST",
+                url: self.state.selectedTopic ? "/json/comment/add" : "/json/topic/add",
+                data: JSON.stringify(data),
+                contentType: "application/json",
+                success: function (id) {
+                    var newTopic = {
+                        id: id,
+                        group: {id: data.groupId},
+                        text: data.text,
+                        date: new Date().getTime(),
+                        user: global.user
+                    };
+                    if (!self.state.selectedTopic) {
+                        $(document).trigger("newTopic", newTopic);
+                    }
                 },
                 fail: function (e) {
                     console.error(e);
                 }
-            })
-        });
+            });
+            event.preventDefault();
+        }
     },
 
     render: function () {
@@ -279,6 +352,8 @@ var MessageBar = React.createClass({
                              key={key}/>
             )
         });
+        var inputPlaceHolder = self.state.selectedTopic ?
+            "Message..." : "Topic...";
 
         return (
             <div id="message-bar">
@@ -287,6 +362,10 @@ var MessageBar = React.createClass({
                         {messageItems}
                     </div>
                 </div>
+                <textarea id="input" ref="input" autoComplete="off"
+                          placeholder={inputPlaceHolder} className="enabled"
+                          onKeyPress={self.onInputKeyPress}
+                />
             </div>
         );
     }

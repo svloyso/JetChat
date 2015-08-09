@@ -12,6 +12,7 @@ input, textarea {
     height: 100%;
     background-color: #e9eaed;
     border-right: 1px solid #e6e6e6;
+    position: absolute;
 }
 
 #side-bar #header {
@@ -229,6 +230,9 @@ input.search-query {
     margin: 0 15px 10px 50px;
     display: inline-block;
     border: 1px solid #0077cc;
+    position: absolute;
+    bottom: 10px;
+    width: 621px;
 }
 
 .new-group-popover .group-name {
