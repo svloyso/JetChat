@@ -14,6 +14,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "jquery" % "2.0.3",
   "org.webjars" % "jquery-cookie" % "1.4.1",
   "org.webjars.bower" % "jquery-dateFormat" % "1.0.2",
+  "org.webjars" % "react" % "0.13.3",
   "com.typesafe.play" %% "play-slick" % "0.8.1",
   "mysql" % "mysql-connector-java" % "5.1.36",
   "joda-time" % "joda-time" % "2.4",
