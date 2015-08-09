@@ -301,7 +301,7 @@ $(document).ready(function () {
         if (selectedTopic == null) {
             topicItem.addClass("selected");
             selectedTopic = t.topic.id;
-            selectedTopicGroup = t.topic.groupId;
+            selectedTopicGroup = t.topic.group.id;
             onTopicSelection();
         }
         topicItem.click(function () {
