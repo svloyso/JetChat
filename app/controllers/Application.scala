@@ -241,7 +241,7 @@ object Application extends Controller {
         case None => Seq()
       })
     mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("id" -> JsNumber(id),
-      "groupId" -> JsNumber(groupId),
+      "group" -> JsObject(Seq("id" -> JsNumber(groupId))),
       "user" -> JsObject(userJson),
       "date" -> JsNumber(date.getMillis),
       "text" -> JsString(text)))))

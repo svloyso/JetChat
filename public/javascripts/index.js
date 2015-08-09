@@ -226,7 +226,7 @@ $(document).ready(function () {
                                         topic: {
                                             id: id,
                                             userId: userId,
-                                            groupId: data.groupId,
+                                            group: { id: data.groupId },
                                             text: data.text,
                                             date: new Date().getTime(),
                                             user: {
@@ -234,7 +234,7 @@ $(document).ready(function () {
                                                 name: userName
                                             }
                                         }
-                                    });
+                                    }, true);
                                 }
                                 selectedGroup = null;
                                 selectedTopic = id;
@@ -288,12 +288,12 @@ $(document).ready(function () {
     var addedTopics = {};
 
     function addTopic(t, prepend) {
-        var topicItem = $("<li>").attr("data-group", t.topic.groupId).attr("data-topic", t.topic.id);
+        var topicItem = $("<li>").attr("data-group", t.topic.group.id).attr("data-topic", t.topic.id);
         addedTopics[t.topic.id] = topicItem;
         topicItem.append($("<div class='text'>").text(t.topic.text));
         var info = $("<div class='info'>").append($("<span class='author'>").text(t.topic.user.name));
         if (!selectedGroup) {
-            info.append(" in #").append($("<span class='group'>").text(t.topic.groupId));
+            info.append(" in #").append($("<span class='group'>").text(t.topic.group.name));
         }
         info.append("&nbsp;&nbsp;").append($("<span class='pretty date'>").
                 text($.format.prettyDate(t.topic.date)).attr("data-date", t.topic.date));
@@ -488,7 +488,7 @@ $(document).ready(function () {
                 } else if (!d.toUser) {
                     if (selectedGroup == d.groupId && !addedTopics[d.id]) {
                         addTopic({topic: d}, true);
-                    } else if (!selectedGroup || (selectedTopic && selectedTopicGroup == d.groupId)) {
+                    } else if ((!selectedGroup || (selectedTopic && selectedTopicGroup == d.groupId)) && !addedTopics[d.id]) {
                         addTopic({topic: d}, true);
                     }
                 } else {
