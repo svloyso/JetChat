@@ -207,7 +207,7 @@ $(document).ready(function () {
                             "avatar": userAvatar
                         },
                         "date": new Date().getTime(),
-                        "groupId": newTopic ? selectedGroup : selectedTopicGroup,
+                        "group": {id: newTopic ? selectedGroup : selectedTopicGroup},
                         "text": input.val()
                     };
                     if (newMessage) {

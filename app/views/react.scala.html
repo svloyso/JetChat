@@ -13,9 +13,11 @@
     <script type="text/jsx" src="@routes.Assets.at("javascripts/app.js")"></script>
     <script>
         var global = {
-            userId: @{user.id},
-            userName: "@{user.name}",
-            userAvatar: "@{user.avatar}",
+            user: {
+                id: @{user.id},
+                name: "@{user.name}",
+                avatar: "@{user.avatar}"
+            },
             webSocketUrl: "@Html(webSocketUrl)",
             users: @{Html(users.toString)},
             groups: @{Html(groups.toString)}
