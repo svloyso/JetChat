@@ -11,7 +11,7 @@ var GroupPane = React.createClass({
     },
 
     onClick: function (group) {
-        var selectedGroup = group ? group : null;
+        var selectedGroup = group ? group : undefined;
         this.setState({selectedGroup: selectedGroup});
         $(document).trigger("selectedGroup", selectedGroup);
     },
@@ -115,7 +115,8 @@ var TopicItem = React.createClass({
         var prettyDate = $.format.prettyDate(new Date(self.props.topic.date));
         var groupRef;
         if (self.props.showGroup) {
-            groupRef = <span>in #<span className="group">{self.props.topic.group.name}</span></span>
+            groupRef = <span>in #<span
+                className="group">{self.props.topic.group.name}</span></span>
         }
         return (
             <li data-topic={self.props.topic.id} className={topicClass}
@@ -201,11 +202,91 @@ var TopicBar = React.createClass({
     }
 });
 
+var MessageItem = React.createClass({
+    render: function () {
+        var self = this;
+        var className = ("clearfix" + " " + (self.props.topic ? "topic" : "") + " " + (self.props.sameUser ? "same-user" : "")).trim();
+        var avatar;
+        var info;
+        if (!self.props.sameUser) {
+            var user = global.users.filter(function (u) {
+                return u.id == self.props.message.user.id
+            })[0];
+            avatar = <img className="img avatar pull-left" src={user.avatar}/>;
+            var prettyDate = $.format.prettyDate(new Date(self.props.message.date));
+            info = <div className="info">
+                <span className="author">{user.name}</span>
+                &nbsp;
+                <span className="pretty date"
+                      data-date={self.props.message.date}>{prettyDate}</span>
+            </div>;
+        }
+        return (
+            <li className={className} data-user={self.props.message.user.id}>
+                {avatar}
+                <div className="details">
+                    {info}
+                    <div className="text">{self.props.message.text}</div>
+                </div>
+            </li>
+        );
+    }
+});
+
 var MessageBar = React.createClass({
-    render: function() {
+    getInitialState: function () {
+        return {
+            messages: []
+        };
+    },
+
+    componentWillMount: function () {
+        var self = this;
+        $(document).on("selectedTopic", function (event, selectedTopic) {
+            $.ajax({
+                type: "GET",
+                url: "/json/user/" + global.userId + "/messages/" + selectedTopic.id,
+                success: function (messages) {
+                    self.setState({messages: messages});
+                },
+                fail: function (e) {
+                    console.error(e);
+                }
+            })
+        });
+    },
+
+    render: function () {
+        var self = this;
+        var userId;
+        var topic = true;
+        var sameUser = false;
+        var messageItems = self.state.messages.map(function (message, index) {
+            if (index == 0) {
+                userId = message.user.id;
+            } else {
+                if (message.user.id != userId) {
+                    sameUser = false;
+                    topic = false;
+                    userId = message.user.id;
+                } else {
+                    sameUser = true;
+                }
+            }
+            var key = topic ? message.topicId + "_" + message.id : message.id;
+            return (
+                <MessageItem message={message} topic={topic} sameUser={sameUser}
+                             key={key}/>
+            )
+        });
+
         return (
             <div id="message-bar">
-
+                <div id="message-pane">
+                    <div id="message-roll">
+                        {messageItems}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -217,6 +298,7 @@ var App = React.createClass({
             <div>
                 <SideBar/>
                 <TopicBar/>
+                <MessageBar/>
             </div>
         );
     }

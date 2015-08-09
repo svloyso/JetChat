@@ -353,9 +353,7 @@ $(document).ready(function () {
         imagify(text);
         emojify.run(text[0]);
         details.append(text);
-        var message = $("<div class='message'>")
-            .append(details);
-        messageItem.append(message);
+        messageItem.append(details);
         messageItem.appendTo(messageRoll);
         messageRoll.scrollTop(messageRoll[0].scrollHeight);
     }
@@ -402,9 +400,8 @@ $(document).ready(function () {
             messageRoll.html("");
             var userHeaderItem = $("<li class='clearfix topic'>").attr("data-user", user.id);
             userHeaderItem.append($("<img class='img avatar pull-left'>").attr("src", user.avatar));
-            var message = $("<div class='message'>")
-                .append($("<div class='details'>").append($("<div class='info'>")
-                    .append($("<span class='user'>").text(user.name))));
+            var message = $("<div class='details'>").append($("<div class='info'>")
+                    .append($("<span class='user'>").text(user.name)));
             userHeaderItem.append(message);
             messageRollHeader.append(userHeaderItem);
             $.ajax({
