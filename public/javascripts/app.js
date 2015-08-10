@@ -1,9 +1,36 @@
+var NewGroup = React.createClass({
+    onClick: function() {
+
+    },
+
+    render: function() {
+        return (
+            <a id="new-group" onClick={self.onClick}>New group</a>
+        );
+    }
+});
+
 var GroupPane = React.createClass({
     getInitialState: function () {
         return {
             groups: global.groups,
             selectedGroup: undefined
         };
+    },
+
+    componentWillMount: function() {
+        var self = this;
+        $(document).on("newGroup", function (event, newGroup) {
+            if (self.state.groups.filter(function (g) {
+                    return g.id == newGroup.id
+                }).length == 0) {
+                self.setState(React.addons.update(self.state, {
+                    groups: {
+                        $push: [newGroup]
+                    }
+                }));
+            }
+        })
     },
 
     componentDidMount: function () {
@@ -37,6 +64,7 @@ var GroupPane = React.createClass({
                     onClick={self.onClick.bind(self, undefined)}>
                     <span>All groups</span></li>
                 {groupItems}
+                <NewGroup/>
             </ul>
         );
     }
@@ -169,7 +197,8 @@ var TopicPane = React.createClass({
             self.setState({selectedTopic: selectedTopic});
         });
         $(document).on("newTopic", function (event, newTopic) {
-            if (self.state.topics.filter(function (m) {
+            if ((!self.state.selectedGroup || self.state.selectedGroup.id ==
+                newTopic.group.id) && self.state.topics.filter(function (m) {
                     return m.id == newTopic.id
                 }).length == 0) {
                 self.setState(React.addons.update(self.state, {
@@ -279,6 +308,19 @@ var MessageBar = React.createClass({
                 self.setState({messages: [], selectedTopic: undefined});
             }
         });
+        $(document).on("newMessage", function (event, newMessage) {
+            if (self.state.selectedTopic && self.state.selectedTopic.id ==
+                newMessage.topicId && self.state.messages.filter(function (m) {
+                    return m.text == newMessage.text
+                }).length == 0) {
+                // TODO: Preserve message order
+                self.setState(React.addons.update(self.state, {
+                    messages: {
+                        $push: [newMessage]
+                    }
+                }));
+            }
+        });
     },
 
     onInputKeyPress: function (event) {
@@ -372,6 +414,46 @@ var MessageBar = React.createClass({
 });
 
 var App = React.createClass({
+    openSocket: function() {
+        var self = this;
+        var socket = new WebSocket(global.webSocketUrl);
+        socket.onmessage = function (message) {
+            if (message.data != JSON.stringify("Tack")) {
+                var data = JSON.parse(message.data);
+                if (data.topicId) {
+                    $(document).trigger("newMessage", data);
+                } else if (data.newGroup) {
+                    $(document).trigger("newGroup", data.newGroup);
+                } else if (data.newUser) {
+                    global.users.push(data.newUser);
+                    $(document).trigger("newUser", data);
+                } else if (!data.toUser) {
+                    $(document).trigger("newTopic", data);
+                } else {
+                    $(document).trigger("newMessage", data);
+                }
+            }
+        };
+        socket.onopen = function () {
+            setInterval(function () {
+                socket.send(JSON.stringify("Tick"));
+            }, 10000);
+        };
+        socket.onclose = function (event) {
+            console.error("Reopenning websocket");
+            this.openSocket();
+        };
+        socket.onerror = function (error) {
+            console.error("websocket error: " + error);
+        };
+    },
+
+    componentWillMount: function() {
+        if (window.WebSocket) {
+            this.openSocket();
+        }
+    },
+
     render: function () {
         return (
             <div>
