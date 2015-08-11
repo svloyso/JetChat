@@ -65,7 +65,11 @@ var GroupPane = React.createClass({
     getInitialState: function () {
         return {
             groups: global.groups,
-            selectedGroup: undefined
+            users: global.users.filter(function (u) {
+                return u.id != global.user.id
+            }),
+            selectedGroup: undefined,
+            selectedUser: undefined
         };
     },
 
@@ -82,8 +86,13 @@ var GroupPane = React.createClass({
                 }));
             }
         });
-        $(document).on("selectedGroup", function(event, selectedGroup) {
+        $(document).on("selectedGroup", function (event, selectedGroup) {
             self.setState({selectedGroup: selectedGroup});
+            self.setState({selectedUser: undefined});
+        });
+        $(document).on("selectedUser", function (event, selectedUser) {
+            self.setState({selectedUser: selectedUser});
+            self.setState({selectedGroup: undefined});
         });
     },
 
@@ -91,9 +100,13 @@ var GroupPane = React.createClass({
         $(document).trigger("selectedGroup", this.state.selectedGroup);
     },
 
-    onClick: function (group) {
+    onGroupClick: function (group) {
         var selectedGroup = group ? group : undefined;
         $(document).trigger("selectedGroup", selectedGroup);
+    },
+
+    onUserClick: function (user) {
+        $(document).trigger("selectedUser", user);
     },
 
     render: function () {
@@ -102,22 +115,33 @@ var GroupPane = React.createClass({
             var groupClass = (self.state.selectedGroup && self.state.selectedGroup.id == group.id) ? "selected" : "";
             return (
                 <li data-group={group.id} className={groupClass}
-                    onClick={self.onClick.bind(self, group)} key={group.id}>
+                    onClick={self.onGroupClick.bind(self, group)} key={group.id}>
                     <span className="group-header">#</span>
                     <span>{group.name}</span>
                 </li>
             );
         });
 
-        var allGroupsClass = !self.state.selectedGroup ? "selected" : "";
+        var userItems = self.state.users.map(function (user) {
+            var userClass = (self.state.selectedUser && self.state.selectedUser.id == user.id) ? "selected" : "";
+            return (
+                <li data-user={user.id} className={userClass}
+                    onClick={self.onUserClick.bind(self, user)} key={user.id}>
+                    <span>{user.name}</span>
+                </li>
+            );
+        });
+
+        var allGroupsClass = !self.state.selectedGroup && !self.state.selectedUser ? "selected" : "";
 
         return (
             <ul id="group-pane">
                 <li id="all-groups" className={allGroupsClass}
-                    onClick={self.onClick.bind(self, undefined)}>
+                    onClick={self.onGroupClick.bind(self, undefined)}>
                     <span>All groups</span></li>
                 {groupItems}
                 <NewGroupButton/>
+                {userItems}
             </ul>
         );
     }
@@ -227,12 +251,12 @@ var TopicPane = React.createClass({
 
     componentWillMount: function () {
         var self = this;
-        $(document).on("selectedGroup", function (event, selectedGroup) {
-            self.setState({selectedGroup: selectedGroup});
+        $(document).on("selectedGroup", function (event, group) {
+            self.setState({selectedGroup: group});
             $.ajax({
                 type: "GET",
                 url: "/json/user/" + global.user.id + "/topics" +
-                (selectedGroup ? "/" + selectedGroup.id : ""),
+                (group ? "/" + group.id : ""),
                 success: function (topics) {
                     self.setState({topics: topics});
                     if (topics.length > 0) {
@@ -246,8 +270,8 @@ var TopicPane = React.createClass({
                 }
             })
         });
-        $(document).on("selectedTopic", function (event, selectedTopic) {
-            self.setState({selectedTopic: selectedTopic});
+        $(document).on("selectedTopic", function (event, topic) {
+            self.setState({selectedTopic: topic});
         });
         $(document).on("newTopic", function (event, newTopic) {
             if ((!self.state.selectedGroup || self.state.selectedGroup.id ==
@@ -285,9 +309,25 @@ var TopicPane = React.createClass({
 });
 
 var TopicBar = React.createClass({
+    getInitialState: function () {
+        return {
+            selectedUser: undefined
+        };
+    },
+
+    componentWillMount: function () {
+        var self = this;
+        $(document).on("selectedUser", function (event, user) {
+            self.setState({selectedUser: user});
+        });
+        $(document).on("selectedGroup", function (event, group) {
+            self.setState({selectedUser: undefined});
+        });
+    },
+
     render: function () {
         return (
-            <div id="topic-bar">
+            <div id="topic-bar" style={{display: this.state.selectedUser ? "none" : ""}}>
                 <SearchPane/>
                 <NewTopicPane/>
                 <TopicPane/>
@@ -332,25 +372,27 @@ var MessageBar = React.createClass({
         return {
             messages: [],
             selectedGroup: undefined,
-            selectedTopic: undefined
+            selectedTopic: undefined,
+            selectedUser: undefined
         };
     },
 
     componentWillMount: function () {
         var self = this;
-        $(document).on("selectedGroup", function (event, selectedGroup) {
-            self.setState({selectedGroup: selectedGroup});
+        $(document).on("selectedGroup", function (event, group) {
+            self.setState({selectedGroup: group, selectedUser: undefined});
         });
-        $(document).on("selectedTopic", function (event, selectedTopic) {
+        $(document).on("selectedTopic", function (event, topic) {
             React.findDOMNode(self.refs.input).focus();
-            if (selectedTopic) {
+            if (topic) {
                 $.ajax({
                     type: "GET",
-                    url: "/json/user/" + global.user.id + "/messages/" + selectedTopic.id,
+                    url: "/json/user/" + global.user.id + "/messages/" + topic.id,
                     success: function (messages) {
                         self.setState({
                             messages: messages,
-                            selectedTopic: selectedTopic
+                            selectedTopic: topic,
+                            selectedUser: undefined
                         });
                     },
                     fail: function (e) {
@@ -358,8 +400,26 @@ var MessageBar = React.createClass({
                     }
                 })
             } else {
-                self.setState({messages: [], selectedTopic: undefined});
+                self.setState({messages: [], selectedTopic: undefined, selectedUser: undefined});
             }
+        });
+        $(document).on("selectedUser", function (event, user) {
+            React.findDOMNode(self.refs.input).focus();
+            $.ajax({
+                type: "GET",
+                url: "/json/user/" + global.user.id + "/direct/" + user.id,
+                success: function (messages) {
+                    self.setState({
+                        messages: messages,
+                        selectedTopic: undefined,
+                        selectedGroup: undefined,
+                        selectedUser: user
+                    });
+                },
+                fail: function (e) {
+                    console.error(e);
+                }
+            })
         });
         $(document).on("newMessage", function (event, newMessage) {
             if (self.state.selectedTopic && self.state.selectedTopic.id ==
@@ -451,7 +511,8 @@ var MessageBar = React.createClass({
             "Message..." : "Topic...";
 
         return (
-            <div id="message-bar">
+            // TODO: Replace logic with className
+            <div id="message-bar" style={{left: this.state.selectedUser ? "200px" : "550px"}}>
                 <div id="message-pane">
                     <div id="message-roll">
                         {messageItems}
