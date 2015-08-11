@@ -76,10 +76,10 @@ var GroupPane = React.createClass({
     componentWillMount: function () {
         var self = this;
         $(document).on("newGroup", function (event, group) {
-            global.groups.push(group);
             if (self.state.groups.filter(function (g) {
                     return g.id == group.id
                 }).length == 0) {
+                global.groups.push(group);
                 self.setState(React.addons.update(self.state, {
                     groups: {
                         $push: [group]
@@ -350,6 +350,10 @@ var TopicBar = React.createClass({
 });
 
 var MessageItem = React.createClass({
+    mixins: [
+        ReactEmoji, ReactAutolink
+    ],
+
     render: function () {
         var self = this;
         var className = ("clearfix" + " " + (self.props.topic ? "topic" : "") + " " + (self.props.sameUser ? "same-user" : "")).trim();
@@ -368,14 +372,17 @@ var MessageItem = React.createClass({
                       data-date={self.props.message.date}>{prettyDate}</span>
             </div>;
         }
-        var urlMatch = self.props.message.text.match(__urlRegex);
-        var text = urlMatch ? <a className="imagify" href={urlMatch[0]} target="__blank">{urlMatch[0]}</a> : self.props.message.text;
         return (
             <li className={className} data-user={self.props.message.user.id}>
                 {avatar}
                 <div className="details">
                     {info}
-                    <div className="text emojify">{text}</div>
+                    <div className="text">{this.autolink(self.props.message.text).map(function (el) {
+                        if (typeof el  === "string")
+                            return self.emojify(el);
+                        else
+                            return el;
+                    })}</div>
                 </div>
             </li>
         );
@@ -454,12 +461,8 @@ var MessageBar = React.createClass({
     },
 
     componentDidUpdate: function() {
-        var self = this;
-        // Wait until images are loaded
-        window.setInterval(function () {
-            var messageRoll = $(React.findDOMNode(self.refs.messageRoll));
-            messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        }, 100);
+        var messageRoll = $(React.findDOMNode(this.refs.messageRoll));
+        messageRoll.scrollTop(messageRoll[0].scrollHeight);
     },
 
     onInputKeyPress: function (event) {
@@ -475,17 +478,14 @@ var MessageBar = React.createClass({
                     "date": new Date().getTime(),
                     "text": input.value
                 };
-                this.setState(React.addons.update(self.state, {
-                    messages: {
-                        $push: [newDirectMessage]
-                    }
-                }));
                 $.ajax({
                     type: "POST",
                     url: "/json/direct/add",
                     data: JSON.stringify(newDirectMessage),
                     contentType: "application/json",
                     success: function (id) {
+                        newDirectMessage.id = id;
+                        $(document).trigger("newMessage", newDirectMessage);
                     },
                     fail: function (e) {
                         console.error(e);
@@ -504,11 +504,6 @@ var MessageBar = React.createClass({
                 };
                 if (self.state.selectedTopic) {
                     newMessage.topicId = self.state.selectedTopic.id;
-                    this.setState(React.addons.update(self.state, {
-                        messages: {
-                            $push: [newMessage]
-                        }
-                    }));
                 }
                 $.ajax({
                     type: "POST",
@@ -516,15 +511,19 @@ var MessageBar = React.createClass({
                     data: JSON.stringify(newMessage),
                     contentType: "application/json",
                     success: function (id) {
-                        var newTopic = {
+                        // TODO: Send full object from server
+                        var m = {
                             id: id,
                             group: {id: newMessage.groupId},
                             text: newMessage.text,
                             date: new Date().getTime(),
                             user: global.user
                         };
-                        if (!self.state.selectedTopic) {
-                            $(document).trigger("newTopic", newTopic);
+                        if (newMessage.topicId) {
+                            m.topicId = newMessage.topicId;
+                            $(document).trigger("newMessage", m);
+                        } else {
+                            $(document).trigger("newTopic", m);
                         }
                     },
                     fail: function (e) {

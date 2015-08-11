@@ -43,13 +43,6 @@ window.setInterval(function () {
 }, 100);
 
 window.setInterval(function () {
-    $(".emojify").each(function (i, e) {
-        $(e).removeClass("emojify");
-        emojify.run(e)
-    });
-}, 100);
-
-window.setInterval(function () {
     $(".pretty").map(function () {
         $(this).text($.format.prettyDate(parseInt($(this).attr("data-date"))))
     })
@@ -64,17 +57,4 @@ window.setInterval(function() {
     $("#message-pane").height($(window).height() - 100);
     $("#message-roll").css({maxHeight: ($(window).height() - 95) + "px"});
     $("#message-bar").find("#input").width($("#message-bar").width() - 85);
-});
-
-emojify.setConfig({
-    emojify_tag_type : 'div',           // Only run emojify.js on this element
-    only_crawl_id    : null,            // Use to restrict where emojify.js applies
-    img_dir          : '/assets/emoji/images/basic',  // Directory for emoji images
-    ignored_tags     : {                // Ignore the following tags
-        'SCRIPT'  : 1,
-        'TEXTAREA': 1,
-        'A'       : 1,
-        'PRE'     : 1,
-        'CODE'    : 1
-    }
 });
