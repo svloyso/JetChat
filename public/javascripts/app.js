@@ -422,8 +422,10 @@ var MessageBar = React.createClass({
             })
         });
         $(document).on("newMessage", function (event, newMessage) {
-            if (self.state.selectedTopic && self.state.selectedTopic.id ==
-                newMessage.topicId && self.state.messages.filter(function (m) {
+            if ((self.state.selectedTopic && self.state.selectedTopic.id ==
+                newMessage.topicId || self.state.selectedUser && (self.state.selectedUser.id == newMessage.toUser.id &&
+                global.user.id == newMessage.user.id || self.state.selectedUser.id == newMessage.user.id &&
+                global.user.id == newMessage.toUser.id)) && self.state.messages.filter(function (m) {
                     return m.text == newMessage.text
                 }).length == 0) {
                 // TODO: Preserve message order
@@ -440,46 +442,73 @@ var MessageBar = React.createClass({
         var self = this;
         var input = React.findDOMNode(self.refs.input);
         if (event.which == 13 && input.value.trim()) {
-            var data = {
-                "user": {
-                    "id": global.user.id,
-                    "name": global.user.name,
-                    "avatar": global.user.avatar
-                },
-                "date": new Date().getTime(),
-                "groupId": self.state.selectedTopic ? self.state.selectedTopic.group.id : self.state.selectedGroup.id,
-                "text": input.value
-            };
-            if (self.state.selectedTopic) {
-                data.topicId = self.state.selectedTopic.id;
+            if (self.state.selectedUser) {
+                var user = global.users.filter(function (u) { return u.id == global.user.id })[0];
+                var toUser = global.users.filter(function (u) { return u.id == self.state.selectedUser.id })[0];
+                var newDirectMessage = {
+                    "user": user,
+                    "toUser": toUser,
+                    "date": new Date().getTime(),
+                    "text": input.value
+                };
                 this.setState(React.addons.update(self.state, {
                     messages: {
-                        $push: [data]
+                        $push: [newDirectMessage]
                     }
                 }));
+                $.ajax({
+                    type: "POST",
+                    url: "/json/direct/add",
+                    data: JSON.stringify(newDirectMessage),
+                    contentType: "application/json",
+                    success: function (id) {
+                    },
+                    fail: function (e) {
+                        console.error(e);
+                    }
+                });
+            } else {
+                var newMessage = {
+                    "user": {
+                        "id": global.user.id,
+                        "name": global.user.name,
+                        "avatar": global.user.avatar
+                    },
+                    "date": new Date().getTime(),
+                    "groupId": self.state.selectedTopic ? self.state.selectedTopic.group.id : self.state.selectedGroup.id,
+                    "text": input.value
+                };
+                if (self.state.selectedTopic) {
+                    newMessage.topicId = self.state.selectedTopic.id;
+                    this.setState(React.addons.update(self.state, {
+                        messages: {
+                            $push: [newMessage]
+                        }
+                    }));
+                }
+                $.ajax({
+                    type: "POST",
+                    url: self.state.selectedTopic ? "/json/comment/add" : "/json/topic/add",
+                    data: JSON.stringify(newMessage),
+                    contentType: "application/json",
+                    success: function (id) {
+                        var newTopic = {
+                            id: id,
+                            group: {id: newMessage.groupId},
+                            text: newMessage.text,
+                            date: new Date().getTime(),
+                            user: global.user
+                        };
+                        if (!self.state.selectedTopic) {
+                            $(document).trigger("newTopic", newTopic);
+                        }
+                    },
+                    fail: function (e) {
+                        console.error(e);
+                    }
+                });
             }
             input.value = "";
-            $.ajax({
-                type: "POST",
-                url: self.state.selectedTopic ? "/json/comment/add" : "/json/topic/add",
-                data: JSON.stringify(data),
-                contentType: "application/json",
-                success: function (id) {
-                    var newTopic = {
-                        id: id,
-                        group: {id: data.groupId},
-                        text: data.text,
-                        date: new Date().getTime(),
-                        user: global.user
-                    };
-                    if (!self.state.selectedTopic) {
-                        $(document).trigger("newTopic", newTopic);
-                    }
-                },
-                fail: function (e) {
-                    console.error(e);
-                }
-            });
             event.preventDefault();
         }
     },
@@ -487,7 +516,7 @@ var MessageBar = React.createClass({
     render: function () {
         var self = this;
         var userId;
-        var topic = true;
+        var topic = self.state.selectedUser === undefined;
         var sameUser = false;
         var messageItems = self.state.messages.map(function (message, index) {
             if (index == 0) {
@@ -509,7 +538,19 @@ var MessageBar = React.createClass({
         });
         var inputPlaceHolder = self.state.selectedTopic ?
             "Message..." : "Topic...";
-
+        var userHeader;
+        if (self.state.selectedUser) {
+            userHeader = <div id="message-roll-header">
+                <li className="clearfix topic">
+                    <img className="img avatar pull-left" src={self.state.selectedUser.avatar} />
+                    <div className="details">
+                        <div className="info">
+                            <span className="user">{self.state.selectedUser.name}</span>
+                        </div>
+                    </div>
+                </li>
+            </div>
+        }
         return (
             // TODO: Replace logic with className
             <div id="message-bar" style={{left: this.state.selectedUser ? "200px" : "550px"}}>
@@ -517,6 +558,7 @@ var MessageBar = React.createClass({
                     <div id="message-roll">
                         {messageItems}
                     </div>
+                    {userHeader}
                 </div>
                 <textarea id="input" ref="input" autoComplete="off"
                           placeholder={inputPlaceHolder} className="enabled"
