@@ -553,7 +553,7 @@ var MessageBar = React.createClass({
                     sameUser = true;
                 }
             }
-            var key = topic ? message.topicId + "_" + message.id : message.id;
+            var key = message.topicId ? message.topicId + "_" + message.id : message.id;
             return (
                 <MessageItem message={message} topic={topic} sameUser={sameUser}
                              key={key}/>
