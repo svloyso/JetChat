@@ -22,4 +22,3 @@ GET         /assets/*file                                  controllers.Assets.at
 GET         /webjars/*file                                 controllers.WebJarAssets.at(file)
 
 GET         /                                              controllers.Application.index
-GET         /react/                                        controllers.Application.react

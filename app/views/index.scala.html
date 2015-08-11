@@ -1,26 +1,32 @@
 @import play.api.libs.json.JsValue
+
 @(user: User, users: JsValue, groups: JsValue, webSocketUrl: String)
 
 @head = {
-    <link rel="stylesheet" href="@routes.Assets.at("stylesheets/emojify.min.css")"/>
     <link rel="stylesheet" href="@routes.Assets.at("stylesheets/index.css")"/>
+
+    <script src="@routes.WebJarAssets.at(WebJarAssets.locate("react-with-addons.js"))"></script>
+    <script src="@routes.WebJarAssets.at(WebJarAssets.locate("JSXTransformer.js"))"></script>
+    <script src="@routes.WebJarAssets.at(WebJarAssets.locate("jquery.min.js"))"></script>
     <script src="@routes.WebJarAssets.at(WebJarAssets.locate("jquery-dateFormat.min.js"))"></script>
-    <script>
-        var userId = @{user.id};
-        var userName = "@{user.name}";
-        var userAvatar = "@{user.avatar}";
-        var webSocketUrl = "@Html(webSocketUrl)";
-        var users = @{Html(users.toString)};
-        var groups = @{Html(groups.toString)};
-    </script>
+
     <script src="@routes.Assets.at("javascripts/emojify.min.js")"></script>
-    <script src="@routes.Assets.at("javascripts/index.js")"></script>
+    <script type="text/jsx" src="@routes.Assets.at("javascripts/utils.js")"></script>
+    <script type="text/jsx" src="@routes.Assets.at("javascripts/index.js")"></script>
+    <script>
+        var global = {
+            user: {
+                id: @{user.id},
+                name: "@{user.name}",
+                avatar: "@{user.avatar}"
+            },
+            webSocketUrl: "@Html(webSocketUrl)",
+            users: @{Html(users.toString)},
+            groups: @{Html(groups.toString)}
+        }
+    </script>
 }
 
 @main("JetChat", head) {
-    @*<h1>JetChat</h1>
-
-    <p>Hello, @{user.name}</p>
-
-    <p><a href="@routes.Application.logout">Logout</a></p>*@
+    <div id="app"></div>
 }

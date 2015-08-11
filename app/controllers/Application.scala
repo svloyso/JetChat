@@ -66,19 +66,6 @@ object Application extends Controller {
     }
   }
 
-  def react = Action.async { implicit request =>
-    DB.withSession { implicit session =>
-      dao.users.filter(_.login === HUB_MOCK_LOGIN).firstOption match {
-        case Some(user) =>
-          val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL().replaceAll("http", "ws")
-          Future.successful(Ok(views.html.react(user, getUsersJsValue(user.id),
-            getGroupsJsValue(user.id), webSocketUrl)))
-        case None =>
-          Future.successful(Unauthorized("Mock user doesn't exist"))
-      }
-    }
-  }
-
   def logout() = Action.async { implicit request =>
     Future.successful(Redirect(Auth.getLogoutUrl).discardingCookies(DiscardingCookie("user")))
   }

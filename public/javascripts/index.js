@@ -1,549 +1,649 @@
-$(document).ready(function () {
-    window.setInterval(function() {
-        $("#message-bar").width($(window).width() - 200 - 350);
-        $("#message-bar").height($(window).height());
-        $("#side-bar").height($(window).height());
-        $("#group-pane").height($(window).height() - 80);
-        $("#topic-pane").height($(window).height() - 100);
-        $("#message-pane").height($(window).height() - 100);
-        $("#message-roll").css({maxHeight: ($(window).height() - 95) + "px"});
-        $("#message-bar").find("#input").width($("#message-bar").width() - 85);
-    });
-
-    var sideBar = $("<div id='side-bar'>");
-
-    sideBar.append($("<div id='header'>").text("JetBrains"));
-
-    var groupPane = $("<ul id='group-pane'>");
-    var selectedGroup = null;
-    var selectedTopicGroup = null;
-    var selectedTopic = null;
-    var selectedUser = null;
-    var newTopic = false;
-    var newMessage = false;
-    var newDirectMessage = false;
-
-    var allGroupItem = $("<li id='all-groups'>").append($("<span>").text("All Groups"));
-    if (selectedGroup == null) {
-        allGroupItem.addClass("selected");
-    }
-    allGroupItem.click(function () {
-        $("#group-pane").find("li").removeClass("selected");
-        $(this).addClass("selected");
-        selectedUser = null;
-        selectedGroup = null;
-        onGroupSelection();
-        onTopicSelection();
-    });
-    allGroupItem.appendTo(groupPane);
-
-    function addGroup(group, insert) {
-        var groupItem = $("<li>").attr("data-group", group.id).append($("<span" +
-            " class='group-header'>").text("#")).append($("<span>").text(group.name));
-        addedGroups[group.name] = groupItem;
-        if (selectedGroup == group) {
-            groupItem.addClass("selected");
-            selectedGroup = group.id;
-        }
-        groupItem.click(function () {
-            $("#group-pane").find("li").removeClass("selected");
-            $(this).addClass("selected");
-            selectedUser = null;
-            selectedGroup = parseInt($(this).attr("data-group"));
-            onGroupSelection();
-            onTopicSelection();
-        });
-        if (insert) {
-            groupItem.insertBefore(groupPane.find("#new-group"));
-        } else {
-            groupItem.appendTo(groupPane);
-        }
-        return groupItem;
-    }
-
-    var addedGroups = {};
-
-    groups.forEach(function (group) {
-        addGroup(group);
-    });
-
-    var isVisible = false;
-
-    var hideAllPopovers = function() {
-        $('#new-group').each(function() {
-            $(this).popover('hide');
-        });
-    };
-
-    var newGroupButton = $("<a id='new-group'>").text("New group").popover({
-        html: true,
-        trigger: 'manual',
-        content: function() {
-            var pane = $("<div class='new-group-popover'>");
-            window.createGroup = function () {
-                var groupName = $(".new-group-popover .group-name").val().trim();
-                if (groupName && !/\s/.test(groupName)) {
-                    hideAllPopovers();
-                    isVisible = false;
-                    $.ajax({
-                        type: "POST",
-                        url: "/json/group/add",
-                        data: JSON.stringify(groupName),
-                        contentType: "application/json",
-                        success: function (group) {
-                            var groupItem;
-                            if (addedGroups[group.name]) {
-                                groupItem = addedGroups[group.name];
-                            } else {
-                                groupItem = addGroup(group, true);
-                            }
-                            $("#group-pane").find("li").removeClass("selected");
-                            groupItem.addClass("selected");
-                            selectedUser = null;
-                            selectedGroup = group.id;
-                            onGroupSelection();
-                            onTopicSelection();
-                        },
-                        fail: function (e) {
-                            console.error(e);
-                        }
-                    })
+var NewGroupDialog = React.createClass({
+    createGroup: function () {
+        var groupName = React.findDOMNode(this.refs.groupName).value.trim();
+        if (groupName && !/\s/.test(groupName)) {
+            $.ajax({
+                type: "POST",
+                url: "/json/group/add",
+                data: JSON.stringify(groupName),
+                contentType: "application/json",
+                success: function (group) {
+                    $(document).trigger("newGroup", group);
+                    $(document).trigger("selectedGroup", group);
+                },
+                fail: function (e) {
+                    console.error(e);
                 }
-            };
-            var groupInput = $("<input type='text' class='group-name' placeholder='Name…'>").attr("onkeypress", "if (event.keyCode == 13) createGroup()");
-            var groupLabel = $("<div class='group-label'>").text("Must be 21 characters or less. No spaces or periods.");
-            var button = $("<a class='btn btn-default btn-sm'>").text("Create group").attr("onclick", "createGroup()");
-            pane.append(groupInput);
-            pane.append(groupLabel);
-            pane.append(button);
-            return $("<div>").append(pane).html();
-        }
-    }).on('shown.bs.popover', function () {
-        $(".new-group-popover .group-name").focus();
-    }).on('click', function(e) {
-        // if any other popovers are visible, hide them
-        if(isVisible) {
-            hideAllPopovers();
-        }
-
-        $(this).popover('show');
-
-        // handle clicking on the popover itself
-        $('.popover').off('click').on('click', function(e) {
-            e.stopPropagation(); // prevent event for bubbling up => will not get caught with document.onclick
-        });
-
-        isVisible = true;
-        e.stopPropagation();
-    });
-
-    $(document).on('click', function(e) {
-        hideAllPopovers();
-        isVisible = false;
-    });
-
-    groupPane.append(newGroupButton);
-
-    function addUser(user) {
-        var userItem = $("<li>").attr("data-user", user.id).append($("<span>").text(user.name));
-        userItem.click(function () {
-            $("#group-pane").find("li").removeClass("selected");
-            $(this).addClass("selected");
-            selectedUser = user.id;
-            selectedGroup = null;
-            onGroupSelection();
-            onTopicSelection();
-            input.attr("placeholder", "Message…");
-        });
-        userItem.appendTo(groupPane);
-    }
-
-    users.forEach(function (user) {
-        if (user.id != userId) {
-            addUser(user);
-        }
-    });
-
-    sideBar.append(groupPane);
-    $(document.body).append(sideBar);
-
-    var topicBar = $("<div id='topic-bar'>");
-
-    var newTopicPane = $("<div id='new-topic-pane'>");
-    var searchPane = $("<div id='search-pane' class='form-inline'>")
-        .append($("<div class='btn-group'>").append($("<input id='search' type='text' class='search-query' placeholder='Search people, groups and topics.&hellip;' autocomplete='off'>")));
-
-    var newTopicButton = $("<a id='new-topic'>").append($("<span id='plus'>")).append($("<span>").text("New topic")).click(function () {
-        if ($(this).hasClass("enabled")) {
-            selectedTopic = null;
-            onTopicSelection();
-            $("#topic-pane").find("li").removeClass("selected");
-            $(this).addClass("selected");
-            input.attr("placeholder", "Topic…");
-            input.focus();
-        }
-    });
-
-    newTopicPane.append(newTopicButton);
-    topicBar.append(searchPane);
-    topicBar.append(newTopicPane);
-
-    var topicPane = $("<div id='topic-pane'>");
-
-    var messageBar = $("<div id='message-bar'>");
-
-    var messagePane = $("<div id='message-pane'>");
-    var messageRollHeader = $("<div id='message-roll-header'>");
-    var messageRoll = $("<div id='message-roll'>");
-    var input = $("<textarea id='input' autocomplete='off'>");
-    input.keypress(function (e) {
-        if (e.which == 13 && (newTopic || newMessage || newDirectMessage)) {
-            if (input.val().trim()) {
-                if (newTopic || newMessage) {
-                    var data = {
-                        "user": {
-                            "id": userId,
-                            "name": userName,
-                            "avatar": userAvatar
-                        },
-                        "date": new Date().getTime(),
-                        "group": {id: newTopic ? selectedGroup : selectedTopicGroup},
-                        "text": input.val()
-                    };
-                    if (newMessage) {
-                        data["topicId"] = selectedTopic;
-                        addMessage(data);
-                    }
-                    $.ajax({
-                        type: "POST",
-                        url: newTopic ? "/json/topic/add" : "/json/comment/add",
-                        data: JSON.stringify(data),
-                        contentType: "application/json",
-                        success: function (id) {
-                            if (newTopic) {
-                                if (!addedTopics[id]) {
-                                    addTopic({
-                                        topic: {
-                                            id: id,
-                                            userId: userId,
-                                            group: { id: data.groupId },
-                                            text: data.text,
-                                            date: new Date().getTime(),
-                                            user: {
-                                                id: userId,
-                                                name: userName
-                                            }
-                                        }
-                                    }, true);
-                                }
-                                selectedGroup = null;
-                                selectedTopic = id;
-                                selectedTopicGroup = data.groupId;
-                                onTopicSelection();
-                            }
-                        },
-                        fail: function (e) {
-                            console.error(e);
-                        }
-                    });
-                } else {
-                    var user = users.filter(function (u) { return u.id == userId })[0];
-                    var toUser = users.filter(function (u) { return u.id == selectedUser })[0];
-                    var data = {
-                        "user": user,
-                        "toUser": toUser,
-                        "date": new Date().getTime(),
-                        "text": input.val()
-                    };
-                    addMessage(data);
-                    $.ajax({
-                        type: "POST",
-                        url: "/json/direct/add",
-                        data: JSON.stringify(data),
-                        contentType: "application/json",
-                        success: function (id) {
-                        },
-                        fail: function (e) {
-                            console.error(e);
-                        }
-                    })
-                }
-                input.val("");
-            }
-            e.preventDefault();
-        }
-    });
-
-    onGroupSelection();
-    onTopicSelection();
-    topicBar.append(topicPane);
-    $(document.body).append(topicBar);
-
-    messagePane.append(messageRoll);
-    messagePane.append(messageRollHeader);
-    messageBar.append(messagePane);
-    messageBar.append(input);
-    $(document.body).append(messageBar);
-
-    var addedTopics = {};
-
-    function addTopic(t, prepend) {
-        var topicItem = $("<li>").attr("data-group", t.topic.group.id).attr("data-topic", t.topic.id);
-        addedTopics[t.topic.id] = topicItem;
-        topicItem.append($("<div class='text'>").text(t.topic.text));
-        var info = $("<div class='info'>").append($("<span class='author'>").text(t.topic.user.name));
-        if (!selectedGroup) {
-            info.append(" in #").append($("<span class='group'>").text(t.topic.group.name));
-        }
-        info.append("&nbsp;&nbsp;").append($("<span class='pretty date'>").
-                text($.format.prettyDate(t.topic.date)).attr("data-date", t.topic.date));
-        topicItem.append(info);
-        if (selectedTopic == null) {
-            topicItem.addClass("selected");
-            selectedTopic = t.topic.id;
-            selectedTopicGroup = t.topic.group.id;
-            onTopicSelection();
-        }
-        topicItem.click(function () {
-            $("#topic-pane").find("li").removeClass("selected");
-            $(this).addClass("selected");
-            selectedTopic = parseInt($(this).attr("data-topic"));
-            selectedTopicGroup = parseInt($(this).attr("data-group"));
-            onTopicSelection();
-        });
-        if (prepend) {
-            topicItem.prependTo(topicPane);
-        } else {
-            topicItem.appendTo(topicPane);
-        }
-    }
-
-    var addedMessages = {};
-
-    function addMessage(m) {
-        addedMessages[m.text] = true;
-        var sameUser = false;
-        var sameUserTopic = false;
-        if (!messageRoll.is(':empty')) {
-            var lastItem = messageRoll.children().last();
-            if (parseInt(lastItem.attr("data-user")) == m.user.id) {
-                sameUser = true;
-                sameUserTopic = lastItem.hasClass("topic")
-            }
-        }
-        var messageItem = $("<li class='clearfix'>").attr("data-user", m.user.id);
-        if ((!m.topicId && !m.toUser) || sameUserTopic) {
-            messageItem.addClass("topic");
-        }
-        if (!sameUser) {
-            messageItem.append($("<img class='img avatar pull-left'>").attr("src", m.user.avatar));
-        } else {
-            messageItem.addClass("same-user");
-        }
-        var info = $("<div class='info'>")
-            .append($("<span class='author'>").text(m.user.name));
-        info.append("&nbsp;&nbsp;").append($("<span class='pretty date'>").
-            text($.format.prettyDate(m.date)).attr("data-date", m.date));
-
-        var details = $("<div class='details'>");
-        if (!sameUser) {
-            details.append(info);
-        }
-        var text = $("<div class='text'>").html(linkify(m.text));
-        imagify(text);
-        emojify.run(text[0]);
-        details.append(text);
-        messageItem.append(details);
-        messageItem.appendTo(messageRoll);
-        messageRoll.scrollTop(messageRoll[0].scrollHeight);
-    }
-
-    function onGroupSelection() {
-        selectedTopic = null;
-        if (selectedGroup) {
-            newTopicButton.addClass("enabled");
-        } else {
-            newTopicButton.removeClass("enabled");
-            newTopicButton.removeClass("selected");
-        }
-        if (!selectedUser) {
-            topicBar.show();
-            messageBar.css({
-                left: "550px"
             });
-            $.ajax({
-                type: "GET",
-                url: "/json/user/" + userId + "/topics" + (selectedGroup ? "/" + selectedGroup : ""),
-                success: function (topics) {
-                    topicPane.html("");
-                    topics.forEach(function (t) {
-                        addTopic(t)
-                    });
-                    if (selectedTopic == null) {
-                        if (newTopic) {
-                            newTopicButton.addClass("selected");
-                        }
-                        input.attr("placeholder", "Topic…");
-                    }
-                },
-                fail: function (e) {
-                    console.error(e);
-                }
-            })
-        } else {
-            topicBar.hide();
-            messageBar.css({
-                left: "200px"
+            $('#new-group').each(function () {
+                $(this).popover('hide');
             });
-            var user = users.filter(function (u) { return u.id == selectedUser })[0];
-            messageRollHeader.html("");
-            messageRoll.html("");
-            var userHeaderItem = $("<li class='clearfix topic'>").attr("data-user", user.id);
-            userHeaderItem.append($("<img class='img avatar pull-left'>").attr("src", user.avatar));
-            var message = $("<div class='details'>").append($("<div class='info'>")
-                    .append($("<span class='user'>").text(user.name)));
-            userHeaderItem.append(message);
-            messageRollHeader.append(userHeaderItem);
-            $.ajax({
-                type: "GET",
-                url: "/json/user/" + userId + "/direct/" + selectedUser,
-                success: function (messages) {
-                    messages.forEach(function (m) {
-                        addMessage(m);
-                    });
-                },
-                fail: function (e) {
-                    console.error(e);
-                }
-            })
+            React.findDOMNode(this.refs.groupName).value = "";
         }
-    }
+    },
 
-    function onTopicSelection() {
-        if (selectedTopic) {
-            newTopicButton.removeClass("selected");
-            input.attr("placeholder", "Message…");
-            $.ajax({
-                type: "GET",
-                url: "/json/user/" + userId + "/messages/" + selectedTopic,
-                success: function (messages) {
-                    messageRoll.html("");
-                    messages.forEach(function (m) {
-                        addMessage(m);
-                    });
-                },
-                fail: function (e) {
-                    console.error(e);
-                }
-            })
-        } else if (!selectedUser) {
-            messageRollHeader.html("");
-            messageRoll.html("");
+    onKeyPress: function (event) {
+        if (event.which == 13) {
+            this.createGroup();
         }
-        if (selectedGroup) {
-            if (selectedTopic) {
-                newTopic = false;
-                newMessage = true;
-            } else {
-                newTopic = true;
-                newMessage = false;
-            }
-        } else {
-            if (selectedTopic) {
-                newTopic = false;
-                newMessage = true;
-            } else {
-                newTopic = false;
-                newMessage = false;
-            }
-        }
-        newDirectMessage = selectedUser;
-        if (selectedGroup || selectedTopic || selectedUser) {
-            input.addClass("enabled");
-            input.show();
-            input.focus();
-        } else {
-            input.hide();
-            input.removeClass("enabled");
-        }
-    }
+    },
 
-    if (window.WebSocket) {
-        var webSocket = new WebSocket(webSocketUrl);
-        webSocket.onmessage = function (message) {
-            if (message.data != JSON.stringify("Tack")) {
-                var d = JSON.parse(message.data);
-                if (d.topicId) {
-                    if (selectedTopic == d.topicId && !addedMessages[d.text]) {
-                        addMessage(d);
-                    }
-                } else if (d.newGroup && !addedGroups[d.newGroup.name]) {
-                    addGroup(d.newGroup, true)
-                } else if (d.newUser) {
-                    users.push(d.newUser);
-                    addUser(d.newUser);
-                } else if (!d.toUser) {
-                    if (selectedGroup == d.groupId && !addedTopics[d.id]) {
-                        addTopic({topic: d}, true);
-                    } else if ((!selectedGroup || (selectedTopic && selectedTopicGroup == d.groupId)) && !addedTopics[d.id]) {
-                        addTopic({topic: d}, true);
-                    }
-                } else {
-                    if ((selectedUser == d.user.id || selectedUser == d.toUser.id) && !addedMessages[d.text]) {
-                        addMessage(d);
-                    }
-                }
-            }
-        };
-        webSocket.onopen = function () {
-            setInterval(function () {
-                webSocket.send(JSON.stringify("Tick"));
-            }, 10000);
-        };
-        webSocket.onclose = function (event) {
-            console.error("Websocket is closed: " + event)
-        };
-        webSocket.onerror = function (error) {
-            console.error("Websocket error: " + error);
-        };
+    render: function () {
+        return (
+            <div className="new-group-popover">
+                <input ref="groupName" type="text" className="group-name" placeholder="Name..."
+                       onKeyPress={this.onKeyPress}/>
+                <div className="group-label">Must be 21 characters or less. No spaces or periods.</div>
+                <a className='btn btn-default btn-sm' onClick={this.createGroup}>Create group</a>
+            </div>
+        );
     }
-
-    emojify.setConfig({
-        emojify_tag_type : 'div',           // Only run emojify.js on this element
-        only_crawl_id    : null,            // Use to restrict where emojify.js applies
-        img_dir          : 'assets/emoji/images/basic',  // Directory for emoji images
-        ignored_tags     : {                // Ignore the following tags
-            'SCRIPT'  : 1,
-            'TEXTAREA': 1,
-            'A'       : 1,
-            'PRE'     : 1,
-            'CODE'    : 1
-        }
-    });
-    emojify.run();
 });
 
-var __urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+var NewGroupButton = React.createClass({
+    onClick: function () {
+    },
 
-function linkify(text) {
-    return text.replace(__urlRegex, function (match) {
-        return '<a class="linkified" href="'+match+'" target="_blank">'+match+'</a>';
-    });
-}
+    componentDidMount: function () {
+        var self = this;
+        $(this.getDOMNode()).popover({
+            react: true,
+            content: <NewGroupDialog/>
+        }).on('shown.bs.popover', function () {
+            $(".new-group-popover .group-name").focus();
+        });
+    },
 
-function imagify(text) {
-    $(text).find(".linkified").each(function (i, a) {
-        var _a = a;
-        var img = $("<img>");
-        img.load(function () {
-            $(_a).replaceWith($("<a target='_blank'>").append($(img)).attr("href", _a.href));
-        }).attr("src", _a.href).addClass("").
-            attr("class", "preview");
-    })
-}
+    render: function () {
+        return (
+            <a id="new-group" onClick={self.onClick}>New group</a>
+        );
+    }
+});
 
-window.setInterval(function() {
-    $(".pretty").map(function() {
-        $(this).text($.format.prettyDate(parseInt($(this).attr("data-date"))))
-    })
-}, 1000 * 60);
+var GroupPane = React.createClass({
+    getInitialState: function () {
+        return {
+            groups: global.groups,
+            users: global.users.filter(function (u) {
+                return u.id != global.user.id
+            }),
+            selectedGroup: undefined,
+            selectedUser: undefined
+        };
+    },
+
+    componentWillMount: function () {
+        var self = this;
+        $(document).on("newGroup", function (event, group) {
+            global.groups.push(group);
+            if (self.state.groups.filter(function (g) {
+                    return g.id == group.id
+                }).length == 0) {
+                self.setState(React.addons.update(self.state, {
+                    groups: {
+                        $push: [group]
+                    }
+                }));
+            }
+        });
+        $(document).on("newUser", function (event, user) {
+            global.users.push(user);
+            if (self.state.users.filter(function (u) {
+                    return u.id == user.id
+                }).length == 0) {
+                self.setState(React.addons.update(self.state, {
+                    users: {
+                        $push: [user]
+                    }
+                }));
+            }
+        });
+        $(document).on("selectedGroup", function (event, selectedGroup) {
+            self.setState({selectedGroup: selectedGroup});
+            self.setState({selectedUser: undefined});
+        });
+        $(document).on("selectedUser", function (event, selectedUser) {
+            self.setState({selectedUser: selectedUser});
+            self.setState({selectedGroup: undefined});
+        });
+    },
+
+    componentDidMount: function () {
+        $(document).trigger("selectedGroup", this.state.selectedGroup);
+    },
+
+    onGroupClick: function (group) {
+        var selectedGroup = group ? group : undefined;
+        $(document).trigger("selectedGroup", selectedGroup);
+    },
+
+    onUserClick: function (user) {
+        $(document).trigger("selectedUser", user);
+    },
+
+    render: function () {
+        var self = this;
+        var groupItems = self.state.groups.map(function (group) {
+            var groupClass = (self.state.selectedGroup && self.state.selectedGroup.id == group.id) ? "selected" : "";
+            return (
+                <li data-group={group.id} className={groupClass}
+                    onClick={self.onGroupClick.bind(self, group)} key={group.id}>
+                    <span className="group-header">#</span>
+                    <span>{group.name}</span>
+                </li>
+            );
+        });
+
+        var userItems = self.state.users.map(function (user) {
+            var userClass = (self.state.selectedUser && self.state.selectedUser.id == user.id) ? "selected" : "";
+            return (
+                <li data-user={user.id} className={userClass}
+                    onClick={self.onUserClick.bind(self, user)} key={user.id}>
+                    <span>{user.name}</span>
+                </li>
+            );
+        });
+
+        var allGroupsClass = !self.state.selectedGroup && !self.state.selectedUser ? "selected" : "";
+
+        return (
+            <ul id="group-pane">
+                <li id="all-groups" className={allGroupsClass}
+                    onClick={self.onGroupClick.bind(self, undefined)}>
+                    <span>All groups</span></li>
+                {groupItems}
+                <NewGroupButton/>
+                {userItems}
+            </ul>
+        );
+    }
+});
+
+var SideBar = React.createClass({
+    render: function () {
+        return (
+            <div id="side-bar">
+                <div id="header">JetBrains</div>
+                <GroupPane/>
+            </div>
+        );
+    }
+});
+
+var SearchPane = React.createClass({
+    render: function () {
+        return (
+            <div id="search-pane" className="form-inline">
+                <div className="btn-group">
+                    <input id="search" type="text" className="search-query"
+                           placeholder="Search people, groups, topics, and messages"
+                           autoComplete="off"/></div>
+            </div>
+        );
+    }
+});
+
+var NewTopicPane = React.createClass({
+    getInitialState: function () {
+        return {
+            enabled: false,
+            selected: true
+        };
+    },
+
+    onClick: function () {
+        if (this.state.enabled) {
+            $(document).trigger("selectedTopic", undefined);
+        }
+    },
+
+    componentWillMount: function () {
+        var self = this;
+        $(document).on("selectedGroup", function (event, selectedGroup) {
+            self.setState({enabled: selectedGroup !== undefined});
+        });
+        $(document).on("selectedTopic", function (event, selectedTopic) {
+            self.setState({selected: self.state.enabled && selectedTopic === undefined});
+        });
+    },
+
+    render: function () {
+        var newTopicClass = ((this.state.enabled ? "enabled" : "") + " " + (this.state.selected ? "selected" : "")).trim();
+        return (
+            <div id="new-topic-pane">
+                <a id="new-topic" className={newTopicClass}
+                   onClick={this.onClick}>
+                    <span id="plus"/>
+                    <span>New topic</span>
+                </a>
+            </div>
+        );
+    }
+});
+
+var TopicItem = React.createClass({
+    onClick: function (topic) {
+        $(document).trigger("selectedTopic", topic);
+    },
+
+    render: function () {
+        var self = this;
+        var topicClass = self.props.selected ? "selected" : "";
+        var prettyDate = $.format.prettyDate(new Date(self.props.topic.date));
+        var groupRef;
+        if (self.props.showGroup) {
+            groupRef = <span>in #<span
+                className="group">{self.props.topic.group.name}</span></span>
+        }
+        return (
+            <li data-topic={self.props.topic.id} className={topicClass}
+                onClick={self.onClick.bind(self, self.props.topic)}>
+                <div className="text">{self.props.topic.text}</div>
+                <div className="info">
+                    <span className="author">{self.props.topic.user.name}</span>
+                    &nbsp;
+                    {groupRef}
+                    &nbsp;
+                        <span className="pretty date"
+                              data-date={self.props.topic.date}>{prettyDate}</span>
+                </div>
+            </li>
+        );
+    }
+});
+
+var TopicPane = React.createClass({
+    getInitialState: function () {
+        return {
+            topics: [],
+            selectedTopic: undefined,
+            selectedGroup: undefined
+        };
+    },
+
+    componentWillMount: function () {
+        var self = this;
+        $(document).on("selectedGroup", function (event, group) {
+            self.setState({selectedGroup: group});
+            $.ajax({
+                type: "GET",
+                url: "/json/user/" + global.user.id + "/topics" +
+                (group ? "/" + group.id : ""),
+                success: function (topics) {
+                    self.setState({topics: topics});
+                    if (topics.length > 0) {
+                        $(document).trigger("selectedTopic", topics[0].topic);
+                    } else {
+                        $(document).trigger("selectedTopic", undefined);
+                    }
+                },
+                fail: function (e) {
+                    console.error(e);
+                }
+            })
+        });
+        $(document).on("selectedTopic", function (event, topic) {
+            self.setState({selectedTopic: topic});
+        });
+        $(document).on("newTopic", function (event, newTopic) {
+            if ((!self.state.selectedGroup || self.state.selectedGroup.id ==
+                newTopic.group.id) && self.state.topics.filter(function (m) {
+                    return m.topic.id == newTopic.id
+                }).length == 0) {
+                self.setState(React.addons.update(self.state, {
+                    topics: {
+                        $splice: [[0, 0, {topic: newTopic}]]
+                    }
+                }));
+                $(document).trigger("selectedTopic", newTopic);
+            }
+        });
+    },
+
+    render: function () {
+        var self = this;
+        var topicItems = self.state.topics.map(function (t) {
+            return (
+                <TopicItem topic={t.topic}
+                           selected={self.state.selectedTopic &&
+                           self.state.selectedTopic.id == t.topic.id}
+                           showGroup={!self.state.selectedGroup}
+                           key={t.topic.id}/>
+            )
+        });
+
+        return (
+            <ul id="topic-pane">
+                {topicItems}
+            </ul>
+        );
+    }
+});
+
+var TopicBar = React.createClass({
+    getInitialState: function () {
+        return {
+            selectedUser: undefined
+        };
+    },
+
+    componentWillMount: function () {
+        var self = this;
+        $(document).on("selectedUser", function (event, user) {
+            self.setState({selectedUser: user});
+        });
+        $(document).on("selectedGroup", function (event, group) {
+            self.setState({selectedUser: undefined});
+        });
+    },
+
+    render: function () {
+        return (
+            <div id="topic-bar" style={{display: this.state.selectedUser ? "none" : ""}}>
+                <SearchPane/>
+                <NewTopicPane/>
+                <TopicPane/>
+            </div>
+        );
+    }
+});
+
+var MessageItem = React.createClass({
+    render: function () {
+        var self = this;
+        var className = ("clearfix" + " " + (self.props.topic ? "topic" : "") + " " + (self.props.sameUser ? "same-user" : "")).trim();
+        var avatar;
+        var info;
+        if (!self.props.sameUser) {
+            var user = global.users.filter(function (u) {
+                return u.id == self.props.message.user.id
+            })[0];
+            avatar = <img className="img avatar pull-left" src={user.avatar}/>;
+            var prettyDate = $.format.prettyDate(new Date(self.props.message.date));
+            info = <div className="info">
+                <span className="author">{user.name}</span>
+                &nbsp;
+                <span className="pretty date"
+                      data-date={self.props.message.date}>{prettyDate}</span>
+            </div>;
+        }
+        var urlMatch = self.props.message.text.match(__urlRegex);
+        var text = urlMatch ? <a className="imagify" href={urlMatch[0]} target="__blank">{urlMatch[0]}</a> : self.props.message.text;
+        return (
+            <li className={className} data-user={self.props.message.user.id}>
+                {avatar}
+                <div className="details">
+                    {info}
+                    <div className="text emojify">{text}</div>
+                </div>
+            </li>
+        );
+    }
+});
+
+var MessageBar = React.createClass({
+    getInitialState: function () {
+        return {
+            messages: [],
+            selectedGroup: undefined,
+            selectedTopic: undefined,
+            selectedUser: undefined
+        };
+    },
+
+    componentWillMount: function () {
+        var self = this;
+        $(document).on("selectedGroup", function (event, group) {
+            self.setState({selectedGroup: group, selectedUser: undefined});
+        });
+        $(document).on("selectedTopic", function (event, topic) {
+            React.findDOMNode(self.refs.input).focus();
+            if (topic) {
+                $.ajax({
+                    type: "GET",
+                    url: "/json/user/" + global.user.id + "/messages/" + topic.id,
+                    success: function (messages) {
+                        self.setState({
+                            messages: messages,
+                            selectedTopic: topic,
+                            selectedUser: undefined
+                        });
+                    },
+                    fail: function (e) {
+                        console.error(e);
+                    }
+                })
+            } else {
+                self.setState({messages: [], selectedTopic: undefined, selectedUser: undefined});
+            }
+        });
+        $(document).on("selectedUser", function (event, user) {
+            React.findDOMNode(self.refs.input).focus();
+            $.ajax({
+                type: "GET",
+                url: "/json/user/" + global.user.id + "/direct/" + user.id,
+                success: function (messages) {
+                    self.setState({
+                        messages: messages,
+                        selectedTopic: undefined,
+                        selectedGroup: undefined,
+                        selectedUser: user
+                    });
+                },
+                fail: function (e) {
+                    console.error(e);
+                }
+            })
+        });
+        $(document).on("newMessage", function (event, newMessage) {
+            if ((self.state.selectedTopic && self.state.selectedTopic.id ==
+                newMessage.topicId || self.state.selectedUser && (self.state.selectedUser.id == newMessage.toUser.id &&
+                global.user.id == newMessage.user.id || self.state.selectedUser.id == newMessage.user.id &&
+                global.user.id == newMessage.toUser.id)) && self.state.messages.filter(function (m) {
+                    return m.text == newMessage.text
+                }).length == 0) {
+                // TODO: Preserve message order
+                self.setState(React.addons.update(self.state, {
+                    messages: {
+                        $push: [newMessage]
+                    }
+                }));
+            }
+        });
+    },
+
+    componentDidUpdate: function() {
+        var self = this;
+        // Wait until images are loaded
+        window.setInterval(function () {
+            var messageRoll = $(React.findDOMNode(self.refs.messageRoll));
+            messageRoll.scrollTop(messageRoll[0].scrollHeight);
+        }, 100);
+    },
+
+    onInputKeyPress: function (event) {
+        var self = this;
+        var input = React.findDOMNode(self.refs.input);
+        if (event.which == 13 && input.value.trim()) {
+            if (self.state.selectedUser) {
+                var user = global.users.filter(function (u) { return u.id == global.user.id })[0];
+                var toUser = global.users.filter(function (u) { return u.id == self.state.selectedUser.id })[0];
+                var newDirectMessage = {
+                    "user": user,
+                    "toUser": toUser,
+                    "date": new Date().getTime(),
+                    "text": input.value
+                };
+                this.setState(React.addons.update(self.state, {
+                    messages: {
+                        $push: [newDirectMessage]
+                    }
+                }));
+                $.ajax({
+                    type: "POST",
+                    url: "/json/direct/add",
+                    data: JSON.stringify(newDirectMessage),
+                    contentType: "application/json",
+                    success: function (id) {
+                    },
+                    fail: function (e) {
+                        console.error(e);
+                    }
+                });
+            } else {
+                var newMessage = {
+                    "user": {
+                        "id": global.user.id,
+                        "name": global.user.name,
+                        "avatar": global.user.avatar
+                    },
+                    "date": new Date().getTime(),
+                    "groupId": self.state.selectedTopic ? self.state.selectedTopic.group.id : self.state.selectedGroup.id,
+                    "text": input.value
+                };
+                if (self.state.selectedTopic) {
+                    newMessage.topicId = self.state.selectedTopic.id;
+                    this.setState(React.addons.update(self.state, {
+                        messages: {
+                            $push: [newMessage]
+                        }
+                    }));
+                }
+                $.ajax({
+                    type: "POST",
+                    url: self.state.selectedTopic ? "/json/comment/add" : "/json/topic/add",
+                    data: JSON.stringify(newMessage),
+                    contentType: "application/json",
+                    success: function (id) {
+                        var newTopic = {
+                            id: id,
+                            group: {id: newMessage.groupId},
+                            text: newMessage.text,
+                            date: new Date().getTime(),
+                            user: global.user
+                        };
+                        if (!self.state.selectedTopic) {
+                            $(document).trigger("newTopic", newTopic);
+                        }
+                    },
+                    fail: function (e) {
+                        console.error(e);
+                    }
+                });
+            }
+            input.value = "";
+            event.preventDefault();
+        }
+    },
+
+    render: function () {
+        var self = this;
+        var userId;
+        var topic = self.state.selectedUser === undefined;
+        var sameUser = false;
+        var messageItems = self.state.messages.map(function (message, index) {
+            if (index == 0) {
+                userId = message.user.id;
+            } else {
+                if (message.user.id != userId) {
+                    sameUser = false;
+                    topic = false;
+                    userId = message.user.id;
+                } else {
+                    sameUser = true;
+                }
+            }
+            var key = topic ? message.topicId + "_" + message.id : message.id;
+            return (
+                <MessageItem message={message} topic={topic} sameUser={sameUser}
+                             key={key}/>
+            )
+        });
+        var inputPlaceHolder = self.state.selectedTopic ?
+            "Message..." : "Topic...";
+        var userHeader;
+        if (self.state.selectedUser) {
+            userHeader = <div id="message-roll-header">
+                <li className="clearfix topic">
+                    <img className="img avatar pull-left" src={self.state.selectedUser.avatar} />
+                    <div className="details">
+                        <div className="info">
+                            <span className="user">{self.state.selectedUser.name}</span>
+                        </div>
+                    </div>
+                </li>
+            </div>
+        }
+        return (
+            // TODO: Replace logic with className
+            <div id="message-bar" style={{left: this.state.selectedUser ? "200px" : "550px"}}>
+                <div id="message-pane">
+                    <div id="message-roll" ref="messageRoll">
+                        {messageItems}
+                    </div>
+                    {userHeader}
+                </div>
+                <textarea id="input" ref="input" autoComplete="off"
+                          placeholder={inputPlaceHolder} className="enabled"
+                          onKeyPress={self.onInputKeyPress}
+                />
+            </div>
+        );
+    }
+});
+
+var App = React.createClass({
+    openSocket: function () {
+        var self = this;
+        var socket = new WebSocket(global.webSocketUrl);
+        socket.onmessage = function (message) {
+            if (message.data != JSON.stringify("Tack")) {
+                var data = JSON.parse(message.data);
+                if (data.topicId) {
+                    $(document).trigger("newMessage", data);
+                } else if (data.newGroup) {
+                    $(document).trigger("newGroup", data.newGroup);
+                } else if (data.newUser) {
+                    $(document).trigger("newUser", data.newUser);
+                } else if (!data.toUser) {
+                    $(document).trigger("newTopic", data);
+                } else {
+                    $(document).trigger("newMessage", data);
+                }
+            }
+        };
+        socket.onopen = function () {
+            setInterval(function () {
+                socket.send(JSON.stringify("Tick"));
+            }, 10000);
+        };
+        socket.onclose = function (event) {
+            console.error("Reopenning websocket");
+            setTimeout(function () {
+                self.openSocket();
+            }, 1000);
+        };
+        socket.onerror = function (error) {
+            console.error("websocket error: " + error);
+        };
+    },
+
+    componentWillMount: function () {
+        if (window.WebSocket) {
+            this.openSocket();
+        }
+    },
+
+    render: function () {
+        return (
+            <div>
+                <SideBar/>
+                <TopicBar/>
+                <MessageBar/>
+            </div>
+        );
+    }
+});
+
+React.render(<App/>, document.getElementById("app"));

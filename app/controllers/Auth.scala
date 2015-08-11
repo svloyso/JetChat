@@ -5,6 +5,9 @@ import java.security.cert.X509Certificate
 import javax.net.ssl._
 import javax.ws.rs.client.ClientBuilder
 
+import actors.ClusterEvent
+import akka.contrib.pattern.DistributedPubSubExtension
+import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import com.intellij.hub.auth.request.AuthRequestParameter.RequestCredentials
 import jetbrains.jetpass.client.accounts.BaseAccountsClient
 import jetbrains.jetpass.client.hub.HubClient
@@ -30,6 +33,7 @@ object Auth extends Controller {
   lazy val HUB_MOCK_NAME = current.configuration.getString("hub.mock.user.name").getOrElse(System.getProperty("hub.mock.user.name", ""))
   lazy val HUB_MOCK_AVATAR = current.configuration.getString("hub.mock.user.avatar").getOrElse(System.getProperty("hub.mock.user.avatar", ""))
 
+  val mediator = DistributedPubSubExtension(Akka.system).mediator
 
   def hub(implicit request: RequestHeader): (HubClient, OAuth2Client, BaseAccountsClient, OAuth2CodeFlow) = hubP(RequestCredentials.DEFAULT)
 
@@ -81,11 +85,11 @@ object Auth extends Controller {
         case None =>
           dao.users += new User(login = hubUser.getLogin, name = hubUser.getName, avatar = Option(hubUser.getAvatar.getUrl))
           val u = dao.users.filter(_.login === hubUser.getLogin).first
-          Akka.system.actorSelection("/user/*.*") ! JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(u.id), "name" -> JsString(u.name), "login" -> JsString(u.login)) ++
+          mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(u.id), "name" -> JsString(u.name), "login" -> JsString(u.login)) ++
             (u.avatar match {
               case Some(value) => Seq("avatar" -> JsString(value))
               case None => Seq()
-            }))))
+            }))))))
         case _ =>
       }
     }

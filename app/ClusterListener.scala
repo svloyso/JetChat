@@ -49,6 +49,7 @@ class ClusterListener extends Actor with ActorLogging {
         member.address, previousStatus)
     case _: MemberEvent => // ignore
     case event: ClusterEvent =>
+      Logger.debug("Received a cluster event: " + event)
       Akka.system.actorSelection(s"/user/${event.userMask}.*") ! event.message
   }
 }
