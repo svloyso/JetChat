@@ -1,9 +1,60 @@
-var NewGroup = React.createClass({
-    onClick: function() {
-
+var NewGroupDialog = React.createClass({
+    createGroup: function () {
+        var groupName = React.findDOMNode(this.refs.groupName).value.trim();
+        if (groupName && !/\s/.test(groupName)) {
+            $.ajax({
+                type: "POST",
+                url: "/json/group/add",
+                data: JSON.stringify(groupName),
+                contentType: "application/json",
+                success: function (group) {
+                    $(document).trigger("newGroup", group);
+                    $(document).trigger("selectedGroup", group);
+                },
+                fail: function (e) {
+                    console.error(e);
+                }
+            });
+            $('#new-group').each(function () {
+                $(this).popover('hide');
+            });
+            React.findDOMNode(this.refs.groupName).value = "";
+        }
     },
 
-    render: function() {
+    onKeyPress: function (event) {
+        if (event.which == 13) {
+            this.createGroup();
+        }
+    },
+
+    render: function () {
+        return (
+            <div className="new-group-popover">
+                <input ref="groupName" type="text" className="group-name" placeholder="Name..."
+                       onKeyPress={this.onKeyPress}/>
+                <div className="group-label">Must be 21 characters or less. No spaces or periods.</div>
+                <a className='btn btn-default btn-sm' onClick={this.createGroup}>Create group</a>
+            </div>
+        );
+    }
+});
+
+var NewGroupButton = React.createClass({
+    onClick: function () {
+    },
+
+    componentDidMount: function () {
+        var self = this;
+        $(this.getDOMNode()).popover({
+            react: true,
+            content: <NewGroupDialog/>
+        }).on('shown.bs.popover', function () {
+            $(".new-group-popover .group-name").focus();
+        });
+    },
+
+    render: function () {
         return (
             <a id="new-group" onClick={self.onClick}>New group</a>
         );
@@ -18,7 +69,7 @@ var GroupPane = React.createClass({
         };
     },
 
-    componentWillMount: function() {
+    componentWillMount: function () {
         var self = this;
         $(document).on("newGroup", function (event, newGroup) {
             if (self.state.groups.filter(function (g) {
@@ -30,7 +81,10 @@ var GroupPane = React.createClass({
                     }
                 }));
             }
-        })
+        });
+        $(document).on("selectedGroup", function(event, selectedGroup) {
+            self.setState({selectedGroup: selectedGroup});
+        });
     },
 
     componentDidMount: function () {
@@ -39,7 +93,6 @@ var GroupPane = React.createClass({
 
     onClick: function (group) {
         var selectedGroup = group ? group : undefined;
-        this.setState({selectedGroup: selectedGroup});
         $(document).trigger("selectedGroup", selectedGroup);
     },
 
@@ -64,7 +117,7 @@ var GroupPane = React.createClass({
                     onClick={self.onClick.bind(self, undefined)}>
                     <span>All groups</span></li>
                 {groupItems}
-                <NewGroup/>
+                <NewGroupButton/>
             </ul>
         );
     }
@@ -199,7 +252,7 @@ var TopicPane = React.createClass({
         $(document).on("newTopic", function (event, newTopic) {
             if ((!self.state.selectedGroup || self.state.selectedGroup.id ==
                 newTopic.group.id) && self.state.topics.filter(function (m) {
-                    return m.id == newTopic.id
+                    return m.topic.id == newTopic.id
                 }).length == 0) {
                 self.setState(React.addons.update(self.state, {
                     topics: {
@@ -414,7 +467,7 @@ var MessageBar = React.createClass({
 });
 
 var App = React.createClass({
-    openSocket: function() {
+    openSocket: function () {
         var self = this;
         var socket = new WebSocket(global.webSocketUrl);
         socket.onmessage = function (message) {
@@ -448,7 +501,7 @@ var App = React.createClass({
         };
     },
 
-    componentWillMount: function() {
+    componentWillMount: function () {
         if (window.WebSocket) {
             this.openSocket();
         }

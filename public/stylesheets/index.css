@@ -138,8 +138,8 @@ a:hover {
 
 #group-pane #new-group {
     display: inline-block;
-    margin-top: 5px;
-    padding: 5px 20px 15px;
+    margin: 5px 0 10px;
+    padding: 5px 20px 5px;
     font-size: 12px;
 }
 
