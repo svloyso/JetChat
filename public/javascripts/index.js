@@ -1,3 +1,138 @@
+var ChatActions = Reflux.createActions([
+    'selectGroup',
+    'selectTopic',
+    'selectUser',
+    'newGroup',
+    'newTopic',
+    'newMessage'
+]);
+
+var ChatStore = Reflux.createStore({
+    listenables: [ChatActions],
+
+    init: function () {
+        this.state = this.getInitialState();
+        this.onSelectGroup();
+    },
+
+    getInitialState: function () {
+        return {
+            users: global.users,
+            groups: global.groups,
+            topics: [],
+            messages: [],
+            selectedGroup: undefined,
+            selectedTopic: undefined,
+            selectedUser: undefined
+        }
+    },
+
+    onSelectGroup: function (group) {
+        this.state.selectedGroup = group;
+        this.state.selectedUser = undefined;
+        $.ajax({
+            context: this,
+            type: "GET",
+            url: "/json/user/" + global.user.id + "/topics" +
+            (group ? "/" + group.id : ""),
+            success: function (topics) {
+                this.state.topics = topics;
+                if (topics.length > 0) {
+                    this.onSelectTopic(topics[0].topic);
+                } else {
+                    this.onSelectTopic();
+                }
+            },
+            fail: function (e) {
+                console.error(e);
+            }
+        });
+    },
+
+    onSelectTopic: function (topic) {
+        this.state.selectedTopic = topic;
+        this.state.selectedUser = undefined;
+        if (topic) {
+            $.ajax({
+                context: this,
+                type: "GET",
+                url: "/json/user/" + global.user.id + "/messages/" + topic.id,
+                success: function (messages) {
+                    this.state.messages = messages;
+                    this.trigger(this.state);
+                },
+                fail: function (e) {
+                    console.error(e);
+                }
+            })
+        } else {
+            this.state.messages = [];
+            this.trigger(this.state);
+        }
+    },
+
+    onSelectUser: function (user) {
+        this.state.selectedUser = user;
+        this.state.selectedGroup = undefined;
+        this.state.selectedTopic = undefined;
+        $.ajax({
+            context: this,
+            type: "GET",
+            url: "/json/user/" + global.user.id + "/direct/" + user.id,
+            success: function (messages) {
+                this.state.messages = messages;
+                this.trigger(this.state);
+            },
+            fail: function (e) {
+                console.error(e);
+            }
+        });
+    },
+
+    onNewGroup: function (group, select) {
+        if (this.state.groups.filter(function (g) { return g.id == group.id }).length == 0) {
+            global.groups.push(group);
+            this.state.groups.push(group);
+            if (select) {
+                this.onSelectGroup(group);
+            } else {
+                this.trigger(this.state);
+            }
+        } else if (select) {
+            this.onSelectGroup(group);
+        }
+    },
+
+    onNewTopic: function (topic, select) {
+        if ((!this.state.selectedGroup || this.state.selectedGroup.id ==
+            topic.group.id) && this.state.topics.filter(function (m) {
+                return m.topic.id == topic.id
+            }).length == 0) {
+            this.state.topics.splice(0, 0, {topic: topic});
+            if (select) {
+                this.onSelectTopic(topic);
+            } else {
+                this.trigger(this.state);
+            }
+        } else if (select) {
+            this.onSelectTopic(topic);
+        }
+    },
+
+    onNewMessage: function (message) {
+        if ((this.state.selectedTopic && this.state.selectedTopic.id ==
+            message.topicId || this.state.selectedUser && (this.state.selectedUser.id == message.toUser.id &&
+            global.user.id == message.user.id || this.state.selectedUser.id == message.user.id &&
+            global.user.id == message.toUser.id)) && this.state.messages.filter(function (m) {
+                return m.text == message.text
+            }).length == 0) {
+            // TODO: Preserve message order
+            this.state.messages.push(message);
+            this.trigger(this.state);
+        }
+    }
+});
+
 var NewGroupDialog = React.createClass({
     createGroup: function () {
         var groupName = React.findDOMNode(this.refs.groupName).value.trim();
@@ -8,8 +143,7 @@ var NewGroupDialog = React.createClass({
                 data: JSON.stringify(groupName),
                 contentType: "application/json",
                 success: function (group) {
-                    $(document).trigger("newGroup", group);
-                    $(document).trigger("selectedGroup", group);
+                    ChatActions.newGroup(group, true);
                 },
                 fail: function (e) {
                     console.error(e);
@@ -41,91 +175,37 @@ var NewGroupDialog = React.createClass({
 });
 
 var NewGroupButton = React.createClass({
-    onClick: function () {
-    },
-
     componentDidMount: function () {
-        var self = this;
         $(this.getDOMNode()).popover({
             react: true,
             content: <NewGroupDialog/>
-        }).on('shown.bs.popover', function () {
+        }).on("shown.bs.popover", function () {
             $(".new-group-popover .group-name").focus();
         });
     },
 
     render: function () {
         return (
-            <a id="new-group" onClick={self.onClick}>New group</a>
+            <a id="new-group" onClick={this.onClick}>New group</a>
         );
     }
 });
 
 var GroupPane = React.createClass({
-    getInitialState: function () {
-        return {
-            groups: global.groups,
-            users: global.users.filter(function (u) {
-                return u.id != global.user.id
-            }),
-            selectedGroup: undefined,
-            selectedUser: undefined
-        };
-    },
-
-    componentWillMount: function () {
-        var self = this;
-        $(document).on("newGroup", function (event, group) {
-            if (self.state.groups.filter(function (g) {
-                    return g.id == group.id
-                }).length == 0) {
-                global.groups.push(group);
-                self.setState(React.addons.update(self.state, {
-                    groups: {
-                        $push: [group]
-                    }
-                }));
-            }
-        });
-        $(document).on("newUser", function (event, user) {
-            global.users.push(user);
-            if (self.state.users.filter(function (u) {
-                    return u.id == user.id
-                }).length == 0) {
-                self.setState(React.addons.update(self.state, {
-                    users: {
-                        $push: [user]
-                    }
-                }));
-            }
-        });
-        $(document).on("selectedGroup", function (event, selectedGroup) {
-            self.setState({selectedGroup: selectedGroup});
-            self.setState({selectedUser: undefined});
-        });
-        $(document).on("selectedUser", function (event, selectedUser) {
-            self.setState({selectedUser: selectedUser});
-            self.setState({selectedGroup: undefined});
-        });
-    },
-
-    componentDidMount: function () {
-        $(document).trigger("selectedGroup", this.state.selectedGroup);
-    },
+    mixins: [Reflux.connect(ChatStore, 'store')],
 
     onGroupClick: function (group) {
-        var selectedGroup = group ? group : undefined;
-        $(document).trigger("selectedGroup", selectedGroup);
+        ChatActions.selectGroup(group);
     },
 
     onUserClick: function (user) {
-        $(document).trigger("selectedUser", user);
+        ChatActions.selectUser(user);
     },
 
     render: function () {
         var self = this;
-        var groupItems = self.state.groups.map(function (group) {
-            var groupClass = (self.state.selectedGroup && self.state.selectedGroup.id == group.id) ? "selected" : "";
+        var groupItems = self.state.store.groups.map(function (group) {
+            var groupClass = (self.state.store.selectedGroup && self.state.store.selectedGroup.id == group.id) ? "selected" : "";
             return (
                 <li data-group={group.id} className={groupClass}
                     onClick={self.onGroupClick.bind(self, group)} key={group.id}>
@@ -135,8 +215,8 @@ var GroupPane = React.createClass({
             );
         });
 
-        var userItems = self.state.users.map(function (user) {
-            var userClass = (self.state.selectedUser && self.state.selectedUser.id == user.id) ? "selected" : "";
+        var userItems = self.state.store.users.map(function (user) {
+            var userClass = (self.state.store.selectedUser && self.state.store.selectedUser.id == user.id) ? "selected" : "";
             return (
                 <li data-user={user.id} className={userClass}
                     onClick={self.onUserClick.bind(self, user)} key={user.id}>
@@ -145,7 +225,7 @@ var GroupPane = React.createClass({
             );
         });
 
-        var allGroupsClass = !self.state.selectedGroup && !self.state.selectedUser ? "selected" : "";
+        var allGroupsClass = !self.state.store.selectedGroup && !self.state.store.selectedUser ? "selected" : "";
 
         return (
             <ul id="group-pane">
@@ -185,31 +265,16 @@ var SearchPane = React.createClass({
 });
 
 var NewTopicPane = React.createClass({
-    getInitialState: function () {
-        return {
-            enabled: false,
-            selected: true
-        };
-    },
+    mixins: [Reflux.connect(ChatStore, 'store')],
 
     onClick: function () {
-        if (this.state.enabled) {
-            $(document).trigger("selectedTopic", undefined);
+        if (this.state.store.selectedGroup) {
+            ChatActions.selectTopic();
         }
     },
 
-    componentWillMount: function () {
-        var self = this;
-        $(document).on("selectedGroup", function (event, selectedGroup) {
-            self.setState({enabled: selectedGroup !== undefined});
-        });
-        $(document).on("selectedTopic", function (event, selectedTopic) {
-            self.setState({selected: self.state.enabled && selectedTopic === undefined});
-        });
-    },
-
     render: function () {
-        var newTopicClass = ((this.state.enabled ? "enabled" : "") + " " + (this.state.selected ? "selected" : "")).trim();
+        var newTopicClass = ((this.state.store.selectedGroup ? "enabled" : "") + " " + (!this.state.store.selectedTopic ? "selected" : "")).trim();
         return (
             <div id="new-topic-pane">
                 <a id="new-topic" className={newTopicClass}
@@ -224,7 +289,7 @@ var NewTopicPane = React.createClass({
 
 var TopicItem = React.createClass({
     onClick: function (topic) {
-        $(document).trigger("selectedTopic", topic);
+        ChatActions.selectTopic(topic);
     },
 
     render: function () {
@@ -254,61 +319,16 @@ var TopicItem = React.createClass({
 });
 
 var TopicPane = React.createClass({
-    getInitialState: function () {
-        return {
-            topics: [],
-            selectedTopic: undefined,
-            selectedGroup: undefined
-        };
-    },
-
-    componentWillMount: function () {
-        var self = this;
-        $(document).on("selectedGroup", function (event, group) {
-            self.setState({selectedGroup: group});
-            $.ajax({
-                type: "GET",
-                url: "/json/user/" + global.user.id + "/topics" +
-                (group ? "/" + group.id : ""),
-                success: function (topics) {
-                    self.setState({topics: topics});
-                    if (topics.length > 0) {
-                        $(document).trigger("selectedTopic", topics[0].topic);
-                    } else {
-                        $(document).trigger("selectedTopic", undefined);
-                    }
-                },
-                fail: function (e) {
-                    console.error(e);
-                }
-            })
-        });
-        $(document).on("selectedTopic", function (event, topic) {
-            self.setState({selectedTopic: topic});
-        });
-        $(document).on("newTopic", function (event, newTopic) {
-            if ((!self.state.selectedGroup || self.state.selectedGroup.id ==
-                newTopic.group.id) && self.state.topics.filter(function (m) {
-                    return m.topic.id == newTopic.id
-                }).length == 0) {
-                self.setState(React.addons.update(self.state, {
-                    topics: {
-                        $splice: [[0, 0, {topic: newTopic}]]
-                    }
-                }));
-                $(document).trigger("selectedTopic", newTopic);
-            }
-        });
-    },
+    mixins: [Reflux.connect(ChatStore, 'store')],
 
     render: function () {
         var self = this;
-        var topicItems = self.state.topics.map(function (t) {
+        var topicItems = self.state.store.topics.map(function (t) {
             return (
                 <TopicItem topic={t.topic}
-                           selected={self.state.selectedTopic &&
-                           self.state.selectedTopic.id == t.topic.id}
-                           showGroup={!self.state.selectedGroup}
+                           selected={self.state.store.selectedTopic &&
+                           self.state.store.selectedTopic.id == t.topic.id}
+                           showGroup={!self.state.store.selectedGroup}
                            key={t.topic.id}/>
             )
         });
@@ -322,25 +342,11 @@ var TopicPane = React.createClass({
 });
 
 var TopicBar = React.createClass({
-    getInitialState: function () {
-        return {
-            selectedUser: undefined
-        };
-    },
-
-    componentWillMount: function () {
-        var self = this;
-        $(document).on("selectedUser", function (event, user) {
-            self.setState({selectedUser: user});
-        });
-        $(document).on("selectedGroup", function (event, group) {
-            self.setState({selectedUser: undefined});
-        });
-    },
+    mixins: [Reflux.connect(ChatStore, 'store')],
 
     render: function () {
         return (
-            <div id="topic-bar" style={{display: this.state.selectedUser ? "none" : ""}}>
+            <div id="topic-bar" style={{display: this.state.store.selectedUser ? "none" : ""}}>
                 <SearchPane/>
                 <NewTopicPane/>
                 <TopicPane/>
@@ -378,7 +384,7 @@ var MessageItem = React.createClass({
                 <div className="details">
                     {info}
                     <div className="text">{this.autolink(self.props.message.text).map(function (el) {
-                        if (typeof el  === "string")
+                        if (typeof el === "string")
                             return self.emojify(el);
                         else
                             return el;
@@ -390,88 +396,25 @@ var MessageItem = React.createClass({
 });
 
 var MessageBar = React.createClass({
-    getInitialState: function () {
-        return {
-            messages: [],
-            selectedGroup: undefined,
-            selectedTopic: undefined,
-            selectedUser: undefined
-        };
-    },
+    mixins: [Reflux.connect(ChatStore, 'store')],
 
-    componentWillMount: function () {
-        var self = this;
-        $(document).on("selectedGroup", function (event, group) {
-            self.setState({selectedGroup: group, selectedUser: undefined});
-        });
-        $(document).on("selectedTopic", function (event, topic) {
-            React.findDOMNode(self.refs.input).focus();
-            if (topic) {
-                $.ajax({
-                    type: "GET",
-                    url: "/json/user/" + global.user.id + "/messages/" + topic.id,
-                    success: function (messages) {
-                        self.setState({
-                            messages: messages,
-                            selectedTopic: topic,
-                            selectedUser: undefined
-                        });
-                    },
-                    fail: function (e) {
-                        console.error(e);
-                    }
-                })
-            } else {
-                self.setState({messages: [], selectedTopic: undefined, selectedUser: undefined});
-            }
-        });
-        $(document).on("selectedUser", function (event, user) {
-            React.findDOMNode(self.refs.input).focus();
-            $.ajax({
-                type: "GET",
-                url: "/json/user/" + global.user.id + "/direct/" + user.id,
-                success: function (messages) {
-                    self.setState({
-                        messages: messages,
-                        selectedTopic: undefined,
-                        selectedGroup: undefined,
-                        selectedUser: user
-                    });
-                },
-                fail: function (e) {
-                    console.error(e);
-                }
-            })
-        });
-        $(document).on("newMessage", function (event, newMessage) {
-            if ((self.state.selectedTopic && self.state.selectedTopic.id ==
-                newMessage.topicId || self.state.selectedUser && (self.state.selectedUser.id == newMessage.toUser.id &&
-                global.user.id == newMessage.user.id || self.state.selectedUser.id == newMessage.user.id &&
-                global.user.id == newMessage.toUser.id)) && self.state.messages.filter(function (m) {
-                    return m.text == newMessage.text
-                }).length == 0) {
-                // TODO: Preserve message order
-                self.setState(React.addons.update(self.state, {
-                    messages: {
-                        $push: [newMessage]
-                    }
-                }));
-            }
-        });
-    },
-
-    componentDidUpdate: function() {
+    componentDidUpdate: function () {
         var messageRoll = $(React.findDOMNode(this.refs.messageRoll));
         messageRoll.scrollTop(messageRoll[0].scrollHeight);
+        React.findDOMNode(this.refs.input).focus();
     },
 
     onInputKeyPress: function (event) {
         var self = this;
         var input = React.findDOMNode(self.refs.input);
         if (event.which == 13 && input.value.trim()) {
-            if (self.state.selectedUser) {
-                var user = global.users.filter(function (u) { return u.id == global.user.id })[0];
-                var toUser = global.users.filter(function (u) { return u.id == self.state.selectedUser.id })[0];
+            if (self.state.store.selectedUser) {
+                var user = global.users.filter(function (u) {
+                    return u.id == global.user.id
+                })[0];
+                var toUser = global.users.filter(function (u) {
+                    return u.id == self.state.store.selectedUser.id
+                })[0];
                 var newDirectMessage = {
                     "user": user,
                     "toUser": toUser,
@@ -485,7 +428,7 @@ var MessageBar = React.createClass({
                     contentType: "application/json",
                     success: function (id) {
                         newDirectMessage.id = id;
-                        $(document).trigger("newMessage", newDirectMessage);
+                        ChatActions.newMessage(newDirectMessage);
                     },
                     fail: function (e) {
                         console.error(e);
@@ -499,15 +442,15 @@ var MessageBar = React.createClass({
                         "avatar": global.user.avatar
                     },
                     "date": new Date().getTime(),
-                    "groupId": self.state.selectedTopic ? self.state.selectedTopic.group.id : self.state.selectedGroup.id,
+                    "groupId": self.state.store.selectedTopic ? self.state.store.selectedTopic.group.id : self.state.store.selectedGroup.id,
                     "text": input.value
                 };
-                if (self.state.selectedTopic) {
-                    newMessage.topicId = self.state.selectedTopic.id;
+                if (self.state.store.selectedTopic) {
+                    newMessage.topicId = self.state.store.selectedTopic.id;
                 }
                 $.ajax({
                     type: "POST",
-                    url: self.state.selectedTopic ? "/json/comment/add" : "/json/topic/add",
+                    url: self.state.store.selectedTopic ? "/json/comment/add" : "/json/topic/add",
                     data: JSON.stringify(newMessage),
                     contentType: "application/json",
                     success: function (id) {
@@ -521,9 +464,9 @@ var MessageBar = React.createClass({
                         };
                         if (newMessage.topicId) {
                             m.topicId = newMessage.topicId;
-                            $(document).trigger("newMessage", m);
+                            ChatActions.newMessage(m);
                         } else {
-                            $(document).trigger("newTopic", m);
+                            ChatActions.newTopic(m, true);
                         }
                     },
                     fail: function (e) {
@@ -539,9 +482,9 @@ var MessageBar = React.createClass({
     render: function () {
         var self = this;
         var userId;
-        var topic = self.state.selectedUser === undefined;
+        var topic = self.state.store.selectedUser === undefined;
         var sameUser = false;
-        var messageItems = self.state.messages.map(function (message, index) {
+        var messageItems = self.state.store.messages.map(function (message, index) {
             if (index == 0) {
                 userId = message.user.id;
             } else {
@@ -559,16 +502,16 @@ var MessageBar = React.createClass({
                              key={key}/>
             )
         });
-        var inputPlaceHolder = self.state.selectedTopic ?
+        var inputPlaceHolder = self.state.store.selectedTopic ?
             "Message..." : "Topic...";
         var userHeader;
         if (self.state.selectedUser) {
             userHeader = <div id="message-roll-header">
                 <li className="clearfix topic">
-                    <img className="img avatar pull-left" src={self.state.selectedUser.avatar} />
+                    <img className="img avatar pull-left" src={self.state.store.selectedUser.avatar}/>
                     <div className="details">
                         <div className="info">
-                            <span className="user">{self.state.selectedUser.name}</span>
+                            <span className="user">{self.state.store.selectedUser.name}</span>
                         </div>
                     </div>
                 </li>
@@ -576,7 +519,7 @@ var MessageBar = React.createClass({
         }
         return (
             // TODO: Replace logic with className
-            <div id="message-bar" style={{left: this.state.selectedUser ? "200px" : "550px"}}>
+            <div id="message-bar" style={{left: this.state.store.selectedUser ? "200px" : "550px"}}>
                 <div id="message-pane">
                     <div id="message-roll" ref="messageRoll">
                         {messageItems}
@@ -600,15 +543,15 @@ var App = React.createClass({
             if (message.data != JSON.stringify("Tack")) {
                 var data = JSON.parse(message.data);
                 if (data.topicId) {
-                    $(document).trigger("newMessage", data);
+                    ChatActions.newMessage(data);
                 } else if (data.newGroup) {
-                    $(document).trigger("newGroup", data.newGroup);
+                    ChatActions.newGroup(data.newGroup);
                 } else if (data.newUser) {
-                    $(document).trigger("newUser", data.newUser);
+                    ChatActions.newUser(data.newUser);
                 } else if (!data.toUser) {
-                    $(document).trigger("newTopic", data);
+                    ChatActions.newTopic(data);
                 } else {
-                    $(document).trigger("newMessage", data);
+                    ChatActions.newMessage(data);
                 }
             }
         };
@@ -618,8 +561,9 @@ var App = React.createClass({
             }, 10000);
         };
         socket.onclose = function (event) {
-            console.error("Reopenning websocket");
+            console.error();
             setTimeout(function () {
+                console.log("Reopenning websocket...");
                 self.openSocket();
             }, 1000);
         };
