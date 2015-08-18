@@ -13,7 +13,7 @@ trait CommentsComponent extends WithMyDriver {
   class CommentsTable(tag: Tag) extends CustomDriver.Table[Comment](tag, "comments") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
     def groupId = column[Long]("group_id", O.NotNull)
-    def topicId = column[Long]("topic_Id", O.NotNull)
+    def topicId = column[Long]("topic_id", O.NotNull)
     def userId = column[Long]("user_id", O.NotNull)
     def date = column[DateTime]("date", O.NotNull)
     def text = column[String]("text", O.NotNull, O.DBType("text"))
