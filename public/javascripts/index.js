@@ -17,7 +17,7 @@ var ChatStore = Reflux.createStore({
 
     getInitialState: function () {
         return {
-            users: global.users,
+            users: global.users.filter(function (u) { return u.id !== global.user.id }),
             groups: global.groups,
             topics: [],
             messages: [],
@@ -505,7 +505,7 @@ var MessageBar = React.createClass({
         var inputPlaceHolder = self.state.store.selectedTopic ?
             "Message..." : "Topic...";
         var userHeader;
-        if (self.state.selectedUser) {
+        if (self.state.store.selectedUser) {
             userHeader = <div id="message-roll-header">
                 <li className="clearfix topic">
                     <img className="img avatar pull-left" src={self.state.store.selectedUser.avatar}/>

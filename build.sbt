@@ -1,5 +1,3 @@
-import NativePackagerKeys._ // with auto plugins this won't be necessary soon
-
 name := "jetchat"
 
 version := System.getProperty("build.number", "0.1-SNAPSHOT")
@@ -8,31 +6,27 @@ organization := "com.jetbrains"
 
 scalaVersion := "2.11.5"
 
+resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
+
 libraryDependencies ++= Seq(
-  "org.webjars" %% "webjars-play" % "2.3.0-2",
-  "org.webjars" % "bootstrap" % "3.3.4",
-  "org.webjars" % "jquery" % "2.0.3",
-  "org.webjars" % "jquery-cookie" % "1.4.1",
-  "org.webjars.bower" % "jquery-dateFormat" % "1.0.2",
-  "org.webjars" % "react" % "0.13.3",
-  "com.typesafe.play" %% "play-slick" % "0.8.1",
+  "com.typesafe.play" %% "play-slick" % "1.0.1",
+  "com.typesafe.play" %% "play-slick-evolutions" % "1.0.1",
+  specs2 % Test,
+  evolutions,
   "mysql" % "mysql-connector-java" % "5.1.36",
-  "joda-time" % "joda-time" % "2.4",
-  "org.apache.commons" % "commons-lang3" % "3.3.2",
-  "org.webjars" % "font-awesome" % "4.3.0-1",
-  ws,
-  "org.joda" % "joda-convert" % "1.6",
-  "com.github.tototoshi" %% "slick-joda-mapper" % "1.2.0",
-  "com.typesafe.akka" %% "akka-cluster" % "2.3.4",
-  "com.typesafe.akka" %% "akka-contrib" % "2.3.4",
-  "org.mousio" % "etcd4j" % "2.7.0"
+  "com.typesafe.akka" %% "akka-cluster" % "2.4-SNAPSHOT",
+  "com.typesafe.akka" %% "akka-cluster-tools" % "2.4-SNAPSHOT",
+  "org.mousio" % "etcd4j" % "2.7.0",
+  "com.fasterxml.jackson.jaxrs" % "jackson-jaxrs-json-provider" % "2.5.4"
 )
 
 unmanagedBase <<= baseDirectory { base => base / "lib" }
 
 fork in Test := false
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala, DockerPlugin)
+lazy val root = (project in file(".")).enablePlugins(PlayScala)
+
+routesGenerator := InjectedRoutesGenerator
 
 dockerBaseImage := "java:8u45"
 

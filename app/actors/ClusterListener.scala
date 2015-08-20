@@ -1,19 +1,21 @@
+package actors
+
 import java.net.URI
 
-import actors.ClusterEvent
 import akka.actor.{Actor, ActorLogging, AddressFromURIString}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
-import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.Subscribe
+import akka.cluster.pubsub.{DistributedPubSub, DistributedPubSubMediator}
 import mousio.etcd4j.EtcdClient
 import play.api.Logger
-import play.twirl.api.TemplateMagic.javaCollectionToScala
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
+import play.twirl.api.TemplateMagic.javaCollectionToScala
 
 class ClusterListener extends Actor with ActorLogging {
-  val mediator = DistributedPubSubExtension(context.system).mediator
+  import DistributedPubSubMediator.{ Subscribe, SubscribeAck }
+
+  val mediator = DistributedPubSub(context.system).mediator
 
   val cluster = Cluster(context.system)
 

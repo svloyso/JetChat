@@ -2,29 +2,30 @@ package controllers
 
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
+import javax.inject.{Inject, Singleton}
 import javax.net.ssl._
 import javax.ws.rs.client.ClientBuilder
 
 import actors.ClusterEvent
-import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.Publish
+import akka.actor.{Props, ActorSystem}
+import akka.cluster.pubsub.DistributedPubSub
+import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import com.intellij.hub.auth.request.AuthRequestParameter.RequestCredentials
 import jetbrains.jetpass.client.accounts.BaseAccountsClient
 import jetbrains.jetpass.client.hub.HubClient
 import jetbrains.jetpass.client.oauth2.OAuth2Client
 import jetbrains.jetpass.client.oauth2.auth.OAuth2CodeFlow
-import models.User
-import play.api.libs.concurrent.Akka
-import play.api.libs.json.{JsNumber, JsString, JsObject}
-import play.api.mvc.{Cookie, RequestHeader, Action, Controller}
-
-import scala.concurrent.Future
+import models.{User, UsersDAO}
 import play.api.Play.current
-import play.api.db.slick.DB
-import models.current.dao
-import models.CustomDriver.simple._
+import play.api.libs.json.{JsNumber, JsObject, JsString}
+import play.api.mvc.{Action, Controller, Cookie, RequestHeader}
 
-object Auth extends Controller {
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
+@Singleton
+class Auth @Inject()(val system: ActorSystem,
+                     val usersDAO: UsersDAO) extends Controller {
   lazy val HUB_BASE_URL = current.configuration.getString("hub.url").getOrElse(System.getProperty("hub.url", ""))
   lazy val HUB_SECRET = current.configuration.getString("hub.secret").getOrElse(System.getProperty("hub.secret", ""))
   lazy val HUB_CLIENT_ID = current.configuration.getString("hub.clientId").getOrElse(System.getProperty("hub.clientId", ""))
@@ -33,7 +34,7 @@ object Auth extends Controller {
   lazy val HUB_MOCK_NAME = current.configuration.getString("hub.mock.user.name").getOrElse(System.getProperty("hub.mock.user.name", ""))
   lazy val HUB_MOCK_AVATAR = current.configuration.getString("hub.mock.user.avatar").getOrElse(System.getProperty("hub.mock.user.avatar", ""))
 
-  val mediator = DistributedPubSubExtension(Akka.system).mediator
+  val mediator = DistributedPubSub(system).mediator
 
   def hub(implicit request: RequestHeader): (HubClient, OAuth2Client, BaseAccountsClient, OAuth2CodeFlow) = hubP(RequestCredentials.DEFAULT)
 
@@ -79,19 +80,17 @@ object Auth extends Controller {
     val codeResponseFlow = codeHandler.exchange(HUB_SECRET, codeOpt.get, stateOpt.get)
     val token = codeResponseFlow.getToken
     val hubUser = hub._1.getAccountsClient(codeResponseFlow).getUserClient.me(null)
-    DB.withSession { implicit session =>
-      val user = dao.users.filter(_.login === hubUser.getLogin).firstOption
-      user match {
-        case None =>
-          dao.users += new User(login = hubUser.getLogin, name = hubUser.getName, avatar = Option(hubUser.getAvatar.getUrl))
-          val u = dao.users.filter(_.login === hubUser.getLogin).first
-          mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(u.id), "name" -> JsString(u.name), "login" -> JsString(u.login)) ++
-            (u.avatar match {
+    // TODO: Chain futures
+    usersDAO.findByLogin(hubUser.getLogin).map {
+      case None =>
+        usersDAO.insert(User(login = hubUser.getLogin, name = hubUser.getName, avatar = Option(hubUser.getAvatar.getUrl))) onSuccess { case id =>
+          usersDAO.findByLogin(hubUser.getLogin).onSuccess { case Some(u) =>
+            mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(u.id), "name" -> JsString(u.name), "login" -> JsString(u.login)) ++ (u.avatar match {
               case Some(value) => Seq("avatar" -> JsString(value))
               case None => Seq()
             }))))))
-        case _ =>
-      }
+          }
+        }
     }
     Future.successful(Redirect(controllers.routes.Application.index()).withCookies(Cookie("user", hubUser.getLogin, httpOnly = false)))
   }

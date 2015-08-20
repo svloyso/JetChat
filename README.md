@@ -11,5 +11,5 @@ sbt clean
 
 sbt docker:publishLocal
 
-docker run -p 9000:9000 jetchat:1.0-SNAPSHOT -Dhub.secret=... -Dhub.clientId=... -Dhub.url=... -Ddb.default.url=... -Ddb.default.user=... -Ddb.default.password=... -DapplyEvolutions.default=true
+docker run -p <public_http_port>:<http_port> <image_id> -Dslick.dbs.default.db.url=<db_url> -Dslick.dbs.default.db.user=<db_user> -Dslick.dbs.default.db.password=<db_password> -Dplay.evolutions.autoApply=true -DETCDCTL_PEERS=<etcd_peers> -Dakka.remote.netty.tcp.hostname=<host> -Dakka.remote.netty.tcp.port=<seed_port> -Dhttp.port=<http_port>
 ```

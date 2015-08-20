@@ -1,7 +1,7 @@
 # Routes
 
-GET         /webSocket                                     controllers.Application.webSocket(email: String)
-GET         /json/user                                     controllers.Application.getUser(email: String)
+GET         /webSocket                                     controllers.Application.webSocket(login: String)
+GET         /json/user                                     controllers.Application.getUser(login: String)
 GET         /json/user/:userId/groups                      controllers.Application.getGroups(userId: Long)
 GET         /json/user/:userId/topics                      controllers.Application.getAllTopics(userId: Long)
 GET         /json/user/:userId/topics/:groupId             controllers.Application.getGroupTopics(userId: Long, groupId: Long)
@@ -19,6 +19,5 @@ GET         /logout                                        controllers.Applicati
 GET         /auth/callback                                 controllers.Auth.callback(code: Option[String], state: Option[String])
 
 GET         /assets/*file                                  controllers.Assets.at(path="/public", file)
-GET         /webjars/*file                                 controllers.WebJarAssets.at(file)
 
 GET         /                                              controllers.Application.index

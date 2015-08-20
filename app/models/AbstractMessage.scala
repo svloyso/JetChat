@@ -1,9 +1,9 @@
 package models
 
-import org.joda.time.DateTime
+import java.sql.Timestamp
 
 trait AbstractMessage {
   def id: Long
-  def date: DateTime
+  def date: Timestamp
   def text: String
 }
