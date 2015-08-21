@@ -187,7 +187,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
   }
 
   def addGroup() = Action.async { implicit rs =>
-    val groupName = rs.body.asInstanceOf[JsString].value
+    val groupName = rs.body.asJson.get.asInstanceOf[JsString].value
     groupsDAO.insert(Group(name = groupName)).map { case id =>
       Logger.debug(s"Adding group: $groupName")
       val groupJson = JsObject(Seq("id" -> JsNumber(id), "name" -> JsString(groupName)))

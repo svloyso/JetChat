@@ -161,7 +161,7 @@ a:hover {
     background-image: url('/assets/images/plus-gray.png');
 }
 
-#new-topic.selected {
+#new-topic.enabled.selected {
     color: black;
     cursor: default;
     background-color: #cbe9f7;
