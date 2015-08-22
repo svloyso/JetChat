@@ -44,6 +44,10 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   import driver.api._
 
+  def findById(id: Long): Future[Option[Topic]] = {
+    db.run(topics.filter(_.id === id).result.headOption)
+  }
+
   def insert(topic: Topic): Future[Long] = {
     db.run((topics returning topics.map(_.id)) += topic)
   }

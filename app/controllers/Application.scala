@@ -63,7 +63,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
 
   var actorCounter = 0
 
-  def index = Action.async { implicit request =>
+  def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None ) = Action.async { implicit request =>
     request.cookies.get("user") match {
       case Some(cookie) =>
         usersDAO.findByLogin(cookie.value).flatMap {
@@ -72,8 +72,10 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
             (for {
               users <- getUsersJsValue(user.id)
               groups <- getGroupsJsValue(user.id)
-            } yield (users, groups)) map { case (users, groups) =>
-              Ok(views.html.index(user, users, groups, webSocketUrl))
+              topic <- topicId match { case Some(value) => topicsDAO.findById(value) case None => Future { None }}
+            } yield (users, groups, topic)) map { case (users, groups, topic) =>
+              Ok(views.html.index(user, users, groups, webSocketUrl, groupId,
+                topic match { case Some(value) => Some(Json.toJson(value)) case None => None }, userId))
             }
           case None =>
             Future.successful(Redirect(auth.getAuthUrl).discardingCookies(DiscardingCookie("user")))
@@ -84,7 +86,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
         } else {
           usersDAO.findByLogin(auth.HUB_MOCK_LOGIN).flatMap {
             case Some(user) =>
-              Future.successful(Redirect(controllers.routes.Application.index())
+              Future.successful(Redirect(controllers.routes.Application.index(groupId, topicId, userId))
                 .withCookies(Cookie("user", auth.HUB_MOCK_LOGIN, httpOnly = false)))
             case None =>
               usersDAO.insert(User(login = auth.HUB_MOCK_LOGIN, name = auth.HUB_MOCK_NAME,
@@ -93,7 +95,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
                   JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(id),
                     "name" -> JsString(auth.HUB_MOCK_NAME), "login" -> JsString(auth.HUB_MOCK_LOGIN),
                     "avatar" -> JsString(auth.HUB_MOCK_AVATAR)))))))
-                Redirect(controllers.routes.Application.index())
+                Redirect(controllers.routes.Application.index(groupId, topicId, userId))
                   .withCookies(Cookie("user", auth.HUB_MOCK_LOGIN, httpOnly = false))
               }
           }

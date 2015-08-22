@@ -12,18 +12,29 @@ var ChatStore = Reflux.createStore({
 
     init: function () {
         this.state = this.getInitialState();
-        this.onSelectGroup();
+        this.onSelectGroup(this.state.selectedGroup, true);
+        var self = this;
+        // TODO: Re-fetch groups, topics, etc
+        /*window.addEventListener('popstate', function (e) {
+            self.trigger(e.state);
+        }, false);*/
     },
 
     getInitialState: function () {
         return {
-            users: global.users.filter(function (u) { return u.id !== global.user.id }),
+            users: global.users.filter(function (u) {
+                return u.id !== global.user.id
+            }),
             groups: global.groups,
             topics: [],
             messages: [],
-            selectedGroup: undefined,
-            selectedTopic: undefined,
-            selectedUser: undefined
+            selectedGroup: global.selectedGroupId ? global.groups.filter(function (g) {
+                return g.id == global.selectedGroupId
+            })[0] : undefined,
+            selectedTopic: global.selectedTopic,
+            selectedUser: global.selectedUserId ? global.users.filter(function (u) {
+                return u.id == global.selectedUserId
+            })[0] : undefined
         }
     },
 
@@ -60,6 +71,11 @@ var ChatStore = Reflux.createStore({
                 success: function (messages) {
                     this.state.messages = messages;
                     this.trigger(this.state);
+                    // TODO: pushState
+                    window.history.replaceState(this.state, window.title,
+                        this.state.selectedGroup ? ("?groupId=" + this.state.selectedGroup.id +
+                            "&topicId=" + this.state.selectedTopic.id
+                        ) : "?topicId=" + this.state.selectedTopic.id);
                 },
                 fail: function (e) {
                     console.error(e);
@@ -68,6 +84,8 @@ var ChatStore = Reflux.createStore({
         } else {
             this.state.messages = [];
             this.trigger(this.state);
+            // TODO: pushState
+            window.history.replaceState(this.state, window.title, this.state.selectedGroup ? ("?groupId=" + this.state.selectedGroup.id) : "");
         }
     },
 
@@ -90,8 +108,9 @@ var ChatStore = Reflux.createStore({
     },
 
     onNewGroup: function (group, select) {
-        if (this.state.groups.filter(function (g) { return g.id == group.id }).length == 0) {
-            global.groups.push(group);
+        if (this.state.groups.filter(function (g) {
+                return g.id == group.id
+            }).length == 0) {
             this.state.groups.push(group);
             if (select) {
                 this.onSelectGroup(group);
@@ -547,6 +566,7 @@ var App = React.createClass({
                 } else if (data.newGroup) {
                     ChatActions.newGroup(data.newGroup);
                 } else if (data.newUser) {
+                    // TODO newUser
                     ChatActions.newUser(data.newUser);
                 } else if (!data.toUser) {
                     ChatActions.newTopic(data);

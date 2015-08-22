@@ -1,6 +1,7 @@
 @import play.api.libs.json.JsValue
 
-@(user: User, users: JsValue, groups: JsValue, webSocketUrl: String)
+@(user: User, users: JsValue, groups: JsValue, webSocketUrl: String,
+        selectedGroupId: Option[Long], selectedTopic: Option[JsValue], selectedUserId: Option[Long])
 
 @head = {
     <link rel="stylesheet" href="@routes.Assets.at("stylesheets/index.css")"/>
@@ -21,7 +22,19 @@
             },
             webSocketUrl: "@Html(webSocketUrl)",
             users: @{Html(users.toString)},
-            groups: @{Html(groups.toString)}
+            groups: @{Html(groups.toString)},
+            selectedGroupId: @{selectedGroupId match {
+				case Some(id) => id
+				case None => Html("undefined")
+			}},
+			selectedTopic: @{selectedTopic match {
+				case Some(value) => Html(value.toString())
+				case None => Html("undefined")
+			}},
+			selectedUserId: @{selectedUserId match {
+				case Some(id) => id
+				case None => Html("undefined")
+			}}
         }
     </script>
 }

@@ -20,4 +20,4 @@ GET         /auth/callback                                 controllers.Auth.call
 
 GET         /assets/*file                                  controllers.Assets.at(path="/public", file)
 
-GET         /                                              controllers.Application.index
+GET         /                                              controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userId: Option[Long])
