@@ -3,6 +3,7 @@ var ChatActions = Reflux.createActions([
     'selectTopic',
     'selectUser',
     'newGroup',
+    'newUser',
     'newTopic',
     'newMessage'
 ]);
@@ -120,6 +121,11 @@ var ChatStore = Reflux.createStore({
         } else if (select) {
             this.onSelectGroup(group);
         }
+    },
+
+    onNewUser: function (user) {
+        this.state.users.push(user);
+        this.trigger(this.state);
     },
 
     onNewTopic: function (topic, select) {
