@@ -8,6 +8,8 @@ scalaVersion := "2.11.5"
 
 resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
 
+resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
+
 libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-slick" % "1.0.1",
   "com.typesafe.play" %% "play-slick-evolutions" % "1.0.1",
