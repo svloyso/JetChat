@@ -18,7 +18,7 @@ import scala.concurrent.duration._
 
 class ClusterListener extends Actor with ActorLogging {
   lazy val discoverInterval = current.configuration.getLong("cluster.seed-nodes.discover-interval").getOrElse(System.getProperty("cluster.seed-nodes.discover-interval", "60000").toLong)
-  lazy val disconnectTimeout = current.configuration.getLong("cluster.seed-nodes.disconnect-timeout").getOrElse(System.getProperty("cluster.seed-nodes.disconnect-timeout", "600000").toLong)
+  lazy val disconnectTimeout = current.configuration.getLong("cluster.seed-nodes.disconnect-timeout").getOrElse(System.getProperty("cluster.seed-nodes.disconnect-timeout", "300000").toLong)
 
   import DistributedPubSubMediator.Subscribe
 
@@ -61,6 +61,7 @@ class ClusterListener extends Actor with ActorLogging {
     case event:DiscoveryEvent =>
       val selfHost = cluster.selfAddress.host.get
       val selfPort = cluster.selfAddress.port.get
+      var seedsChanged = false
 
       Logger.debug(s"Updating cluster seed information: '$selfHost:$selfPort'")
       client.put(s"/jetchat/$selfHost:$selfPort", Calendar.getInstance.getTime.getTime.toString).send().get()
@@ -68,21 +69,25 @@ class ClusterListener extends Actor with ActorLogging {
       val seedInfoNodes = client.get("/jetchat").send().get.node.nodes.toList
       seedInfoNodes.map { case seedInfo =>
         if (seedInfo.key.contains(":")) {
-          val seedAddress = seedInfo.key.substring(9)
-          if (!seeds.contains(seedAddress)) {
-            try {
-              if (Calendar.getInstance().getTime.getTime - seedInfo.value.toLong < disconnectTimeout) {
-                // 10 minutes
-                seeds.add(seedAddress)
-                Logger.debug(s"A cluster seed info discovered: '$seedAddress'")
-              } else {
-                Logger.debug(s"Removing out-dated cluster seed: '$seedAddress'")
-                client.delete(seedInfo.key).recursive().send()
+          val address = seedInfo.key.substring(9)
+          if (Calendar.getInstance().getTime.getTime - seedInfo.value.toLong < disconnectTimeout) {
+            if (!seeds.contains(address)) {
+              try {
+                Logger.debug(s"A cluster seed info discovered: '$address'")
+                seeds.add(address)
+                seedsChanged = true
+              } catch {
+                case ignore: Throwable =>
+                  Logger.debug(s"Removing unparsable cluster seed info: '${seedInfo.key}'")
+                  client.delete(seedInfo.key).recursive().send()
               }
-            } catch {
-              case ignore: Throwable =>
-                Logger.debug(s"Removing unparsable cluster seed info: '${seedInfo.key}'")
-                client.delete(seedInfo.key).recursive().send()
+            }
+          } else {
+            Logger.debug(s"Removing out-dated cluster seed: '$address'")
+            client.delete(seedInfo.key).recursive().send()
+            if (seeds.contains(address)) {
+              seeds.remove(address)
+              seedsChanged = true
             }
           }
         } else {
@@ -90,8 +95,8 @@ class ClusterListener extends Actor with ActorLogging {
           client.delete(seedInfo.key).recursive().send()
         }
       }
-
-      cluster.joinSeedNodes(seeds.map(address => AddressFromURIString(s"akka.tcp://application@$address")).toList)
+      if (seedsChanged)
+        cluster.joinSeedNodes(seeds.map(address => AddressFromURIString(s"akka.tcp://application@$address")).toList)
   case _: MemberEvent => // ignore
   }
 }
