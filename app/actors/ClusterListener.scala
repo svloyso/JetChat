@@ -7,6 +7,7 @@ import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.cluster.pubsub.{DistributedPubSub, DistributedPubSubMediator}
 import mousio.etcd4j.EtcdClient
+import mousio.etcd4j.responses.EtcdException
 import play.api.Logger
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
@@ -20,23 +21,32 @@ class ClusterListener extends Actor with ActorLogging {
   val cluster = Cluster(context.system)
 
   val etcdPeers = System.getProperty("ETCDCTL_PEERS")
-  if (etcdPeers != null) {
-    Logger.debug("Connecting to etcd: " + etcdPeers)
-    val addrs = etcdPeers.split(",").toList.map(addr => URI.create(if (addr.startsWith("http://")) addr else "http://" + addr))
-    val client = new EtcdClient(addrs:_*)
-
-    cluster.joinSeedNodes(client.get("/jetchat").recursive().send().get().node.nodes.toList.map { case node =>
-      val ip = node.nodes.toList.find(_.key.endsWith("IP")).get.value
-      val port = node.nodes.toList.find(_.key.endsWith("PORT")).get.value
-      Logger.debug("A cluster seed discovered: " + ip + ":" + port)
-      AddressFromURIString("akka.tcp://application@" + ip + ":" + port)
-    })
-  }
 
   override def preStart(): Unit = {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
     mediator ! Subscribe("cluster-events", self)
+
+    if (etcdPeers != null) {
+      Logger.debug("Connecting to etcd: " + etcdPeers)
+      val addrs = etcdPeers.split(",").toList.map(addr => URI.create(if (addr.startsWith("http://")) addr else "http://" + addr))
+      val client = new EtcdClient(addrs:_*)
+
+      val root = try {
+        Some(client.get("/jetchat").recursive().send().get())
+      } catch {
+        case e: EtcdException =>
+          None
+      }
+      if (root.isDefined) {
+        cluster.joinSeedNodes(root.get.node.nodes.toList.map { case node =>
+          val ip = node.nodes.toList.find(_.key.endsWith("IP")).get.value
+          val port = node.nodes.toList.find(_.key.endsWith("PORT")).get.value
+          Logger.debug("A cluster seed discovered: " + ip + ":" + port)
+          AddressFromURIString("akka.tcp://application@" + ip + ":" + port)
+        })
+      }
+    }
   }
 
   override def postStop(): Unit = cluster.unsubscribe(self)
