@@ -4,6 +4,7 @@ import javax.inject.{Inject, Singleton}
 
 import api.Integration
 import play.api.mvc.{Action, Controller}
+import play.twirl.api.TemplateMagic.javaCollectionToScala
 
 import scala.concurrent.Future
 
@@ -12,9 +13,9 @@ import scala.concurrent.Future
  * @since  15/09/15
  */
 @Singleton
-class IntegrationAuth @Inject()(integrations: Seq[Integration]) extends Controller {
+class IntegrationAuth @Inject()(integrations: java.util.Set[Integration]) extends Controller {
   def auth(id: String, redirectUrl: Option[String]) = Action.async { implicit request =>
-    integrations.find(_.id == id) match {
+    integrations.toSeq.find(_.id == id) match {
       case Some(integration) => integration.authentificator.enable(redirectUrl)
       case None => Future.successful(BadRequest("Wrong service"))
     }

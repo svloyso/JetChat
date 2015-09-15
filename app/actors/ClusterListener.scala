@@ -28,8 +28,12 @@ class ClusterListener extends Actor with ActorLogging {
 
   val etcdPeers = System.getProperty("ETCDCTL_PEERS")
 
-  val addrs = etcdPeers.split(",").toList.map(addr => URI.create(if (addr.startsWith("http://")) addr else "http://" + addr))
-  val client = new EtcdClient(addrs:_*)
+  val client = if (etcdPeers != null) {
+    val addrs = etcdPeers.split(",").toList.map(addr => URI.create(if (addr.startsWith("http://")) addr else "http://" + addr))
+    new EtcdClient(addrs:_*)
+  } else {
+    null
+  }
 
   val seeds = new collection.mutable.HashSet[String]()
 
@@ -38,9 +42,7 @@ class ClusterListener extends Actor with ActorLogging {
       classOf[MemberEvent], classOf[UnreachableMember])
     mediator ! Subscribe("cluster-events", self)
 
-    if (etcdPeers != null) {
-      Logger.debug("Discovering seeds with ETCD: " + etcdPeers)
-
+    if (client != null) {
       Akka.system.scheduler.schedule(0 seconds, discoverInterval millisecond, self, DiscoveryEvent())
     }
   }

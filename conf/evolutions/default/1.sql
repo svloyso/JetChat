@@ -1,6 +1,3 @@
-# --- Created by Slick DDL
-# To stop Slick DDL generation, remove this comment and start using Evolutions
-
 # --- !Ups
 
 create table `comments` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,`group_id` BIGINT NOT NULL,`topic_id` BIGINT NOT NULL,`user_id` BIGINT NOT NULL,`date` TIMESTAMP NOT NULL,`text` text NOT NULL);

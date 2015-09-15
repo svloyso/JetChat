@@ -6,6 +6,8 @@ import play.api.Play.current
 
 object Global extends GlobalSettings {
   override def onStart(app: Application): Unit = {
-    Akka.system.actorOf(Props[ClusterListener], "cluster-listener")
+    if (!play.api.Play.isTest(play.api.Play.current)) {
+      Akka.system.actorOf(Props[ClusterListener], "cluster-listener")
+    }
   }
 }

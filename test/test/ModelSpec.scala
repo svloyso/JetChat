@@ -1,91 +1,66 @@
 package test
 
+import models.api.{IntegrationToken, IntegrationTokensDAO}
 import models.{User, UsersDAO}
 import org.specs2.mutable.Specification
-import play.api.{Configuration, GlobalSettings, Application}
+import play.api.Application
 import play.api.test.{FakeApplication, WithApplication}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-import play.api.test.Helpers._
-
 
 class ModelSpec extends Specification {
-  val appWithMemoryDatabase = FakeApplication()
+  def appWithMemoryDatabase() = FakeApplication(additionalConfiguration = Map(
+    "slick.dbs.default.driver" -> "slick.driver.H2Driver$",
+    "slick.dbs.default.db.driver" -> "org.h2.Driver",
+    "slick.dbs.default.db.url" -> "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
+    "slick.dbs.default.db.root" -> "sa"
+  ))
 
-  def usersDao(implicit app: Application) = {
+  def usersDAO(implicit app: Application) = {
     val app2UsersDAO = Application.instanceCache[UsersDAO]
     app2UsersDAO(app)
   }
 
+  def integrationTokensDAO(implicit app: Application) = {
+    val app2IntegrationTokensDAO = Application.instanceCache[IntegrationTokensDAO]
+    app2IntegrationTokensDAO(app)
+  }
+
+  "Integration model" should {
+    "work as expected" in new WithApplication(appWithMemoryDatabase()) {
+      var user = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
+      if (user.isEmpty) {
+        Await.result(usersDAO.insert(User(0, "test-user", "Test User", None)), Duration.Inf)
+        user = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
+      }
+
+      var token = Await.result(integrationTokensDAO.find(user.get.id, "test-integration"), Duration.Inf)
+      token.isDefined mustEqual false
+
+      Await.result(integrationTokensDAO.merge(IntegrationToken(user.get.id, "test-integration", "test-token")), Duration.Inf)
+
+      token = Await.result(integrationTokensDAO.find(user.get.id, "test-integration"), Duration.Inf)
+      token.get.token mustEqual "test-token"
+
+      Await.result(integrationTokensDAO.merge(IntegrationToken(user.get.id, "test-integration", "test-token-update")), Duration.Inf)
+
+      token = Await.result(integrationTokensDAO.find(user.get.id, "test-integration"), Duration.Inf)
+      token.get.token mustEqual "test-token-update"
+    }
+  }
+
   "User model" should {
-    "work as expected" in new WithApplication(appWithMemoryDatabase) {
-        var test = Await.result(usersDao.findByLogin("test"), Duration.Inf)
+    "work as expected" in new WithApplication(appWithMemoryDatabase()) {
+        var test = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
         if (test.isEmpty) {
-          Await.result(usersDao.insert(User(0, "test", "Test", None)), Duration.Inf)
-          test = Await.result(usersDao.findByLogin("test"), Duration.Inf)
+          Await.result(usersDAO.insert(User(0, "test-user", "Test User", None)), Duration.Inf)
+          test = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
         }
 
-        val users = Await.result(usersDao.all, Duration.Inf)
+        val users = Await.result(usersDAO.all, Duration.Inf)
         users.length mustEqual 1
-
-//      DB.withSession { implicit s: Session =>
-//        val gQ = dao.groups.filter(_.name === "test")
-//        gQ.firstOption match {
-//          case Some(_) =>case Some(_) =>
-//          case None =>
-//            dao.groups += new Group(name = "test")
-//        }
-//        val g = gQ.first
-//
-//        val uQ = dao.users.filter(_.login === "test")
-//        uQ.firstOption match {
-//          case Some(_) =>
-//          case None =>
-//            dao.users += new User(login = "test", name = "Test", avatar = None)
-//        }
-//        val u = uQ.first
-//
-//        val tQ = dao.topics.filter(_.userId === u.id)
-//        tQ.delete
-//
-//        val tId = (dao.topics returning dao.topics.map(_.id)) +=
-//          new Topic(groupId = g.id, userId = u.id, date = new DateTime(), text = "test")
-//
-//        tQ.list.size must equalTo(1)
-//
-//        val cQ = dao.comments.filter(_.topicId === tId)
-//        cQ.delete
-//
-//        dao.comments += new Comment(groupId = g.id, topicId = tId, userId = u.id, date = new DateTime(), text = "test")
-//
-//        cQ.list.size must equalTo(1)
-//
-//        val uQ2 = dao.users.filter(_.login === "test2")
-//        uQ2.firstOption match {
-//          case Some(_) =>
-//          case None =>
-//            dao.users += new User(login = "test2", name = "Test 2", avatar = None)
-//        }
-//        val u2 = uQ2.first
-//
-//        val dmQ = dao.directMessages.filter(dm => dm.fromUserId === u.id && dm.toUserId === u2.id)
-//        dmQ.delete
-//
-//        val dmId = (dao.directMessages returning dao.directMessages.map(_.id)) +=
-//          new DirectMessage(fromUserId = u.id, toUserId = u2.id, date = new DateTime(), text = "test")
-//
-//        dmQ.list.size must equalTo(1)
-//
-//
-//        dmQ.delete
-//        uQ2.delete
-//        cQ.delete
-//        tQ.delete
-//        uQ.delete
-//        gQ.delete
-//      }
     }
   }
 }

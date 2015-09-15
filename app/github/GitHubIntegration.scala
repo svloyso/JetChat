@@ -1,7 +1,7 @@
 package github
 
 import java.util.UUID
-import javax.inject.Qualifier
+import javax.inject.{Singleton, Qualifier}
 
 import api.{HookHandler, Authentificator, MessageHandler, Integration}
 import models.AbstractMessage
@@ -14,7 +14,7 @@ import scala.concurrent.Future
  * @author Alefas
  * @since  15/09/15
  */
-@Qualifier
+@Singleton
 class GitHubIntegration extends Integration {
   override def id: String = "GitHub"
 
