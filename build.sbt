@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-slick-evolutions" % "1.0.1",
   specs2 % Test,
   evolutions,
+  ws,
   "mysql" % "mysql-connector-java" % "5.1.36",
   "com.h2database" % "h2" % "1.4.189",
   "com.typesafe.akka" %% "akka-cluster" % "2.4-SNAPSHOT",

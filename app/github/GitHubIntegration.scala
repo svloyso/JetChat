@@ -3,12 +3,16 @@ package github
 import java.util.UUID
 import javax.inject.{Singleton, Qualifier}
 
-import api.{HookHandler, Authentificator, MessageHandler, Integration}
+import api._
 import models.AbstractMessage
+import play.api.Play
+import play.api.http.{MimeTypes, HeaderNames}
+import play.api.libs.ws.WS
 import play.api.mvc.Results._
 import play.api.mvc.{Result, AnyContent, Request}
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Alefas
@@ -31,8 +35,23 @@ class GitHubIntegration extends Integration {
       //todo:
     }
 
+    override def token(redirectUri: String, code: String): Future[String] = {
+      val tokenResponse = WS.url("https://github.com/login/oauth/access_token")(Play.current).
+        withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).
+        post(Map("client_id" -> Seq(GitHubIntegration.clientId),
+          "client_secret" -> Seq(GitHubIntegration.clientSecret),
+          "code" -> Seq(code),
+          "redirect_uri" -> Seq(redirectUri)))
+
+      tokenResponse.flatMap { response =>
+        (response.json \ "access_token").asOpt[String].fold(Future.failed[String](new IllegalStateException("Sod off!"))) { accessToken =>
+          Future.successful(accessToken)
+        }
+      }
+    }
+
     override def enable(redirectUrl: Option[String])(implicit request: Request[AnyContent]): Future[Result] = {
-      val callbackUrl = controllers.routes.IntegrationAuth.callback(id, None, None, redirectUrl).absoluteURL()
+      val callbackUrl = Utils.callbackUrl(id, redirectUrl)
       val scope = "user, repo, gist, read:org"
       val state = UUID.randomUUID().toString
       Future.successful(Redirect(GitHubIntegration.getAuthorizationUrl(callbackUrl, scope, state)).
