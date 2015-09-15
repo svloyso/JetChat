@@ -21,3 +21,7 @@ GET         /auth/callback                                 controllers.Auth.call
 GET         /assets/*file                                  controllers.Assets.at(path="/public", file)
 
 GET         /                                              controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userId: Option[Long])
+
+# Integration Auth
+GET         /integration/:id/auth                          controllers.IntegrationAuth.auth(id: String, redirectUrl: Option[String])
+GET         /integration/:id/callback                      controllers.IntegrationAuth.callback(id: String, code: Option[String], state: Option[String], redirectUrl: Option[String])

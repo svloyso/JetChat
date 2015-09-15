@@ -1,6 +1,7 @@
 package api
 
 import models.AbstractMessage
+import play.api.mvc.{Result, Request, AnyContent}
 
 import scala.concurrent.Future
 
@@ -17,8 +18,10 @@ trait Integration {
 }
 
 trait Authentificator {
-  def enable() //todo: Future?
+  def enable(redirectUrl: Option[String])(implicit request: Request[AnyContent]): Future[Result]
   def disable() //todo: Future?
+
+  //todo: callback
 }
 
 trait HookHandler {
