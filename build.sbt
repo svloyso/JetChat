@@ -16,6 +16,8 @@ libraryDependencies ++= Seq(
   specs2 % Test,
   evolutions,
   ws,
+  "org.reflections" % "reflections" % "0.9.10",
+  "com.google.inject.extensions" % "guice-multibindings" % "4.0",
   "mysql" % "mysql-connector-java" % "5.1.36",
   "com.h2database" % "h2" % "1.4.189",
   "com.typesafe.akka" %% "akka-cluster" % "2.4-SNAPSHOT",

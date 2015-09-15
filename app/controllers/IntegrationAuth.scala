@@ -15,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * @since  15/09/15
  */
 @Singleton
-class IntegrationAuth @Inject()(integrations: Array[Integration]) extends Controller {
+class IntegrationAuth @Inject()(integrations: java.util.Set[Integration]) extends Controller {
   def auth(id: String, redirectUrl: Option[String]) = Action.async { implicit request =>
     integrations.toSeq.find(_.id == id) match {
       case Some(integration) => integration.authentificator.enable(redirectUrl)
