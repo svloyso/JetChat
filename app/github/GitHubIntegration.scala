@@ -50,12 +50,10 @@ class GitHubIntegration extends Integration {
       }
     }
 
-    override def enable(redirectUrl: Option[String])(implicit request: Request[AnyContent]): Future[Result] = {
+    override def enable(redirectUrl: Option[String], state: String)(implicit request: Request[AnyContent]): Future[Result] = {
       val callbackUrl = Utils.callbackUrl(id, redirectUrl)
       val scope = "user, repo, gist, read:org"
-      val state = UUID.randomUUID().toString
-      Future.successful(Redirect(GitHubIntegration.getAuthorizationUrl(callbackUrl, scope, state)).
-        withSession("github-oauth-state" -> state))
+      Future.successful(Redirect(GitHubIntegration.getAuthorizationUrl(callbackUrl, scope, state)))
     }
   }
 
@@ -67,8 +65,9 @@ class GitHubIntegration extends Integration {
 }
 
 object GitHubIntegration {
-  private val clientId = "id" //todo:
-  private val clientSecret = "secret" //todo:
+  //todo: split for localhost and server
+  private val clientId = "74d1dadc710087464a77"
+  private val clientSecret = "b00475966e9c381c00b1616dd9fabb1d3d4b285d"
 
   private def getAuthorizationUrl(redirectUri: String, scope: String, state: String): String = {
     s"https://github.com/login/oauth/authorize?client_id=$clientId&redirect_uri=$redirectUri&scope=$scope&state=$state"
