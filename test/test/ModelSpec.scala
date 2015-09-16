@@ -39,12 +39,14 @@ class ModelSpec extends Specification {
       var token = Await.result(integrationTokensDAO.find(user.get.id, "test-integration"), Duration.Inf)
       token.isDefined mustEqual false
 
-      Await.result(integrationTokensDAO.merge(IntegrationToken(user.get.id, "test-integration", "test-token")), Duration.Inf)
+      var m = Await.result(integrationTokensDAO.merge(IntegrationToken(user.get.id, "test-integration", "test-token")), Duration.Inf)
+      m mustEqual true
 
       token = Await.result(integrationTokensDAO.find(user.get.id, "test-integration"), Duration.Inf)
       token.get.token mustEqual "test-token"
 
-      Await.result(integrationTokensDAO.merge(IntegrationToken(user.get.id, "test-integration", "test-token-update")), Duration.Inf)
+      m = Await.result(integrationTokensDAO.merge(IntegrationToken(user.get.id, "test-integration", "test-token-update")), Duration.Inf)
+      m mustEqual false
 
       token = Await.result(integrationTokensDAO.find(user.get.id, "test-integration"), Duration.Inf)
       token.get.token mustEqual "test-token-update"

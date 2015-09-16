@@ -42,12 +42,12 @@ class IntegrationTokensDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     db.run(tokens.filter(t => t.userId === userId && t.integrationId === integrationId).result.headOption)
   }
 
-  def merge(token: IntegrationToken): Future[Any] = {
-    find(token.userId, token.integrationId).map {
+  def merge(token: IntegrationToken): Future[Boolean] = {
+    find(token.userId, token.integrationId).flatMap {
       case None =>
-        db.run(tokens += token)
+        db.run(tokens += token).map(_ => true)
       case Some(existingToken) =>
-        db.run(tokens.filter(t => t.userId === existingToken.userId && t.integrationId === existingToken.integrationId).map(_.token).update(token.token))
+        db.run(tokens.filter(t => t.userId === existingToken.userId && t.integrationId === existingToken.integrationId).map(_.token).update(token.token)).map(_ => false)
     }
   }
 }
