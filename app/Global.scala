@@ -1,13 +1,11 @@
-import actors.ClusterListener
-import akka.actor.Props
-import play.api.libs.concurrent.Akka
-import play.api.{Application, GlobalSettings}
-import play.api.Play.current
+import javax.inject.Inject
 
-object Global extends GlobalSettings {
-  override def onStart(app: Application): Unit = {
-    if (!play.api.Play.isTest(play.api.Play.current)) {
-      Akka.system.actorOf(Props[ClusterListener], "cluster-listener")
+import actors.ClusterListener
+import akka.actor.{ActorSystem, Props}
+import play.api.Application
+
+class Global @Inject()(val system: ActorSystem, val application: Application) {
+    if (!play.api.Play.isTest(application)) {
+      system.actorOf(Props[ClusterListener], "cluster-listener")
     }
-  }
 }
