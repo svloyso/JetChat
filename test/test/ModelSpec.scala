@@ -1,7 +1,7 @@
 package test
 
 import models.api.{IntegrationToken, IntegrationTokensDAO}
-import models.{User, UsersDAO}
+import models.{IntegrationUser, IntegrationUsersDAO, User, UsersDAO}
 import org.specs2.mutable.Specification
 import play.api.Application
 import play.api.test.{FakeApplication, WithApplication}
@@ -28,6 +28,11 @@ class ModelSpec extends Specification {
     app2IntegrationTokensDAO(app)
   }
 
+  def integrationUsersDAO(implicit app: Application) = {
+    val app2IntegrationUsersDAO = Application.instanceCache[IntegrationUsersDAO]
+    app2IntegrationUsersDAO(app)
+  }
+
   "Integration model" should {
     "work as expected" in new WithApplication(appWithMemoryDatabase()) {
       var user = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
@@ -50,6 +55,19 @@ class ModelSpec extends Specification {
 
       token = Await.result(integrationTokensDAO.find(user.get.id, "test-integration"), Duration.Inf)
       token.get.token mustEqual "test-token-update"
+
+      var integrationUser = Await.result(integrationUsersDAO.findByIntegrationUserId("test-integration-user", "test-integration"), Duration.Inf)
+      if (integrationUser.isEmpty) {
+        Await.result(integrationUsersDAO.merge(IntegrationUser("test-integration", None, "test-integration-user", "Test Integration User", None)), Duration.Inf) mustEqual true
+        integrationUser = Await.result(integrationUsersDAO.findByIntegrationUserId("test-integration-user", "test-integration"), Duration.Inf)
+        integrationUser.isDefined mustEqual true
+      }
+      Await.result(integrationUsersDAO.merge(IntegrationUser("test-integration", Some(user.get.id), "test-integration-user", "Test Integration User", None)), Duration.Inf) mustEqual false
+      integrationUser = Await.result(integrationUsersDAO.findByIntegrationUserId("test-integration-user", "test-integration"), Duration.Inf)
+      integrationUser.get.userId.get mustEqual user.get.id
+
+      integrationUser = Await.result(integrationUsersDAO.findByUserId(user.get.id, "test-integration"), Duration.Inf)
+      integrationUser.isDefined mustEqual true
     }
   }
 
