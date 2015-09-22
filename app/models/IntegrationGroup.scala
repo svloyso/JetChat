@@ -40,7 +40,7 @@ class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     find(group.integrationId, group.integrationGroupId).flatMap {
       case None =>
         db.run(integrationGroups += group).map(_ => true)
-      case Some(existingUser) =>
+      case Some(existing) =>
         Future {
           false
         }

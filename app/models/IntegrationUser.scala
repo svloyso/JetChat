@@ -28,7 +28,7 @@ trait IntegrationUsersComponent extends HasDatabaseConfigProvider[JdbcProfile] {
 
     def integrationUserIdIndex = index("integration_user_id_index", (integrationId, userId), unique = false)
 
-    def integrationIntegrationUserIdIndex = index("integration_integration_user_id_index", (integrationId, integrationUserId), unique = true)
+    def pk = index("integration_integration_user_id_index", (integrationId, integrationUserId), unique = true)
 
     def * = (integrationId, userId, integrationUserId, integrationUserName, integrationUserAvatar) <>(IntegrationUser.tupled, IntegrationUser.unapply)
   }

@@ -1,7 +1,10 @@
 package test
 
-import models.api.{IntegrationToken, IntegrationTokensDAO}
+import java.sql.Timestamp
+import java.util.Calendar
+
 import models._
+import models.api.{IntegrationToken, IntegrationTokensDAO}
 import org.specs2.mutable.Specification
 import play.api.Application
 import play.api.test.{FakeApplication, WithApplication}
@@ -36,6 +39,11 @@ class ModelSpec extends Specification {
   def integrationGroupsDAO(implicit app: Application) = {
     val app2IntegrationGroupsDAO = Application.instanceCache[IntegrationGroupsDAO]
     app2IntegrationGroupsDAO(app)
+  }
+
+  def integrationTopicsDAO(implicit app: Application) = {
+    val app2IntegrationTopicsDAO = Application.instanceCache[IntegrationTopicsDAO]
+    app2IntegrationTopicsDAO(app)
   }
 
   "Integration model" should {
@@ -76,6 +84,13 @@ class ModelSpec extends Specification {
 
       m = Await.result(integrationGroupsDAO.merge(IntegrationGroup("test-integration", "test-integration-group", "Test Integration Group")), Duration.Inf)
       m mustEqual false
+
+      m = Await.result(integrationTopicsDAO.merge(IntegrationTopic("test-integration", "test-integration-topic", "test-integration-group", "test-integration-user", Some(user.get.id),
+        new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration topic")), Duration.Inf)
+      m mustEqual true
+
+      val integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "test-integration-topic"), Duration.Inf)
+      integrationTopic.isDefined mustEqual true
     }
   }
 

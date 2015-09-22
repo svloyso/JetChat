@@ -32,6 +32,10 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Groups
 
     def user = foreignKey("topic_user_fk", userId, users)(_.id)
 
+    def groupIndex = index("topic_group_index", groupId, unique = false)
+
+    def userGroupIndex = index("topic_user_group_index", (groupId, userId), unique = false)
+
     def * = (id, groupId, userId, date, text) <>(Topic.tupled, Topic.unapply)
   }
 
