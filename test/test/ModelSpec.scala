@@ -46,6 +46,11 @@ class ModelSpec extends Specification {
     app2IntegrationTopicsDAO(app)
   }
 
+  def integrationUpdatesDAO(implicit app: Application) = {
+    val app2IntegrationUpdatesDAO = Application.instanceCache[IntegrationUpdatesDAO]
+    app2IntegrationUpdatesDAO(app)
+  }
+
   "Integration model" should {
     "work as expected" in new WithApplication(appWithMemoryDatabase()) {
       Await.result(usersDAO.insert(User(0, "test-user", "Test User", None)), Duration.Inf)
@@ -104,6 +109,19 @@ class ModelSpec extends Specification {
 
       integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "another-test-integration-topic"), Duration.Inf)
       integrationTopic.isDefined mustEqual true
+
+      val iuId = Await.result(integrationUpdatesDAO.insert(IntegrationUpdate(0, "test-integration", None, "test-integration-group", itId, "test-integration-user", Some(user.get.id),
+        new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration update")), Duration.Inf)
+
+      var integrationUpdate = Await.result(integrationUpdatesDAO.find(iuId), Duration.Inf)
+      integrationUpdate.isDefined mustEqual true
+
+      m = Await.result(integrationUpdatesDAO.merge(IntegrationUpdate(iuId, "test-integration", Some("test-integration-update"), "test-integration-group", itId, "test-integration-user", Some(user.get.id),
+        new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration update")), Duration.Inf)
+      m mustEqual false
+
+      integrationUpdate = Await.result(integrationUpdatesDAO.find("test-integration", "test-integration-update"), Duration.Inf)
+      integrationUpdate.isDefined mustEqual true
     }
   }
 
