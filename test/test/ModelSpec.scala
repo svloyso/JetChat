@@ -85,11 +85,24 @@ class ModelSpec extends Specification {
       m = Await.result(integrationGroupsDAO.merge(IntegrationGroup("test-integration", "test-integration-group", "Test Integration Group")), Duration.Inf)
       m mustEqual false
 
-      m = Await.result(integrationTopicsDAO.merge(IntegrationTopic("test-integration", "test-integration-topic", "test-integration-group", "test-integration-user", Some(user.get.id),
+      val itId = Await.result(integrationTopicsDAO.insert(IntegrationTopic(0, "test-integration", None, "test-integration-group", "test-integration-user", Some(user.get.id),
         new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration topic")), Duration.Inf)
+
+      var integrationTopic = Await.result(integrationTopicsDAO.find(itId), Duration.Inf)
+      integrationTopic.isDefined mustEqual true
+
+      m = Await.result(integrationTopicsDAO.merge(IntegrationTopic(itId, "test-integration", Some("test-integration-topic"), "test-integration-group", "test-integration-user", Some(user.get.id),
+        new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration topic")), Duration.Inf)
+      m mustEqual false
+
+      integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "test-integration-topic"), Duration.Inf)
+      integrationTopic.get.integrationTopicId.get mustEqual "test-integration-topic"
+
+      m = Await.result(integrationTopicsDAO.merge(IntegrationTopic(0, "test-integration", Some("another-test-integration-topic"), "test-integration-group", "test-integration-user", Some(user.get.id),
+        new Timestamp(Calendar.getInstance.getTime.getTime), "Another test integration topic")), Duration.Inf)
       m mustEqual true
 
-      val integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "test-integration-topic"), Duration.Inf)
+      integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "another-test-integration-topic"), Duration.Inf)
       integrationTopic.isDefined mustEqual true
     }
   }
