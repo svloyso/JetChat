@@ -65,7 +65,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
 
   def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None ) = Action.async { implicit request =>
     request.cookies.get("user") match {
-      case Some(cookie) =>
+      case Some(cookie) if auth.HUB_MOCK_LOGIN.isEmpty || auth.HUB_MOCK_LOGIN.equals(cookie.value)  =>
         usersDAO.findByLogin(cookie.value).flatMap {
           case Some(user) =>
             val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL().replaceAll("http", "ws")
@@ -80,8 +80,8 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
           case None =>
             Future.successful(Redirect(auth.getAuthUrl).discardingCookies(DiscardingCookie("user")))
         }
-      case None =>
-        if (auth.HUB_BASE_URL.nonEmpty) {
+      case _ =>
+        if (auth.HUB_MOCK_LOGIN.isEmpty) {
           Future.successful(Redirect(auth.getAuthUrl))
         } else {
           usersDAO.findByLogin(auth.HUB_MOCK_LOGIN).flatMap {
@@ -120,7 +120,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
   }
 
   def logout() = Action.async { implicit request =>
-    Future.successful(Redirect(auth.getLogoutUrl).discardingCookies(DiscardingCookie("user")))
+    Future.successful(Redirect(if (auth.HUB_MOCK_LOGIN.isEmpty) auth.getLogoutUrl else controllers.routes.Application.index(None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
   }
 
   def getUser(login: String) = Action.async { implicit request =>
