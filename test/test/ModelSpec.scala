@@ -90,37 +90,18 @@ class ModelSpec extends Specification {
       m = Await.result(integrationGroupsDAO.merge(IntegrationGroup("test-integration", "test-integration-group", "Test Integration Group")), Duration.Inf)
       m mustEqual false
 
-      val itId = Await.result(integrationTopicsDAO.insert(IntegrationTopic(0, "test-integration", None, "test-integration-group", "test-integration-user", Some(user.get.id),
+      m = Await.result(integrationTopicsDAO.merge(IntegrationTopic("test-integration", "test-integration-topic", "test-integration-group", "test-integration-user",
         new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration topic")), Duration.Inf)
-
-      var integrationTopic = Await.result(integrationTopicsDAO.find(itId), Duration.Inf)
-      integrationTopic.isDefined mustEqual true
-
-      m = Await.result(integrationTopicsDAO.merge(IntegrationTopic(itId, "test-integration", Some("test-integration-topic"), "test-integration-group", "test-integration-user", Some(user.get.id),
-        new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration topic")), Duration.Inf)
-      m mustEqual false
-
-      integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "test-integration-topic"), Duration.Inf)
-      integrationTopic.get.integrationTopicId.get mustEqual "test-integration-topic"
-
-      m = Await.result(integrationTopicsDAO.merge(IntegrationTopic(0, "test-integration", Some("another-test-integration-topic"), "test-integration-group", "test-integration-user", Some(user.get.id),
-        new Timestamp(Calendar.getInstance.getTime.getTime), "Another test integration topic")), Duration.Inf)
       m mustEqual true
 
-      integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "another-test-integration-topic"), Duration.Inf)
+      var integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "test-integration-topic"), Duration.Inf)
       integrationTopic.isDefined mustEqual true
 
-      val iuId = Await.result(integrationUpdatesDAO.insert(IntegrationUpdate(0, "test-integration", None, "test-integration-group", itId, "test-integration-user", Some(user.get.id),
-        new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration update")), Duration.Inf)
+      m = Await.result(integrationUpdatesDAO.merge(IntegrationUpdate("test-integration", "test-integration-update", "test-integration-group",
+        "test-integration-topic", "test-integration-user", new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration update")), Duration.Inf)
+      m mustEqual true
 
-      var integrationUpdate = Await.result(integrationUpdatesDAO.find(iuId), Duration.Inf)
-      integrationUpdate.isDefined mustEqual true
-
-      m = Await.result(integrationUpdatesDAO.merge(IntegrationUpdate(iuId, "test-integration", Some("test-integration-update"), "test-integration-group", itId, "test-integration-user", Some(user.get.id),
-        new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration update")), Duration.Inf)
-      m mustEqual false
-
-      integrationUpdate = Await.result(integrationUpdatesDAO.find("test-integration", "test-integration-update"), Duration.Inf)
+      var integrationUpdate = Await.result(integrationUpdatesDAO.find("test-integration", "test-integration-update"), Duration.Inf)
       integrationUpdate.isDefined mustEqual true
     }
   }
