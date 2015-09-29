@@ -24,9 +24,11 @@ trait Authentificator {
 }
 
 trait HookHandler {
-  def handle() //todo: Future?
+  def init(token: String): Unit
+  def handle()
 }
 
 trait MessageHandler {
+  def collectMessages(token: String): Seq[AbstractMessage]
   def sendMessage(messages: Seq[AbstractMessage]) //todo: Future?
 }

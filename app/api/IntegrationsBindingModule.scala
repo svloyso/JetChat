@@ -7,8 +7,7 @@ import play.twirl.api.TemplateMagic.javaCollectionToScala
 import play.api.Logger
 
 class IntegrationsBindingModule extends AbstractModule {
-  @Override
-  def configure(): Unit = {
+  override def configure(): Unit = {
     val b = Multibinder.newSetBinder(binder, classOf[Integration])
     val classes = new Reflections().getSubTypesOf(classOf[Integration])
     classes.toSeq.map { case c: Class[Integration] =>

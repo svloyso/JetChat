@@ -25,6 +25,10 @@ class GitHubIntegration extends Integration {
   override def name: String = "GitHub"
 
   override def hookHandler: HookHandler = new HookHandler {
+    override def init(token: String): Unit = {
+
+    }
+
     override def handle(): Unit = {
       //todo:
     }
@@ -58,6 +62,10 @@ class GitHubIntegration extends Integration {
   }
 
   override def messageHandler: MessageHandler = new MessageHandler {
+    override def collectMessages(token: String): Seq[AbstractMessage] = {
+      Seq.empty //todo:
+    }
+
     override def sendMessage(messages: Seq[AbstractMessage]): Unit = {
       //todo:
     }

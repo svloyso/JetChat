@@ -25,3 +25,6 @@ GET         /                                              controllers.Applicati
 # Integration Auth
 GET         /integration/:id/auth                          controllers.IntegrationAuth.auth(id: String, redirectUrl: Option[String])
 GET         /integration/:id/callback                      controllers.IntegrationAuth.callback(id: String, code: Option[String], state: Option[String], redirectUrl: Option[String])
+
+# Integration Hook
+POST        /integration/:id/hook                          controllers.IntegrationHook.hook(id: String)
