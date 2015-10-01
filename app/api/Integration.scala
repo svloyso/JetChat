@@ -1,6 +1,6 @@
 package api
 
-import models.AbstractMessage
+import models.{IntegrationTopic, IntegrationUpdate, AbstractMessage}
 import play.api.mvc.{Result, Request, AnyContent}
 
 import scala.concurrent.Future
@@ -13,7 +13,7 @@ trait Integration {
   def id: String
   def name: String
   def authentificator: Authentificator
-  def hookHandler: HookHandler
+  def hookHandler: HookHandler //todo: make optional
   def messageHandler: MessageHandler
 }
 
@@ -29,6 +29,6 @@ trait HookHandler {
 }
 
 trait MessageHandler {
-  def collectMessages(token: String): Seq[AbstractMessage]
+  def collectMessages(token: String): Future[Map[IntegrationTopic, Seq[IntegrationUpdate]]]
   def sendMessage(messages: Seq[AbstractMessage]) //todo: Future?
 }

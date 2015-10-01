@@ -17,7 +17,7 @@ trait IntegrationUpdatesComponent extends HasDatabaseConfigProvider[JdbcProfile]
 
   import driver.api._
 
-  class IntegrationUpdatesTable(tag: Tag) extends Table[IntegrationUpdate](tag, "integration_updates") {
+  class IntegrationUpdatesTable(tag: Tag) extends driver.api.Table[IntegrationUpdate](tag, "integration_updates") {
     def integrationId = column[String]("integration_id")
 
     def integrationUpdateId = column[String]("integration_update_id")

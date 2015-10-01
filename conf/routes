@@ -28,3 +28,4 @@ GET         /integration/:id/callback                      controllers.Integrati
 
 # Integration Hook
 POST        /integration/:id/hook                          controllers.IntegrationHook.hook(id: String)
+GET         /integration/github/check                      controllers.IntegrationHook.check()
