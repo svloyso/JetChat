@@ -42,6 +42,10 @@ class IntegrationTokensDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     db.run(tokens.filter(t => t.userId === userId && t.integrationId === integrationId).result.headOption)
   }
 
+  def allTokens(integrationId: String): Future[Seq[IntegrationToken]] = {
+    db.run { tokens.result }
+  }
+
   def merge(token: IntegrationToken): Future[Boolean] = {
     find(token.userId, token.integrationId).flatMap {
       case None =>

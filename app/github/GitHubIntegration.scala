@@ -17,6 +17,7 @@ import play.api.mvc.{Result, AnyContent, Request}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.DurationInt
 
 /**
  * @author Alefas
@@ -78,16 +79,23 @@ object GitHubIntegration {
   }
 
   class GitHubMessageHandler extends MessageHandler {
-    override def collectMessages(token: String): Future[Map[IntegrationTopic, Seq[IntegrationUpdate]]] = {
+    override def collectMessages(token: String): Future[CollectedMessages] = {
       def askAPI(url: String): Future[WSResponse] = {
-        WS.url(url)(Play.current).
+        WS.url(url)(Play.current).withQueryString("access_token" -> token).
           withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).get()
       }
 
       val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
       val since = dateFormat.format(new Date(System.currentTimeMillis() - sincePeriod))
-      val notificationsUrl = s"https://api.github.com/notifications?access_token=$token&all=true&since=$since"
+      val notificationsUrl = s"https://api.github.com/notifications?all=true&since=$since"
       askAPI(notificationsUrl).flatMap { response =>
+        val pollInterval: Int = response.header("X-Poll-Interval") match {
+          case Some(p) =>
+            try {
+              p.toInt
+            } catch { case e: Throwable => 60 }
+          case _ => 60
+        }
         val seq: Seq[JsValue] = response.json.as[Seq[JsValue]]
         Future.sequence(seq.map { value =>
           val groupId = (value \ "repository" \ "full_name").as[String]
@@ -103,7 +111,7 @@ object GitHubIntegration {
             case "PullRequest" => s"PR #$lastPart $title"
           }
 
-          askAPI(url + s"?access_token=$token").flatMap { response =>
+          askAPI(url).flatMap { response =>
             val json = response.json
             val topicAuthor = tp match {
               case "Commit" => (json \ "author" \ "login").as[String]
@@ -121,7 +129,8 @@ object GitHubIntegration {
 
             askAPI((json \ "comments_url").as[String]).map { response =>
               val json = response.json
-              json.as[Seq[JsValue]].map { value =>
+              val comments = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
+              comments.map { value =>
                 //todo: status changes?
                 val commentId = (value \ "id").as[Long]
                 val userId = (value \ "user" \ "login").as[String]
@@ -131,7 +140,7 @@ object GitHubIntegration {
               }
             }.map(integrationTopic -> _)
           }
-        }).map(_.toMap)
+        }).map(_.toMap).map(CollectedMessages(_, pollInterval seconds))
       }
     }
 

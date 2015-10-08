@@ -1,10 +1,12 @@
 import javax.inject.Inject
 
-import actors.{MessagesActor, IntegrationActor, ClusterListener}
+import actors.{ReceiveMessagesEvent, MessagesActor, IntegrationActor, ClusterListener}
 import akka.actor.{ActorSystem, Props}
 import api.Integration
 import models.api.IntegrationTokensDAO
 import play.api.Application
+
+import scala.collection.JavaConversions._
 
 class Global @Inject()(val system: ActorSystem, val application: Application,
                        val integrations: java.util.Set[Integration],
@@ -12,6 +14,8 @@ class Global @Inject()(val system: ActorSystem, val application: Application,
   if (!play.api.Play.isTest(application)) {
     system.actorOf(Props[ClusterListener], "cluster-listener")
     system.actorOf(IntegrationActor.props(integrations, integrationTokensDAO), "integration-actor")
-    system.actorOf(MessagesActor.props(integrations, integrationTokensDAO), "messages-actor")
+    for (integration <- integrations) {
+      MessagesActor.actorOf(integration, system, integrationTokensDAO) ! ReceiveMessagesEvent
+    }
   }
 }

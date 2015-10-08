@@ -4,6 +4,7 @@ import models.{IntegrationTopic, IntegrationUpdate, AbstractMessage}
 import play.api.mvc.{Result, Request, AnyContent}
 
 import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * @author Alefas
@@ -29,6 +30,8 @@ trait HookHandler {
 }
 
 trait MessageHandler {
-  def collectMessages(token: String): Future[Map[IntegrationTopic, Seq[IntegrationUpdate]]]
+  def collectMessages(token: String): Future[CollectedMessages]
   def sendMessage(messages: Seq[AbstractMessage]) //todo: Future?
 }
+
+case class CollectedMessages(messages: Map[IntegrationTopic, Seq[IntegrationUpdate]], nextCheck: FiniteDuration)

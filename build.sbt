@@ -4,7 +4,7 @@ version := System.getProperty("build.number", "0.1-SNAPSHOT")
 
 organization := "com.jetbrains"
 
-scalaVersion := "2.11.5"
+scalaVersion := "2.11.7"
 
 resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
 

@@ -22,19 +22,4 @@ class IntegrationHook @Inject()(integrations: java.util.Set[Integration], integr
   def hook(id: String) = Action.async(parse.json) { implicit request =>
     Future.successful(BadRequest("NYI")) //todo: there is no integrations yet to use it
   }
-
-  //todo: to remove
-  def check() = Action.async {
-    val handler = new GitHubMessageHandler()
-    for {
-      users <- usersDAO.all
-      user <- users
-      integration <- integrationTokensDAO.find(user.id, "GitHub")
-    } {
-      handler.collectMessages(integration.get.token).onComplete { t =>
-        t
-      }
-    }
-    Future.successful(Ok("It's ok"))
-  }
 }
