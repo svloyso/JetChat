@@ -1,6 +1,6 @@
 @import play.api.libs.json.JsValue
 
-@(user: User, users: JsValue, groups: JsValue, webSocketUrl: String,
+@(user: User, integrations: JsValue, users: JsValue, groups: JsValue, webSocketUrl: String,
         selectedGroupId: Option[Long], selectedTopic: Option[JsValue], selectedUserId: Option[Long])
 
 @head = {
@@ -21,6 +21,7 @@
                 avatar: "@{user.avatar}"
             },
             webSocketUrl: "@Html(webSocketUrl)",
+            integrations: @{Html(integrations.toString)},
             users: @{Html(users.toString)},
             groups: @{Html(groups.toString)},
             selectedGroupId: @{selectedGroupId match {

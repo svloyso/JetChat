@@ -2,8 +2,10 @@ package models.api
 
 import javax.inject.{Inject, Singleton}
 
+import api.Integration
 import models.UsersComponent
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
+import play.twirl.api.TemplateMagic.javaCollectionToScala
 import slick.driver.JdbcProfile
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -26,6 +28,8 @@ trait IntegrationTokensComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
     def tokenIndex = index("integration_token_index", (userId, integrationId), unique = true)
 
+    def tokenUserIndex = index("integration_token_user_index", (userId), unique = false)
+
     def * = (userId, integrationId, token) <>(IntegrationToken.tupled, IntegrationToken.unapply)
   }
 
@@ -33,13 +37,20 @@ trait IntegrationTokensComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 }
 
 @Singleton()
-class IntegrationTokensDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
+class IntegrationTokensDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider,
+                                     val integrations: java.util.Set[Integration])
   extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationTokensComponent with UsersComponent {
 
   import driver.api._
 
   def find(userId: Long, integrationId: String): Future[Option[IntegrationToken]] = {
     db.run(tokens.filter(t => t.userId === userId && t.integrationId === integrationId).result.headOption)
+  }
+
+  def find(userId: Long): Future[Map[String, Option[IntegrationToken]]] = {
+    db.run(tokens.filter(t => t.userId === userId).result).map { case t =>
+      integrations.toSeq.map { case i => i.id -> t.find(_.integrationId == i.id ) }.toMap
+    }
   }
 
   def allTokens(integrationId: String): Future[Seq[IntegrationToken]] = {

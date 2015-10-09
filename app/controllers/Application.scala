@@ -9,10 +9,11 @@ import akka.actor.{ActorSystem, PoisonPill}
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import models._
+import models.api.IntegrationTokensDAO
 import play.api.Logger
+import play.api.libs.functional.syntax._
 import play.api.libs.iteratee.{Concurrent, Iteratee}
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
 import play.api.mvc._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -23,7 +24,8 @@ import scala.concurrent.Future
 class Application @Inject()(val system: ActorSystem, val auth: Auth,
                             val usersDAO: UsersDAO, val groupsDAO: GroupsDAO,
                             val topicsDAO: TopicsDAO, val commentsDAO: CommentsDAO,
-                            val directMessagesDAO: DirectMessagesDAO) extends Controller {
+                            val directMessagesDAO: DirectMessagesDAO,
+                            val integrationTokensDAO: IntegrationTokensDAO) extends Controller {
 
   implicit val tsReads: Reads[Timestamp] = Reads.of[Long] map (new Timestamp(_))
   implicit val tsWrites: Writes[Timestamp] = Writes { (ts: Timestamp) => JsString(ts.toString) }
@@ -63,18 +65,24 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
 
   var actorCounter = 0
 
-  def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None ) = Action.async { implicit request =>
+  def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None) = Action.async { implicit request =>
     request.cookies.get("user") match {
-      case Some(cookie) if auth.HUB_MOCK_LOGIN.isEmpty || auth.HUB_MOCK_LOGIN.equals(cookie.value)  =>
+      case Some(cookie) if auth.HUB_MOCK_LOGIN.isEmpty || auth.HUB_MOCK_LOGIN.equals(cookie.value) =>
         usersDAO.findByLogin(cookie.value).flatMap {
           case Some(user) =>
             val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL().replaceAll("http", "ws")
             (for {
               users <- getUsersJsValue(user.id)
               groups <- getGroupsJsValue(user.id)
-              topic <- topicId match { case Some(value) => topicsDAO.findById(value) case None => Future { None }}
-            } yield (users, groups, topic)) map { case (users, groups, topic) =>
-              Ok(views.html.index(user, users, groups, webSocketUrl, groupId,
+              integrations <- getUserIntegrationsJson(user.id)
+              topic <- topicId match {
+                case Some(value) => topicsDAO.findById(value)
+                case None => Future {
+                  None
+                }
+              }
+            } yield (integrations, users, groups, topic)) map { case (integrations, users, groups, topic) =>
+              Ok(views.html.index(user, integrations, users, groups, webSocketUrl, groupId,
                 topic match { case Some(value) => Some(Json.toJson(value)) case None => None }, userId))
             }
           case None =>
@@ -307,5 +315,13 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
         Ok(Json.toJson(JsNumber(id)))
       }
     }
+  }
+
+  def getUserIntegrationsJson(userId: Long): Future[JsValue] = getUserIntegrations(userId).map { case integrations =>
+    Json.toJson(JsObject(integrations.map { case (i, t) => i -> JsBoolean(t) }.toSeq))
+  }
+
+  def getUserIntegrations(userId: Long): Future[Map[String, Boolean]] = {
+    integrationTokensDAO.find(userId).map { case integrations => integrations.map { case (i, t) => i -> t.isDefined } }
   }
 }
