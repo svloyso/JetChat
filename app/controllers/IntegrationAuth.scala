@@ -58,7 +58,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                     result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken))
                   } yield {
                     system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)
-                    mediator ! Publish("cluster-events", ClusterEvent(user.login, JsObject(Seq("newIntegration" -> JsString(integrationId)))))
+                    mediator ! Publish("cluster-events", ClusterEvent(user.login, JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
                     result
                   }).map { _ =>
                     Redirect(controllers.routes.Application.index(None, None, None))

@@ -128,6 +128,11 @@ var ChatStore = Reflux.createStore({
         this.trigger(this.state);
     },
 
+    onEnableIntegration: function (integration) {
+        this.state.integrations[integration] = true;
+        this.trigger(this.state);
+    },
+
     onNewTopic: function (topic, select) {
         if ((!this.state.selectedGroup || this.state.selectedGroup.id ==
             topic.group.id) && this.state.topics.filter(function (m) {
@@ -574,6 +579,8 @@ var App = React.createClass({
                 } else if (data.newUser) {
                     // TODO newUser
                     ChatActions.newUser(data.newUser);
+                } else if (data.enableIntegration) {
+                    ChatActions.enableIntegration(data.enableIntegration);
                 } else if (!data.toUser) {
                     ChatActions.newTopic(data);
                 } else {
