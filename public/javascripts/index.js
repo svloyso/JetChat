@@ -26,6 +26,7 @@ var ChatStore = Reflux.createStore({
             users: global.users.filter(function (u) {
                 return u.id !== global.user.id
             }),
+            integrations: global.integrations,
             groups: global.groups,
             topics: [],
             messages: [],
@@ -396,13 +397,10 @@ var MessageItem = React.createClass({
         var avatar;
         var info;
         if (!self.props.sameUser) {
-            var user = global.users.filter(function (u) {
-                return u.id == self.props.message.user.id
-            })[0];
-            avatar = <img className="img avatar pull-left" src={user.avatar}/>;
+            avatar = <img className="img avatar pull-left" src={self.props.message.user.avatar}/>;
             var prettyDate = $.format.prettyDate(new Date(self.props.message.date));
             info = <div className="info">
-                <span className="author">{user.name}</span>
+                <span className="author">{self.props.message.user.name}</span>
                 &nbsp;
                 <span className="pretty date"
                       data-date={self.props.message.date}>{prettyDate}</span>
@@ -439,14 +437,11 @@ var MessageBar = React.createClass({
         var input = React.findDOMNode(self.refs.input);
         if (event.which == 13 && input.value.trim()) {
             if (self.state.store.selectedUser) {
-                var user = global.users.filter(function (u) {
-                    return u.id == global.user.id
-                })[0];
-                var toUser = global.users.filter(function (u) {
+                var toUser = self.state.store.users.filter(function (u) {
                     return u.id == self.state.store.selectedUser.id
                 })[0];
                 var newDirectMessage = {
-                    "user": user,
+                    "user": global.user,
                     "toUser": toUser,
                     "date": new Date().getTime(),
                     "text": input.value
@@ -466,11 +461,7 @@ var MessageBar = React.createClass({
                 });
             } else {
                 var newMessage = {
-                    "user": {
-                        "id": global.user.id,
-                        "name": global.user.name,
-                        "avatar": global.user.avatar
-                    },
+                    "user": global.user,
                     "date": new Date().getTime(),
                     "groupId": self.state.store.selectedTopic ? self.state.store.selectedTopic.group.id : self.state.store.selectedGroup.id,
                     "text": input.value
