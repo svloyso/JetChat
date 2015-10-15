@@ -83,6 +83,49 @@ object GitHubIntegration {
 
   class GitHubMessageHandler extends MessageHandler {
     override def collectMessages(token: String): Future[CollectedMessages] = {
+      def eventText(json: JsValue): String = {
+        (json \ "event").as[String] match {
+          case "closed" =>
+            (json \ "commitId").asOpt[String] match {
+              case Some(commitId) => s"closed by $commitId"
+              case _ => "closed"
+            }
+          case "referenced" =>
+            val commitId = (json \ "commit_id").as[String]
+            s"referenced from $commitId"
+          case "assigned" =>
+            val assignee = (json \ "assignee" \ "login").as[String]
+            s"assigned to $assignee"
+          case "unassigned" =>
+            val assignee = (json \ "assignee" \ "login").as[String]
+            s"unassigned from $assignee"
+          case "labeled" =>
+            val name = (json \ "label" \ "name").as[String]
+            s"labeled: $name"
+          case "unlabeled" =>
+            val name = (json \ "label" \ "name").as[String]
+            s"unlabeled: $name"
+          case "milestoned" =>
+            val title = (json \ "milestone" \ "title").as[String]
+            s"milestoned: $title"
+          case "demilestoned" =>
+            val title = (json \ "milestone" \ "title").as[String]
+            s"demilestoned: $title"
+          case "renamed" =>
+            val from = (json \ "rename:" \ "from").as[String]
+            val to = (json \ "rename:" \ "to").as[String]
+            s"""renamed from:
+               |  $from
+               |
+               |        to:
+               |  $to
+             """.stripMargin
+          case "head_ref_deleted" => "The pull request’s branch was deleted."
+          case "head_ref_restored" => "The pull request’s branch was restored."
+          case other => other
+        }
+      }
+
       def askAPI(url: String): Future[WSResponse] = {
         WS.url(url)(Play.current).withQueryString("access_token" -> token).
           withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).get()
@@ -130,18 +173,35 @@ object GitHubIntegration {
             }
             val integrationTopic = IntegrationTopic(ID, topicId, groupId, topicAuthor, topicTimestamp, topicText)
 
-            askAPI((json \ "comments_url").as[String]).map { response =>
+            val commentsFuture = askAPI((json \ "comments_url").as[String]).map { response =>
               val json = response.json
               val comments = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
               comments.map { value =>
-                //todo: status changes?
                 val commentId = (value \ "id").as[Long]
                 val userId = (value \ "user" \ "login").as[String]
                 val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
                 val text = (value \ "body").as[String]
                 IntegrationUpdate(ID, commentId.toString, groupId, topicId, userId, timestamp, text)
               }
-            }.map(integrationTopic -> _)
+            }
+            ((json \ "events_url").asOpt[String].orElse((json \ "statuses_url").asOpt[String]) match {
+              case Some(events_url) =>
+                commentsFuture.zip {
+                  askAPI(events_url).map { response =>
+                    val json = response.json
+                    val events = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
+                    events.collect {
+                      case value if !Set("mentioned", "subscribed").contains((value \ "event").as[String]) =>
+                        val eventId = (value \ "id").as[Long]
+                        val userId = (value \ "actor" \ "login").as[String]
+                        val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
+                        val text = eventText(value)
+                        IntegrationUpdate(ID, eventId.toString, groupId, topicId, userId, timestamp, text)
+                    }
+                  }
+                }.map { case (comments, events) => comments ++ events }
+              case _ => commentsFuture
+            }).map(integrationTopic -> _)
           }
         }).map(_.toMap).map(CollectedMessages(_, pollInterval seconds))
       }

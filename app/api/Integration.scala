@@ -26,7 +26,7 @@ trait Authentificator {
 
 trait HookHandler {
   def init(token: String): Unit
-  def handle()
+  def handle() //todo:
 }
 
 trait MessageHandler {
