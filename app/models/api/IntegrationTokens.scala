@@ -28,7 +28,7 @@ trait IntegrationTokensComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
     def tokenIndex = index("integration_token_index", (userId, integrationId), unique = true)
 
-    def tokenUserIndex = index("integration_token_user_index", (userId), unique = false)
+    def tokenUserIndex = index("integration_token_user_index", userId, unique = false)
 
     def * = (userId, integrationId, token) <>(IntegrationToken.tupled, IntegrationToken.unapply)
   }
@@ -55,6 +55,14 @@ class IntegrationTokensDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
 
   def allTokens(integrationId: String): Future[Seq[IntegrationToken]] = {
     db.run { tokens.result }
+  }
+
+  def delete(token: IntegrationToken): Future[Boolean] = {
+    find(token.userId, token.integrationId).flatMap {
+      case None => Future(false)
+      case Some(existing) =>
+        db.run(tokens.filter(t => t.userId === token.userId && t.integrationId === token.integrationId).delete).map(_ > 0)
+    }
   }
 
   def merge(token: IntegrationToken): Future[Boolean] = {

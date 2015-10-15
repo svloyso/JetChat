@@ -28,6 +28,29 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                                system: ActorSystem) extends Controller {
   val mediator = DistributedPubSub(system).mediator
 
+  def disable(id: String) = Action.async { implicit request =>
+    integrations.toSeq.find(_.id == id) match {
+      case Some(integration) =>
+        request.cookies.get("user") match {
+          case Some(cookie) =>
+            val login = cookie.value
+            usersDAO.findByLogin(login).flatMap {
+              case Some(user) =>
+                integrationTokensDAO.find(user.id, integration.id).flatMap {
+                  case Some(token) =>
+                    integrationTokensDAO.delete(token).flatMap { _ =>
+                      integration.authentificator.disable(token.token)
+                    }.map(_ => Ok("Succesfully disabled"))
+                  case _ => Future.successful(BadRequest("Already disabled"))
+                }
+              case None => Future.successful(BadRequest("Wrong user"))
+            }
+          case _ => Future.successful(BadRequest("User is logged off"))
+        }
+      case None => Future.successful(BadRequest("Wrong service"))
+    }
+  }
+
   def auth(id: String, redirectUrl: Option[String]) = Action.async { implicit request =>
     integrations.toSeq.find(_.id == id) match {
       case Some(integration) =>

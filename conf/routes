@@ -23,6 +23,7 @@ GET         /assets/*file                                  controllers.Assets.at
 GET         /                                              controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userId: Option[Long])
 
 # Integration Auth
+GET         /integration/:id/disable                       controllers.IntegrationAuth.disable(id: String)
 GET         /integration/:id/auth                          controllers.IntegrationAuth.auth(id: String, redirectUrl: Option[String])
 GET         /integration/:id/callback                      controllers.IntegrationAuth.callback(id: String, code: Option[String], state: Option[String], redirectUrl: Option[String])
 

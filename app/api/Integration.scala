@@ -20,7 +20,7 @@ trait Integration {
 
 trait Authentificator {
   def enable(redirectUrl: Option[String], state: String)(implicit request: Request[AnyContent]): Future[Result]
-  def disable() //todo: Future?
+  def disable(token: String): Future[Boolean]
   def token(redirectUri: String, code: String): Future[String]
 }
 

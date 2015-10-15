@@ -36,8 +36,11 @@ class GitHubIntegration extends Integration {
   }
 
   override def authentificator: Authentificator = new Authentificator {
-    override def disable(): Unit = {
-      //todo:
+    override def disable(token: String): Future[Boolean] = {
+      //todo: add proper disable, this one is not working as we need basic auth.
+      //val response = WS.url(s"https://api.github.com/authorizations/Alefas")(Play.current).delete()
+      //response.map { _.status == 204 }
+      Future(true)
     }
 
     override def token(redirectUri: String, code: String): Future[String] = {
