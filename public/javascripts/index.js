@@ -5,7 +5,8 @@ var ChatActions = Reflux.createActions([
     'newGroup',
     'newUser',
     'newTopic',
-    'newMessage'
+    'newMessage',
+    'showIntegrations'
 ]);
 
 var ChatStore = Reflux.createStore({
@@ -13,8 +14,12 @@ var ChatStore = Reflux.createStore({
 
     init: function () {
         this.state = this.getInitialState();
-        this.onSelectGroup(this.state.selectedGroup, true);
-        var self = this;
+        if (this.state.displayIntegrations) {
+            this.onShowIntegrations(true);
+        } else {
+            this.onSelectGroup(this.state.selectedGroup);
+        }
+        // var self = this;
         // TODO: Re-fetch groups, topics, etc
         /*window.addEventListener('popstate', function (e) {
             self.trigger(e.state);
@@ -27,6 +32,7 @@ var ChatStore = Reflux.createStore({
                 return u.id !== global.user.id
             }),
             integrations: global.integrations,
+            displayIntegrations: global.displayIntegrations,
             groups: global.groups,
             topics: [],
             messages: [],
@@ -41,19 +47,21 @@ var ChatStore = Reflux.createStore({
     },
 
     onSelectGroup: function (group) {
+        var self = this;
         this.state.selectedGroup = group;
         this.state.selectedUser = undefined;
+        this.state.displayIntegrations = undefined;
         $.ajax({
             context: this,
             type: "GET",
             url: "/json/user/" + global.user.id + "/topics" +
             (group ? "/" + group.id : ""),
             success: function (topics) {
-                this.state.topics = topics;
+                self.state.topics = topics;
                 if (topics.length > 0) {
-                    this.onSelectTopic(topics[0].topic);
+                    self.onSelectTopic(topics[0].topic);
                 } else {
-                    this.onSelectTopic();
+                    self.onSelectTopic();
                 }
             },
             fail: function (e) {
@@ -63,21 +71,23 @@ var ChatStore = Reflux.createStore({
     },
 
     onSelectTopic: function (topic) {
+        var self = this;
         this.state.selectedTopic = topic;
         this.state.selectedUser = undefined;
+        this.state.displayIntegrations = undefined;
         if (topic) {
             $.ajax({
                 context: this,
                 type: "GET",
                 url: "/json/user/" + global.user.id + "/messages/" + topic.id,
                 success: function (messages) {
-                    this.state.messages = messages;
-                    this.trigger(this.state);
+                    self.state.messages = messages;
+                    self.trigger(self.state);
                     // TODO: pushState
-                    window.history.replaceState(this.state, window.title,
-                        this.state.selectedGroup ? ("?groupId=" + this.state.selectedGroup.id +
-                            "&topicId=" + this.state.selectedTopic.id
-                        ) : "?topicId=" + this.state.selectedTopic.id);
+                    window.history.replaceState(self.state, window.title,
+                        self.state.selectedGroup ? ("?groupId=" + self.state.selectedGroup.id +
+                            "&topicId=" + self.state.selectedTopic.id
+                        ) : "?topicId=" + self.state.selectedTopic.id);
                 },
                 fail: function (e) {
                     console.error(e);
@@ -92,16 +102,18 @@ var ChatStore = Reflux.createStore({
     },
 
     onSelectUser: function (user) {
+        var self = this;
         this.state.selectedUser = user;
         this.state.selectedGroup = undefined;
         this.state.selectedTopic = undefined;
+        this.state.displayIntegrations = undefined;
         $.ajax({
             context: this,
             type: "GET",
             url: "/json/user/" + global.user.id + "/direct/" + user.id,
             success: function (messages) {
-                this.state.messages = messages;
-                this.trigger(this.state);
+                self.state.messages = messages;
+                self.trigger(self.state);
             },
             fail: function (e) {
                 console.error(e);
@@ -132,6 +144,24 @@ var ChatStore = Reflux.createStore({
     onEnableIntegration: function (integration) {
         this.state.integrations[integration] = true;
         this.trigger(this.state);
+    },
+
+    onDisableIntegration: function (integration) {
+        delete this.state.integrations[integration];
+        this.trigger(this.state);
+    },
+
+    onShowIntegrations: function (initial) {
+        var self = this;
+        this.state.displayIntegrations = true;
+        this.state.selectedUser = undefined;
+        this.state.selectedGroup = undefined;
+        this.state.selectedTopic = undefined;
+
+        if (!initial) {
+            setInterval(function(){ self.trigger(self.state); }, 0); // Otherwise it doesn't work for some reason
+            window.history.replaceState(this.state, window.title, "?integrations=true");
+        }
     },
 
     onNewTopic: function (topic, select) {
@@ -217,7 +247,21 @@ var NewGroupButton = React.createClass({
 
     render: function () {
         return (
-            <a id="new-group" onClick={this.onClick}>New group</a>
+            <a id="new-group">New group</a>
+        );
+    }
+});
+
+var IntegrationsButton = React.createClass({
+    onClick: function() {
+        ChatActions.showIntegrations();
+    },
+
+    render: function() {
+        var self = this;
+        var className = self.props.displayIntegrations ? "selected" : "";
+        return (
+            <li id="integrations-button" onClick={self.onClick.bind(self, undefined)} className={className}>Integrations</li>
         );
     }
 });
@@ -256,15 +300,18 @@ var GroupPane = React.createClass({
             );
         });
 
-        var allGroupsClass = !self.state.store.selectedGroup && !self.state.store.selectedUser ? "selected" : "";
+        var allGroupsClass = !self.state.store.selectedGroup && !self.state.store.selectedUser &&
+            !self.state.store.displayIntegrations? "selected" : "";
 
         return (
+
             <ul id="group-pane">
                 <li id="all-groups" className={allGroupsClass}
                     onClick={self.onGroupClick.bind(self, undefined)}>
                     <span>All groups</span></li>
                 {groupItems}
                 <NewGroupButton/>
+                <IntegrationsButton displayIntegrations={self.state.store.displayIntegrations}/>
                 {userItems}
             </ul>
         );
@@ -376,6 +423,7 @@ var TopicBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     render: function () {
+        console.log("TopicBar state = " + this.state.store.topics);
         return (
             <div id="topic-bar" style={{display: this.state.store.selectedUser ? "none" : ""}}>
                 <SearchPane/>
@@ -556,7 +604,17 @@ var MessageBar = React.createClass({
     }
 });
 
+var IntegrationsPane = React.createClass({
+    render: function() {
+        return (
+            <div id="integration-pane"></div>
+        );
+    }
+});
+
 var App = React.createClass({
+    mixins: [Reflux.connect(ChatStore, 'store')],
+
     openSocket: function () {
         var self = this;
         var socket = new WebSocket(global.webSocketUrl);
@@ -572,6 +630,8 @@ var App = React.createClass({
                     ChatActions.newUser(data.newUser);
                 } else if (data.enableIntegration) {
                     ChatActions.enableIntegration(data.enableIntegration);
+                } else if (data.disableIntegration) {
+                    ChatActions.enableIntegration(data.disableIntegration);
                 } else if (!data.toUser) {
                     ChatActions.newTopic(data);
                 } else {
@@ -603,13 +663,23 @@ var App = React.createClass({
     },
 
     render: function () {
-        return (
-            <div>
-                <SideBar/>
-                <TopicBar/>
-                <MessageBar/>
-            </div>
-        );
+        console.log("App state = " + this.state.store.topics);
+        if (this.state.store.displayIntegrations) {
+            return (
+                <div>
+                    <SideBar/>
+                    <IntegrationsPane/>
+                </div>
+            )
+        } else {
+            return (
+                <div>
+                    <SideBar/>
+                    <TopicBar/>
+                    <MessageBar/>
+                </div>
+            );
+        }
     }
 });
 

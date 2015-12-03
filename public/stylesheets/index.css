@@ -33,6 +33,16 @@ input, textarea {
     background-color: #f5f5f5;
 }
 
+#integration-pane {
+    padding: 20px 0;
+    width: 350px;
+    height: 100%;
+    position: absolute;
+    left: 200px;
+    top: 0;
+    background-color: #f5f5f5;
+}
+
 #message-bar {
     height: 100%;
     position: absolute;
@@ -131,7 +141,7 @@ a:hover {
     text-decoration: none;
 }
 
-#new-topic.enabled, #group-pane #new-group {
+#new-topic.enabled, #group-pane #new-group, #group-pane #integrations-button:not(.selected) {
     color: #0077cc;
     cursor: pointer;
 }
@@ -141,6 +151,12 @@ a:hover {
     margin: 5px 0 10px;
     padding: 5px 20px 5px;
     font-size: 12px;
+}
+
+#group-pane #integrations-button {
+    display: block;
+    margin: 0 0 10px;
+    padding: 3px 20px 3px;
 }
 
 #new-topic #plus {

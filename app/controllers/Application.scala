@@ -65,7 +65,10 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
 
   var actorCounter = 0
 
-  def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None) = Action.async { implicit request =>
+  def displayIntegrations() = index(None, None, None, displayIntegrations = Some(true))
+
+  def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None,
+           displayIntegrations: Option[Boolean] = None) = Action.async { implicit request =>
     request.cookies.get("user") match {
       case Some(cookie) if auth.HUB_MOCK_LOGIN.isEmpty || auth.HUB_MOCK_LOGIN.equals(cookie.value) =>
         usersDAO.findByLogin(cookie.value).flatMap {
@@ -83,7 +86,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
               }
             } yield (integrations, users, groups, topic)) map { case (integrations, users, groups, topic) =>
               Ok(views.html.index(user, integrations, users, groups, webSocketUrl, groupId,
-                topic match { case Some(value) => Some(Json.toJson(value)) case None => None }, userId))
+                topic match { case Some(value) => Some(Json.toJson(value)) case None => None }, userId, displayIntegrations))
             }
           case None =>
             Future.successful(Redirect(auth.getAuthUrl).discardingCookies(DiscardingCookie("user")))
@@ -94,7 +97,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
         } else {
           usersDAO.findByLogin(auth.HUB_MOCK_LOGIN).flatMap {
             case Some(user) =>
-              Future.successful(Redirect(controllers.routes.Application.index(groupId, topicId, userId))
+              Future.successful(Redirect(controllers.routes.Application.index(groupId, topicId, userId, displayIntegrations))
                 .withCookies(Cookie("user", auth.HUB_MOCK_LOGIN, httpOnly = false)))
             case None =>
               usersDAO.insert(User(login = auth.HUB_MOCK_LOGIN, name = auth.HUB_MOCK_NAME,
@@ -103,7 +106,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
                   JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(id),
                     "name" -> JsString(auth.HUB_MOCK_NAME), "login" -> JsString(auth.HUB_MOCK_LOGIN),
                     "avatar" -> JsString(auth.HUB_MOCK_AVATAR)))))))
-                Redirect(controllers.routes.Application.index(groupId, topicId, userId))
+                Redirect(controllers.routes.Application.index(groupId, topicId, userId, displayIntegrations))
                   .withCookies(Cookie("user", auth.HUB_MOCK_LOGIN, httpOnly = false))
               }
           }
@@ -128,7 +131,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
   }
 
   def logout() = Action.async { implicit request =>
-    Future.successful(Redirect(if (auth.HUB_MOCK_LOGIN.isEmpty) auth.getLogoutUrl else controllers.routes.Application.index(None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+    Future.successful(Redirect(if (auth.HUB_MOCK_LOGIN.isEmpty) auth.getLogoutUrl else controllers.routes.Application.index(None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
   }
 
   def getUser(login: String) = Action.async { implicit request =>

@@ -84,7 +84,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                     mediator ! Publish("cluster-events", ClusterEvent(user.login, JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
                     result
                   }).map { _ =>
-                    Redirect(controllers.routes.Application.index(None, None, None))
+                    Redirect(controllers.routes.Application.index(None, None, None, None))
                   }.recover { case e: Throwable => BadRequest(e.getMessage) }
                 case _ => Future.successful(BadRequest("User is logged off"))
               }
