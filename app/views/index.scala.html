@@ -2,7 +2,7 @@
 
 @(user: User, integrations: JsValue, users: JsValue, groups: JsValue, webSocketUrl: String,
         selectedGroupId: Option[Long], selectedTopic: Option[JsValue], selectedUserId: Option[Long],
-        displayIntegrations: Option[Boolean])
+        displaySettings: Option[Boolean])
 
 @head = {
     <link rel="stylesheet" href="@routes.Assets.at("stylesheets/index.css")"/>
@@ -23,7 +23,7 @@
             },
             webSocketUrl: "@Html(webSocketUrl)",
             integrations: @{Html(integrations.toString)},
-            displayIntegrations: @{displayIntegrations match {
+            displaySettings: @{displaySettings match {
 				case Some(value) => Html("true")
 				case None => Html("undefined")
 			}},

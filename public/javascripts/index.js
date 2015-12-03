@@ -14,8 +14,10 @@ var ChatStore = Reflux.createStore({
 
     init: function () {
         this.state = this.getInitialState();
-        if (this.state.displayIntegrations) {
+        if (this.state.displaySettings) {
             this.onShowIntegrations(true);
+        } else if (this.state.selectedUser) {
+            this.onSelectUser(this.state.selectedUser);
         } else {
             this.onSelectGroup(this.state.selectedGroup);
         }
@@ -32,7 +34,7 @@ var ChatStore = Reflux.createStore({
                 return u.id !== global.user.id
             }),
             integrations: global.integrations,
-            displayIntegrations: global.displayIntegrations,
+            displaySettings: global.displaySettings,
             groups: global.groups,
             topics: [],
             messages: [],
@@ -50,7 +52,7 @@ var ChatStore = Reflux.createStore({
         var self = this;
         this.state.selectedGroup = group;
         this.state.selectedUser = undefined;
-        this.state.displayIntegrations = undefined;
+        this.state.displaySettings = undefined;
         $.ajax({
             context: this,
             type: "GET",
@@ -74,7 +76,7 @@ var ChatStore = Reflux.createStore({
         var self = this;
         this.state.selectedTopic = topic;
         this.state.selectedUser = undefined;
-        this.state.displayIntegrations = undefined;
+        this.state.displaySettings = undefined;
         if (topic) {
             $.ajax({
                 context: this,
@@ -106,7 +108,7 @@ var ChatStore = Reflux.createStore({
         this.state.selectedUser = user;
         this.state.selectedGroup = undefined;
         this.state.selectedTopic = undefined;
-        this.state.displayIntegrations = undefined;
+        this.state.displaySettings = undefined;
         $.ajax({
             context: this,
             type: "GET",
@@ -114,6 +116,7 @@ var ChatStore = Reflux.createStore({
             success: function (messages) {
                 self.state.messages = messages;
                 self.trigger(self.state);
+                window.history.replaceState(this.state, window.title, "?userId=" + self.state.selectedUser.id);
             },
             fail: function (e) {
                 console.error(e);
@@ -152,14 +155,14 @@ var ChatStore = Reflux.createStore({
     },
 
     onShowIntegrations: function (initial) {
-        this.state.displayIntegrations = true;
+        this.state.displaySettings = true;
         this.state.selectedUser = undefined;
         this.state.selectedGroup = undefined;
         this.state.selectedTopic = undefined;
 
         if (!initial) {
             this.trigger(this.state);
-            window.history.replaceState(this.state, window.title, "?integrations=true");
+            window.history.replaceState(this.state, window.title, "?settings=true");
         }
     },
 
@@ -260,7 +263,7 @@ var IntegrationsButton = React.createClass({
         var self = this;
         var className = self.props.selected ? "selected" : "";
         return (
-            <li id="integrations-button" onClick={self.onClick.bind(self, undefined)} className={className}>Integrations</li>
+            <li id="integrations-button" onClick={self.onClick.bind(self, undefined)} className={className}>Settings</li>
         );
     }
 });
@@ -309,7 +312,7 @@ var GroupPane = React.createClass({
         });
 
         var allGroupsClass = (!self.state.store.selectedGroup && !self.state.store.selectedUser &&
-            !self.state.store.displayIntegrations) ? "selected" : "";
+            !self.state.store.displaySettings) ? "selected" : "";
 
         return (
 
@@ -320,7 +323,7 @@ var GroupPane = React.createClass({
                 {groupItems}
                 <NewGroupButton/>
                 {integrationItems}
-                <IntegrationsButton selected={self.state.store.displayIntegrations}/>
+                <IntegrationsButton selected={self.state.store.displaySettings}/>
                 {userItems}
             </ul>
         );
@@ -433,7 +436,7 @@ var TopicBar = React.createClass({
 
     render: function () {
         return (
-            <div id="topic-bar" style={{display: this.state.store.selectedUser || this.state.store.displayIntegrations ? "none" : ""}}>
+            <div id="topic-bar" style={{display: this.state.store.selectedUser || this.state.store.displaySettings ? "none" : ""}}>
                 <SearchPane/>
                 <NewTopicPane/>
                 <TopicPane/>
@@ -596,7 +599,7 @@ var MessageBar = React.createClass({
         }
         return (
             // TODO: Replace logic with className
-            <div id="message-bar" style={{left: this.state.store.selectedUser ? "200px" : "550px", display: this.state.store.displayIntegrations ? "none" : ""}}>
+            <div id="message-bar" style={{left: this.state.store.selectedUser ? "200px" : "550px", display: this.state.store.displaySettings ? "none" : ""}}>
                 <div id="message-pane">
                     <div id="message-roll" ref="messageRoll">
                         {messageItems}
@@ -617,7 +620,7 @@ var IntegrationsPane = React.createClass({
 
     render: function() {
         return (
-            <div id="integration-pane" style={{display: this.state.store.displayIntegrations ? "" : "none"}}></div>
+            <div id="integration-pane" style={{display: this.state.store.displaySettings ? "" : "none"}}></div>
         );
     }
 });
