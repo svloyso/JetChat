@@ -64,6 +64,12 @@ input, textarea {
 
 }
 
+#group-pane .integration-name {
+    display: block;
+    margin: 0 0 5px;
+    padding: 3px 20px 3px;
+}
+
 #group-pane li.selected {
     background-color: #cbe9f7;
 }

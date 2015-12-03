@@ -47,9 +47,9 @@ class IntegrationTokensDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     db.run(tokens.filter(t => t.userId === userId && t.integrationId === integrationId).result.headOption)
   }
 
-  def find(userId: Long): Future[Map[String, Option[IntegrationToken]]] = {
+  def find(userId: Long): Future[Map[Integration, Option[IntegrationToken]]] = {
     db.run(tokens.filter(t => t.userId === userId).result).map { case t =>
-      integrations.toSeq.map { case i => i.id -> t.find(_.integrationId == i.id ) }.toMap
+      integrations.toSeq.map { case i => i -> t.find(_.integrationId == i.id ) }.toMap
     }
   }
 

@@ -4,6 +4,7 @@ import java.sql.Timestamp
 import java.util.Calendar
 import javax.inject.{Inject, Singleton}
 
+import _root_.api.Integration
 import actors.{ClusterEvent, WebSocketActor}
 import akka.actor.{ActorSystem, PoisonPill}
 import akka.cluster.pubsub.DistributedPubSub
@@ -320,11 +321,14 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
     }
   }
 
-  def getUserIntegrationsJson(userId: Long): Future[JsValue] = getUserIntegrations(userId).map { case integrations =>
-    Json.toJson(JsObject(integrations.map { case (i, t) => i -> JsBoolean(t) }.toSeq))
+  def getUserIntegrationsJson(userId: Long): Future[JsValue] = integrationTokensDAO.find(userId).map { case integrations =>
+    Json.toJson(JsArray(integrations.map { case (i, t) => JsObject(Seq(
+      "id" -> JsString(i.id),
+      "name" -> JsString(i.name),
+      "enabled" -> JsBoolean(t.isDefined))) }.toSeq))
   }
 
-  def getUserIntegrations(userId: Long): Future[Map[String, Boolean]] = {
+  def getUserIntegrations(userId: Long): Future[Map[Integration, Boolean]] = {
     integrationTokensDAO.find(userId).map { case integrations => integrations.map { case (i, t) => i -> t.isDefined } }
   }
 }

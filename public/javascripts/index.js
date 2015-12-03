@@ -152,14 +152,13 @@ var ChatStore = Reflux.createStore({
     },
 
     onShowIntegrations: function (initial) {
-        var self = this;
         this.state.displayIntegrations = true;
         this.state.selectedUser = undefined;
         this.state.selectedGroup = undefined;
         this.state.selectedTopic = undefined;
 
         if (!initial) {
-            setInterval(function(){ self.trigger(self.state); }, 0); // Otherwise it doesn't work for some reason
+            this.trigger(this.state);
             window.history.replaceState(this.state, window.title, "?integrations=true");
         }
     },
@@ -259,7 +258,7 @@ var IntegrationsButton = React.createClass({
 
     render: function() {
         var self = this;
-        var className = self.props.displayIntegrations ? "selected" : "";
+        var className = self.props.selected ? "selected" : "";
         return (
             <li id="integrations-button" onClick={self.onClick.bind(self, undefined)} className={className}>Integrations</li>
         );
@@ -300,8 +299,17 @@ var GroupPane = React.createClass({
             );
         });
 
-        var allGroupsClass = !self.state.store.selectedGroup && !self.state.store.selectedUser &&
-            !self.state.store.displayIntegrations? "selected" : "";
+
+        var integrationItems = self.state.store.integrations.filter(function(integration) {
+            return true
+        }).map(function(integration) {
+            return (
+                <span className="integration-name" key={integration.id}>{integration.name}</span>
+            );
+        });
+
+        var allGroupsClass = (!self.state.store.selectedGroup && !self.state.store.selectedUser &&
+            !self.state.store.displayIntegrations) ? "selected" : "";
 
         return (
 
@@ -311,7 +319,8 @@ var GroupPane = React.createClass({
                     <span>All groups</span></li>
                 {groupItems}
                 <NewGroupButton/>
-                <IntegrationsButton displayIntegrations={self.state.store.displayIntegrations}/>
+                {integrationItems}
+                <IntegrationsButton selected={self.state.store.displayIntegrations}/>
                 {userItems}
             </ul>
         );
@@ -423,9 +432,8 @@ var TopicBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     render: function () {
-        console.log("TopicBar state = " + this.state.store.topics);
         return (
-            <div id="topic-bar" style={{display: this.state.store.selectedUser ? "none" : ""}}>
+            <div id="topic-bar" style={{display: this.state.store.selectedUser || this.state.store.displayIntegrations ? "none" : ""}}>
                 <SearchPane/>
                 <NewTopicPane/>
                 <TopicPane/>
@@ -588,7 +596,7 @@ var MessageBar = React.createClass({
         }
         return (
             // TODO: Replace logic with className
-            <div id="message-bar" style={{left: this.state.store.selectedUser ? "200px" : "550px"}}>
+            <div id="message-bar" style={{left: this.state.store.selectedUser ? "200px" : "550px", display: this.state.store.displayIntegrations ? "none" : ""}}>
                 <div id="message-pane">
                     <div id="message-roll" ref="messageRoll">
                         {messageItems}
@@ -605,9 +613,11 @@ var MessageBar = React.createClass({
 });
 
 var IntegrationsPane = React.createClass({
+    mixins: [Reflux.connect(ChatStore, 'store')],
+
     render: function() {
         return (
-            <div id="integration-pane"></div>
+            <div id="integration-pane" style={{display: this.state.store.displayIntegrations ? "" : "none"}}></div>
         );
     }
 });
@@ -645,7 +655,7 @@ var App = React.createClass({
             }, 10000);
         };
         socket.onclose = function (event) {
-            console.error();
+            console.error(event);
             setTimeout(function () {
                 console.log("Reopenning websocket...");
                 self.openSocket();
@@ -663,23 +673,14 @@ var App = React.createClass({
     },
 
     render: function () {
-        console.log("App state = " + this.state.store.topics);
-        if (this.state.store.displayIntegrations) {
-            return (
-                <div>
-                    <SideBar/>
-                    <IntegrationsPane/>
-                </div>
-            )
-        } else {
-            return (
-                <div>
-                    <SideBar/>
-                    <TopicBar/>
-                    <MessageBar/>
-                </div>
-            );
-        }
+        return (
+            <div>
+                <SideBar/>
+                <IntegrationsPane/>
+                <TopicBar/>
+                <MessageBar/>
+            </div>
+        );
     }
 });
 
