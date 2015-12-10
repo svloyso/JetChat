@@ -43,7 +43,7 @@ class ClusterListener extends Actor with ActorLogging {
     mediator ! Subscribe("cluster-events", self)
 
     if (client != null) {
-      Akka.system.scheduler.schedule(0 seconds, discoverInterval millisecond, self, DiscoveryEvent())
+      Akka.system.scheduler.schedule(0.seconds, discoverInterval.millisecond, self, DiscoveryEvent())
     }
   }
 

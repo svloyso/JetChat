@@ -1,13 +1,13 @@
 package actors
 
+import _root_.api.{CollectedMessages, Integration}
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import _root_.api.{CollectedMessages, Integration}
 import models._
 import models.api.IntegrationTokensDAO
 import play.api.Logger
-import play.api.libs.json.{JsString, JsNumber, JsObject}
+import play.api.libs.json.JsObject
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.Future
@@ -80,7 +80,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
 }
 
 object MessagesActor {
-  val DEFAULT_DURATION = 30 seconds
+  val DEFAULT_DURATION = 30.seconds
   val LOG = Logger.apply(this.getClass)
 
   def actorOf(integration: Integration, system: ActorSystem,
@@ -90,10 +90,11 @@ object MessagesActor {
               integrationUsersDAO: IntegrationUsersDAO,
               integrationGroupsDAO: IntegrationGroupsDAO): ActorRef =
     system.actorOf(Props(new MessagesActor(integration, system, integrationTokensDAO,
-      integrationTopicsDAO, integrationUpdatesDAO, integrationUsersDAO, integrationGroupsDAO)), s"messages-actor:${integration.id}")
+      integrationTopicsDAO, integrationUpdatesDAO, integrationUsersDAO, integrationGroupsDAO)),
+      s"messages-actor:${ActorUtils.encodePath(integration.id)}")
 
   def actorSelection(integration: Integration, system: ActorSystem): ActorSelection =
-    system.actorSelection(s"/user/messages-actor:${integration.id}")
+    system.actorSelection(s"/user/messages-actor:${ActorUtils.encodePath(integration.id)}")
 }
 
 case object ReceiveMessagesEvent

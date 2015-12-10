@@ -5,7 +5,7 @@ import java.util.Calendar
 import javax.inject.{Inject, Singleton}
 
 import _root_.api.Integration
-import actors.{ClusterEvent, WebSocketActor}
+import actors.{ActorUtils, ClusterEvent, WebSocketActor}
 import akka.actor.{ActorSystem, PoisonPill}
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
@@ -103,7 +103,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     val (out, channel) = Concurrent.broadcast[JsValue]
 
     actorCounter += 1
-    val actor = system.actorOf(WebSocketActor.props(channel), s"$login.$actorCounter")
+    val actor = system.actorOf(WebSocketActor.props(channel), s"${ActorUtils.encodePath(login)}.$actorCounter")
 
     val in = Iteratee.foreach[JsValue] { message =>
       if (message.equals(TICK))
