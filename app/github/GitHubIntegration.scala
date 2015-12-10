@@ -65,6 +65,19 @@ class GitHubIntegration extends Integration {
     }
   }
 
+  override def userHandler: UserHandler = new UserHandler {
+    private def info(token: String, field: String): Future[String] = {
+      val userUrl = s"https://api.github.com/user"
+      GitHubIntegration.askAPI(userUrl, token).map { response =>
+        (response.json \ field).as[String]
+      }
+    }
+
+    override def avatarUrl(token: String): Future[Option[String]] = info(token, "avatar_url").map(Option.apply)
+    override def name(token: String): Future[String] = info(token, "name")
+    override def login(token: String): Future[String] = info(token, "login")
+  }
+
   override def messageHandler: MessageHandler = new GitHubMessageHandler
 }
 
@@ -79,6 +92,11 @@ object GitHubIntegration {
 
   private def getAuthorizationUrl(redirectUri: String, scope: String, state: String): String = {
     s"https://github.com/login/oauth/authorize?client_id=$clientId&redirect_uri=$redirectUri&scope=$scope&state=$state"
+  }
+
+  def askAPI(url: String, token: String): Future[WSResponse] = {
+    WS.url(url)(Play.current).withQueryString("access_token" -> token).
+      withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).get()
   }
 
   class GitHubMessageHandler extends MessageHandler {
@@ -126,15 +144,10 @@ object GitHubIntegration {
         }
       }
 
-      def askAPI(url: String): Future[WSResponse] = {
-        WS.url(url)(Play.current).withQueryString("access_token" -> token).
-          withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).get()
-      }
-
       val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
       val since = dateFormat.format(new Date(System.currentTimeMillis() - sincePeriod))
       val notificationsUrl = s"https://api.github.com/notifications?all=true&since=$since"
-      askAPI(notificationsUrl).flatMap { response =>
+      askAPI(notificationsUrl, token).flatMap { response =>
         val pollInterval: Int = response.header("X-Poll-Interval") match {
           case Some(p) =>
             try {
@@ -157,7 +170,7 @@ object GitHubIntegration {
             case "PullRequest" => s"PR #$lastPart $title"
           }
 
-          askAPI(url).flatMap { response =>
+          askAPI(url, token).flatMap { response =>
             val json = response.json
             val topicAuthor = tp match {
               case "Commit" => (json \ "author" \ "login").as[String]
@@ -173,7 +186,7 @@ object GitHubIntegration {
             }
             val integrationTopic = IntegrationTopic(ID, topicId, groupId, topicAuthor, topicTimestamp, topicText)
 
-            val commentsFuture = askAPI((json \ "comments_url").as[String]).map { response =>
+            val commentsFuture = askAPI((json \ "comments_url").as[String], token).map { response =>
               val json = response.json
               val comments = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
               comments.map { value =>
@@ -187,7 +200,7 @@ object GitHubIntegration {
             ((json \ "events_url").asOpt[String].orElse((json \ "statuses_url").asOpt[String]) match {
               case Some(events_url) =>
                 commentsFuture.zip {
-                  askAPI(events_url).map { response =>
+                  askAPI(events_url, token).map { response =>
                     val json = response.json
                     val events = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
                     events.collect {

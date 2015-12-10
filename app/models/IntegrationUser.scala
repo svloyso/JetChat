@@ -8,7 +8,8 @@ import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class IntegrationUser(integrationId: String, userId: Option[Long], integrationUserId: String, name: String, avatar: Option[String])
+case class IntegrationUser(integrationId: String, userId: Option[Long], integrationUserId: String,
+                           name: String, avatar: Option[String])
 
 trait IntegrationUsersComponent extends HasDatabaseConfigProvider[JdbcProfile] {
   protected val driver: JdbcProfile
@@ -30,7 +31,8 @@ trait IntegrationUsersComponent extends HasDatabaseConfigProvider[JdbcProfile] {
 
     def pk = index("integration_integration_user_id_index", (integrationId, integrationUserId), unique = true)
 
-    def * = (integrationId, userId, integrationUserId, integrationUserName, integrationUserAvatar) <>(IntegrationUser.tupled, IntegrationUser.unapply)
+    def * = (integrationId, userId, integrationUserId, integrationUserName, integrationUserAvatar) <>
+      (IntegrationUser.tupled, IntegrationUser.unapply)
   }
 
   val integrationUsers = TableQuery[IntegrationUsersTable]
@@ -41,6 +43,10 @@ class IntegrationUsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider
   extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationUsersComponent {
 
   import driver.api._
+
+  def allUsers(integrationId: String): Future[Seq[IntegrationUser]] = {
+    db.run { integrationUsers.result }
+  }
 
   def findByUserId(userId: Long, integrationId: String): Future[Option[IntegrationUser]] = {
     db.run(integrationUsers.filter(u => u.userId === userId && u.integrationId === integrationId).result.headOption)

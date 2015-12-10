@@ -22,7 +22,7 @@ import scala.concurrent.Future
 
 
 @Singleton
-class Application @Inject()(val system: ActorSystem, val auth: Auth,
+class Application @Inject()(val system: ActorSystem, integrations: java.util.Set[Integration],
                             val usersDAO: UsersDAO, val groupsDAO: GroupsDAO,
                             val topicsDAO: TopicsDAO, val commentsDAO: CommentsDAO,
                             val directMessagesDAO: DirectMessagesDAO,
@@ -71,7 +71,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
   def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None,
             displaySettings: Option[Boolean] = None) = Action.async { implicit request =>
     request.cookies.get("user") match {
-      case Some(cookie) if auth.HUB_MOCK_LOGIN.isEmpty || auth.HUB_MOCK_LOGIN.equals(cookie.value) =>
+      case Some(cookie) =>
         usersDAO.findByLogin(cookie.value).flatMap {
           case Some(user) =>
             val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL().replaceAll("http", "ws")
@@ -85,33 +85,17 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
                   None
                 }
               }
-            } yield (integrations, users, groups, topic)) map { case (integrations, users, groups, topic) =>
-              Ok(views.html.index(user, integrations, users, groups, webSocketUrl, groupId,
+            } yield (integrations, users, groups, topic)) map { case (userIntegrations, users, groups, topic) =>
+              Ok(views.html.index(user, userIntegrations, users, groups, webSocketUrl, groupId,
                 topic match { case Some(value) => Some(Json.toJson(value)) case None => None }, userId, displaySettings))
             }
           case None =>
-            Future.successful(Redirect(auth.getAuthUrl).discardingCookies(DiscardingCookie("user")))
+            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
         }
       case _ =>
-        if (auth.HUB_MOCK_LOGIN.isEmpty) {
-          Future.successful(Redirect(auth.getAuthUrl))
-        } else {
-          usersDAO.findByLogin(auth.HUB_MOCK_LOGIN).flatMap {
-            case Some(user) =>
-              Future.successful(Redirect(controllers.routes.Application.index(groupId, topicId, userId, displaySettings))
-                .withCookies(Cookie("user", auth.HUB_MOCK_LOGIN, httpOnly = false)))
-            case None =>
-              usersDAO.insert(User(login = auth.HUB_MOCK_LOGIN, name = auth.HUB_MOCK_NAME,
-                avatar = Option(auth.HUB_MOCK_AVATAR))).map { case id =>
-                mediator ! Publish("cluster-events", ClusterEvent("*",
-                  JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(id),
-                    "name" -> JsString(auth.HUB_MOCK_NAME), "login" -> JsString(auth.HUB_MOCK_LOGIN),
-                    "avatar" -> JsString(auth.HUB_MOCK_AVATAR)))))))
-                Redirect(controllers.routes.Application.index(groupId, topicId, userId, displaySettings))
-                  .withCookies(Cookie("user", auth.HUB_MOCK_LOGIN, httpOnly = false))
-              }
-          }
-        }
+        val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
+        val redirectUrl = controllers.routes.Application.index(None, None, None, None).absoluteURL()
+        Future.successful(Redirect(controllers.routes.IntegrationAuth.auth(integration.id, Option(redirectUrl))))
     }
   }
 
@@ -132,7 +116,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
   }
 
   def logout() = Action.async { implicit request =>
-    Future.successful(Redirect(if (auth.HUB_MOCK_LOGIN.isEmpty) auth.getLogoutUrl else controllers.routes.Application.index(None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+    Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
   }
 
   def getUser(login: String) = Action.async { implicit request =>
@@ -321,7 +305,7 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
     }
   }
 
-  def getUserIntegrationsJson(userId: Long): Future[JsValue] = integrationTokensDAO.find(userId).map { case integrations =>
+  def getUserIntegrationsJson(userId: Long): Future[JsValue] = integrationTokensDAO.find(userId).map { integrations =>
     Json.toJson(JsArray(integrations.map { case (i, t) => JsObject(Seq(
       "id" -> JsString(i.id),
       "name" -> JsString(i.name),
@@ -329,6 +313,6 @@ class Application @Inject()(val system: ActorSystem, val auth: Auth,
   }
 
   def getUserIntegrations(userId: Long): Future[Map[Integration, Boolean]] = {
-    integrationTokensDAO.find(userId).map { case integrations => integrations.map { case (i, t) => i -> t.isDefined } }
+    integrationTokensDAO.find(userId).map { _.map { case (i, t) => i -> t.isDefined } }
   }
 }

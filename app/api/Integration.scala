@@ -16,6 +16,7 @@ trait Integration {
   def authentificator: Authentificator
   def hookHandler: HookHandler //todo: make optional
   def messageHandler: MessageHandler
+  def userHandler: UserHandler
 }
 
 trait Authentificator {
@@ -32,6 +33,12 @@ trait HookHandler {
 trait MessageHandler {
   def collectMessages(token: String): Future[CollectedMessages]
   def sendMessage(messages: Seq[AbstractMessage]) //todo: Future?
+}
+
+trait UserHandler {
+  def login(token: String): Future[String]
+  def name(token: String): Future[String]
+  def avatarUrl(token: String): Future[Option[String]]
 }
 
 case class CollectedMessages(messages: Map[IntegrationTopic, Seq[IntegrationUpdate]], nextCheck: FiniteDuration)
