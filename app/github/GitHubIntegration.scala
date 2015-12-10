@@ -67,16 +67,23 @@ class GitHubIntegration extends Integration {
   }
 
   override def userHandler: UserHandler = new UserHandler {
-    private def info(token: String, field: String): Future[String] = {
-      val userUrl = s"https://api.github.com/user"
+    private def info(token: String, field: String, login: Option[String] = None): Future[String] = {
+      val userUrl = login.map(l => s"https://api.github.com/users/$l").getOrElse(s"https://api.github.com/user")
       GitHubIntegration.askAPI(userUrl, token).map { response =>
         (response.json \ field).as[String]
       }
     }
 
-    override def avatarUrl(token: String): Future[Option[String]] = info(token, "avatar_url").map(Option.apply)
-    override def name(token: String): Future[String] = info(token, "name")
-    override def login(token: String): Future[String] = info(token, "login")
+    override def avatarUrl(token: String, login: Option[String] = None): Future[Option[String]] =
+      info(token, "avatar_url", login).map(Option.apply)
+    override def name(token: String, login: Option[String] = None): Future[String] =
+      info(token, "name", login)
+    override def login(token: String): Future[String] =
+      info(token, "login")
+
+    override def groupName(token: String, groupId: String): Future[String] = Future {
+      groupId //for GitHub its pretty normal. See for example Gitter.
+    }
   }
 
   override def messageHandler: MessageHandler = new GitHubMessageHandler
@@ -99,34 +106,34 @@ object GitHubIntegration {
   class GitHubMessageHandler extends MessageHandler {
     override def collectMessages(token: String): Future[CollectedMessages] = {
       def eventText(json: JsValue): String = {
-        (json \ "event").as[String] match {
-          case "closed" =>
+        (json \ "event").asOpt[String] match {
+          case Some("closed") =>
             (json \ "commitId").asOpt[String] match {
               case Some(commitId) => s"closed by $commitId"
               case _ => "closed"
             }
-          case "referenced" =>
+          case Some("referenced") =>
             val commitId = (json \ "commit_id").as[String]
             s"referenced from $commitId"
-          case "assigned" =>
+          case Some("assigned") =>
             val assignee = (json \ "assignee" \ "login").as[String]
             s"assigned to $assignee"
-          case "unassigned" =>
+          case Some("unassigned") =>
             val assignee = (json \ "assignee" \ "login").as[String]
             s"unassigned from $assignee"
-          case "labeled" =>
+          case Some("labeled") =>
             val name = (json \ "label" \ "name").as[String]
             s"labeled: $name"
-          case "unlabeled" =>
+          case Some("unlabeled") =>
             val name = (json \ "label" \ "name").as[String]
             s"unlabeled: $name"
-          case "milestoned" =>
+          case Some("milestoned") =>
             val title = (json \ "milestone" \ "title").as[String]
             s"milestoned: $title"
-          case "demilestoned" =>
+          case Some("demilestoned") =>
             val title = (json \ "milestone" \ "title").as[String]
             s"demilestoned: $title"
-          case "renamed" =>
+          case Some("renamed") =>
             val from = (json \ "rename:" \ "from").as[String]
             val to = (json \ "rename:" \ "to").as[String]
             s"""renamed from:
@@ -135,9 +142,10 @@ object GitHubIntegration {
                |        to:
                |  $to
              """.stripMargin
-          case "head_ref_deleted" => "The pull request’s branch was deleted."
-          case "head_ref_restored" => "The pull request’s branch was restored."
-          case other => other
+          case Some("head_ref_deleted") => "The pull request’s branch was deleted."
+          case Some("head_ref_restored") => "The pull request’s branch was restored."
+          case Some(other) => other
+          case None => (json \ "description").as[String]
         }
       }
 
@@ -201,11 +209,13 @@ object GitHubIntegration {
                     val json = response.json
                     val events = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
                     events.collect {
-                      case value if !Set("mentioned", "subscribed").contains((value \ "event").as[String]) =>
-                        val eventId = (value \ "id").as[Long]
-                        val userId = (value \ "actor" \ "login").as[String]
-                        val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
-                        val text = eventText(value)
+                      case v if !Set(Option("mentioned"), Option("subscribed")).contains((v \ "event").asOpt[String]) =>
+                        val eventId = (v \ "id").as[Long]
+                        val userId = (v \ "actor" \ "login").asOpt[String].getOrElse(
+                          (v \ "creator" \ "login").as[String]
+                        )
+                        val timestamp = new Timestamp(dateFormat.parse((v \ "created_at").as[String]).getTime)
+                        val text = eventText(v)
                         IntegrationUpdate(ID, eventId.toString, groupId, topicId, userId, timestamp, text)
                     }
                   }
