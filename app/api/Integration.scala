@@ -1,6 +1,7 @@
 package api
 
 import models.{IntegrationTopic, IntegrationUpdate, AbstractMessage}
+import play.api.Play
 import play.api.mvc.{Result, Request, AnyContent}
 
 import scala.concurrent.Future
@@ -13,13 +14,16 @@ import scala.concurrent.duration.FiniteDuration
 trait Integration {
   def id: String
   def name: String
-  def authentificator: Authentificator
+  def authentificator: OAuthAuthentificator
   def hookHandler: HookHandler //todo: make optional
   def messageHandler: MessageHandler
   def userHandler: UserHandler
 }
 
-trait Authentificator {
+trait OAuthAuthentificator {
+  def integrationId: String
+  final def clientId: String = Play.current.configuration.getString(s"api.$integrationId.clientId").get
+  final def clientSecret: String = Play.current.configuration.getString(s"api.$integrationId.clientSecret").get
   def enable(redirectUrl: Option[String], state: String)(implicit request: Request[AnyContent]): Future[Result]
   def disable(token: String): Future[Boolean]
   def token(redirectUri: String, code: String): Future[String]

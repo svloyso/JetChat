@@ -35,19 +35,20 @@ class GitHubIntegration extends Integration {
     override def handle(): Unit = {}
   }
 
-  override def authentificator: Authentificator = new Authentificator {
+  override def authentificator: OAuthAuthentificator = new OAuthAuthentificator {
+    override def integrationId: String = id
+
     override def disable(token: String): Future[Boolean] = {
-      //todo: add proper disable, this one is not working as we need basic auth.
-      //val response = WS.url(s"https://api.github.com/authorizations/Alefas")(Play.current).delete()
-      //response.map { _.status == 204 }
+      //Do nothing as we can't ask GitHub to forget permission.
+      //Token will be removed from database by API.
       Future(true)
     }
 
     override def token(redirectUri: String, code: String): Future[String] = {
       val tokenResponse = WS.url("https://github.com/login/oauth/access_token")(Play.current).
         withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).
-        post(Map("client_id" -> Seq(GitHubIntegration.clientId),
-          "client_secret" -> Seq(GitHubIntegration.clientSecret),
+        post(Map("client_id" -> Seq(clientId),
+          "client_secret" -> Seq(clientSecret),
           "code" -> Seq(code),
           "redirect_uri" -> Seq(redirectUri)))
 
@@ -61,7 +62,7 @@ class GitHubIntegration extends Integration {
     override def enable(redirectUrl: Option[String], state: String)(implicit request: Request[AnyContent]): Future[Result] = {
       val callbackUrl = Utils.callbackUrl(id, redirectUrl)
       val scope = "user, repo, gist, read:org"
-      Future.successful(Redirect(GitHubIntegration.getAuthorizationUrl(callbackUrl, scope, state)))
+      Future.successful(Redirect(GitHubIntegration.getAuthorizationUrl(callbackUrl, scope, state, clientId)))
     }
   }
 
@@ -86,11 +87,7 @@ object GitHubIntegration {
 
   val sincePeriod = 1000 * 60 * 60 * 24 * 7
 
-  //todo: split for localhost and server, currently it's just localhost
-  private val clientId = "74d1dadc710087464a77"
-  private val clientSecret = "b00475966e9c381c00b1616dd9fabb1d3d4b285d"
-
-  private def getAuthorizationUrl(redirectUri: String, scope: String, state: String): String = {
+  private def getAuthorizationUrl(redirectUri: String, scope: String, state: String, clientId: String): String = {
     s"https://github.com/login/oauth/authorize?client_id=$clientId&redirect_uri=$redirectUri&scope=$scope&state=$state"
   }
 
