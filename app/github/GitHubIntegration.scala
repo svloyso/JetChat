@@ -11,6 +11,7 @@ import models.{IntegrationTopic, IntegrationUpdate, AbstractMessage}
 import play.api.Play
 import play.api.http.{MimeTypes, HeaderNames}
 import play.api.libs.json.JsValue
+import play.api.libs.ws.WSAuthScheme.BASIC
 import play.api.libs.ws.{WSResponse, WS}
 import play.api.mvc.Results._
 import play.api.mvc.{Result, AnyContent, Request}
@@ -39,9 +40,8 @@ class GitHubIntegration extends Integration {
     override def integrationId: String = id
 
     override def disable(token: String): Future[Boolean] = {
-      //Do nothing as we can't ask GitHub to forget permission.
-      //Token will be removed from database by API.
-      Future(true)
+      WS.url(s"https://api.github.com/applications/$clientId/tokens/$token")(Play.current).
+        withAuth(clientId, clientSecret, BASIC).delete().map { _ => true}
     }
 
     override def token(redirectUri: String, code: String): Future[String] = {
@@ -223,7 +223,7 @@ object GitHubIntegration {
               case _ => commentsFuture
             }).map(integrationTopic -> _)
           }
-        }).map(_.toMap).map(CollectedMessages(_, pollInterval seconds))
+        }).map(_.toMap).map(CollectedMessages(_, pollInterval.seconds))
       }
     }
 

@@ -38,12 +38,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
       integrationTokensDAO.allTokens(integration.id).flatMap { tokens =>
         Future.sequence(tokens.map { integrationToken =>
           val token = integrationToken.token
-          integration.messageHandler.collectMessages(token).recover {
-            case t =>
-              MessagesActor.LOG.error(t.getMessage, t)
-              //todo: looks like token is invalid and should be removed.
-              CollectedMessages(Map.empty, MessagesActor.DEFAULT_DURATION)
-          }.map {
+          integration.messageHandler.collectMessages(token).map {
             case CollectedMessages(messages, nextCheck) =>
               MessagesActor.LOG.debug(s"${integration.id} messages was collected. Topic updates: ${messages.size}.")
               for ((topic, updates) <- messages) {
@@ -90,6 +85,10 @@ class MessagesActor(integration: Integration, system: ActorSystem,
                   }}
               }
               nextCheck
+          }.recover {
+            case t =>
+              MessagesActor.LOG.error(t.getMessage, t)
+              MessagesActor.DEFAULT_DURATION
           }
         })
       }.map { durations =>

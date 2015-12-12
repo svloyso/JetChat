@@ -81,9 +81,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
               integrations <- getUserIntegrationsJson(user.id)
               topic <- topicId match {
                 case Some(value) => topicsDAO.findById(value)
-                case None => Future {
-                  None
-                }
+                case None => Future { None }
               }
             } yield (integrations, users, groups, topic)) map { case (userIntegrations, users, groups, topic) =>
               Ok(views.html.index(user, userIntegrations, users, groups, webSocketUrl, groupId,
