@@ -16,9 +16,9 @@ input, textarea {
 }
 
 #side-bar #header {
-    font-family: 'Arial black';
+    /*font-family: 'Arial black';*/
     padding: 10px 20px;
-    font-size: 14pt;
+    font-size: 15pt;
     font-weight: bold;
     color: #333333;
 }
@@ -327,4 +327,13 @@ input.search-query {
 /* Chrome only */
 ::-webkit-scrollbar {
     display: none;
+}
+
+#integration-pane {
+    padding: 10px 20px 0 20px;
+}
+
+#integration-pane .row {
+    padding-bottom: 30px;
+    clear: both;
 }

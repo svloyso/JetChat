@@ -334,7 +334,7 @@ var SideBar = React.createClass({
     render: function () {
         return (
             <div id="side-bar">
-                <div id="header">JetBrains</div>
+                <div id="header">JetChat</div>
                 <GroupPane/>
             </div>
         );
@@ -619,8 +619,23 @@ var IntegrationsPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     render: function() {
+        var integrationItems = this.state.store.integrations.filter(function(integration) {
+            return true
+        }).map(function(integration) {
+            var checked = integration.enabled ? 'true' : 'false';
+            return (
+                <div className="row">
+                    <div className="col-md-8">{integration.name}</div>
+                    <div className="col-md-4"><span className="pull-right"><input type="checkbox" name="my-checkbox" data-size="mini" checked={checked}/></span></div>
+                </div>
+
+            )
+        });
         return (
-            <div id="integration-pane" style={{display: this.state.store.displaySettings ? "" : "none"}}></div>
+            <div id="integration-pane" style={{display: this.state.store.displaySettings ? "" : "none"}}>
+                <h5>Integrations</h5>
+                {integrationItems}
+            </div>
         );
     }
 });

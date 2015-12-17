@@ -58,3 +58,7 @@ window.setInterval(function() {
     $("#message-roll").css({maxHeight: ($(window).height() - 95) + "px"});
     $("#message-bar").find("#input").width($("#message-bar").width() - 85);
 });
+
+window.setInterval(function () {
+    $("input[type='checkbox']").bootstrapSwitch();
+});
