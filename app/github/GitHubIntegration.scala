@@ -30,11 +30,7 @@ class GitHubIntegration extends Integration {
 
   override def name: String = GitHubIntegration.ID
 
-  override def hookHandler: HookHandler = new HookHandler {
-    override def init(token: String): Unit = {}
-
-    override def handle(): Unit = {}
-  }
+  override def hookHandler: Option[HookHandler] = None
 
   override def authentificator: OAuthAuthentificator = new OAuthAuthentificator {
     override def integrationId: String = id

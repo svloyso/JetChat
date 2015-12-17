@@ -15,7 +15,7 @@ trait Integration {
   def id: String
   def name: String
   def authentificator: OAuthAuthentificator
-  def hookHandler: HookHandler //todo: make optional
+  def hookHandler: Option[HookHandler]
   def messageHandler: MessageHandler
   def userHandler: UserHandler
 }

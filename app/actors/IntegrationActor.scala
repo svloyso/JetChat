@@ -25,9 +25,7 @@ class IntegrationActor(integrations: util.Set[Integration], integrationTokensDAO
         for {
           integrationToken <- integrationTokenOption
           integration <- integrations.find(_.id == integrationId)
-        } {
-          integration.hookHandler.init(integrationToken.token)
-        }
+        } integration.hookHandler.foreach { _.init(integrationToken.token) }
       }
     case _ => //todo: hook handled case
   }
