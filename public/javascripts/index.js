@@ -622,11 +622,14 @@ var IntegrationsPane = React.createClass({
         var integrationItems = this.state.store.integrations.filter(function(integration) {
             return true
         }).map(function(integration) {
-            var checked = integration.enabled ? 'true' : 'false';
+            var checked = integration.enabled ? 'true' : null;
+            console.log(checked);
             return (
                 <div className="row">
                     <div className="col-md-8">{integration.name}</div>
-                    <div className="col-md-4"><span className="pull-right"><input type="checkbox" name="my-checkbox" data-size="mini" checked={checked}/></span></div>
+                    <div className="col-md-4"><span className="pull-right">
+                        <input type="checkbox" data-size="mini" checked={checked} readOnly/>
+                    </span></div>
                 </div>
 
             )

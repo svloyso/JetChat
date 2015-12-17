@@ -60,5 +60,5 @@ window.setInterval(function() {
 });
 
 window.setInterval(function () {
-    $("input[type='checkbox']").bootstrapSwitch();
+    $("input[type='checkbox']").bootstrapSwitch(    );
 });
