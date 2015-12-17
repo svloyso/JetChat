@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 case class IntegrationTopic(integrationId: String, integrationTopicId: String, integrationGroupId: String, integrationUserId: String,
-                            date: Timestamp, text: String) extends AbstractIntegrationMessage
+                            date: Timestamp, text: String, title: String) extends AbstractIntegrationMessage
 
 trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationUsersComponent with IntegrationGroupsComponent with UsersComponent {
   protected val driver: JdbcProfile
@@ -30,6 +30,8 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
     def text = column[String]("text", O.SqlType("text"))
 
+    def title = column[String]("title")
+
     def pk = primaryKey("integration_topic_index", (integrationId, integrationTopicId))
 
     def integrationGroup = foreignKey("integration_topic_integration_group_fk", (integrationId, integrationGroupId), integrationGroups)(g => (g.integrationId, g.integrationGroupId))
@@ -38,7 +40,7 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
     def integrationGroupIndex = index("integration_topic_integration_group_index", (integrationId, integrationGroupId), unique = false)
 
-    def * = (integrationId, integrationTopicId, integrationGroupId, integrationUserId, date, text) <>(IntegrationTopic.tupled, IntegrationTopic.unapply)
+    def * = (integrationId, integrationTopicId, integrationGroupId, integrationUserId, date, text, title) <>(IntegrationTopic.tupled, IntegrationTopic.unapply)
   }
 
   val integrationTopics = TableQuery[IntegrationTopicsTable]

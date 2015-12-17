@@ -8,7 +8,8 @@ import javax.inject.Singleton
 import api._
 import github.GitHubIntegration.GitHubMessageHandler
 import models.{IntegrationTopic, IntegrationUpdate, AbstractMessage}
-import play.api.Play
+import org.apache.commons.lang3.StringEscapeUtils
+import play.api.{http, Play}
 import play.api.http.{MimeTypes, HeaderNames}
 import play.api.libs.json.JsValue
 import play.api.libs.ws.WSAuthScheme.BASIC
@@ -100,6 +101,8 @@ object GitHubIntegration {
   }
 
   class GitHubMessageHandler extends MessageHandler {
+    private val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+
     override def collectMessages(token: String): Future[CollectedMessages] = {
       def eventText(json: JsValue): String = {
         (json \ "event").asOpt[String] match {
@@ -145,7 +148,6 @@ object GitHubIntegration {
         }
       }
 
-      val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
       val since = dateFormat.format(new Date(System.currentTimeMillis() - sincePeriod))
       val notificationsUrl = s"https://api.github.com/notifications?all=true&since=$since"
       askAPI(notificationsUrl, token).flatMap { response =>
@@ -165,11 +167,13 @@ object GitHubIntegration {
           val url = (subject \ "url").as[String]
           val index = url.lastIndexOf('/')
           val lastPart = url.substring(index + 1)
-          val topicId = tp match {
+          val topicTitle = tp match {
             case "Commit" => s"$title (${lastPart.substring(0, 7)})"
             case "Issue" => s"#$lastPart $title"
             case "PullRequest" => s"PR #$lastPart $title"
           }
+
+          val topicId = s"$tp/$lastPart"
 
           askAPI(url, token).flatMap { response =>
             val json = response.json
@@ -185,7 +189,7 @@ object GitHubIntegration {
               case "Commit" => new Timestamp(dateFormat.parse((json \ "commit" \ "author" \ "date").as[String]).getTime)
               case _ => new Timestamp(dateFormat.parse((json \ "created_at").as[String]).getTime)
             }
-            val integrationTopic = IntegrationTopic(ID, topicId, groupId, topicAuthor, topicTimestamp, topicText)
+            val integrationTopic = IntegrationTopic(ID, topicId, groupId, topicAuthor, topicTimestamp, topicText, topicTitle)
 
             val commentsFuture = askAPI((json \ "comments_url").as[String], token).map { response =>
               val json = response.json
@@ -223,6 +227,40 @@ object GitHubIntegration {
       }
     }
 
-    override def sendMessage(messages: Seq[AbstractMessage]): Unit = {} //todo:
+    override def sendMessage(token: String, groupId: String, topicId: String,
+                             message: AbstractMessage): Future[Option[IntegrationUpdate]] = {
+      val Commit = """Commit/(.*)""".r
+      val Issue = """Issue/(.*)""".r
+      val PullRequest = """PullRequest/(.*)""".r
+
+      def update(issueType: String, id: String): Future[Option[IntegrationUpdate]] = {
+        WS.url(s"https://api.github.com/repos/$groupId/$issueType/$id/comments")(Play.current).
+          withQueryString("access_token" -> token).
+          withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON,
+            HeaderNames.CONTENT_TYPE -> MimeTypes.JSON
+          ).post(
+          s"""
+             |{
+             |  "body": "${StringEscapeUtils.escapeJson(message.text)}"
+             |}
+              """.stripMargin.trim).map { response =>
+          if (response.status == http.Status.OK) {
+            val json = response.json
+            val value = json.as[JsValue]
+            val commentId = (value \ "id").as[Long]
+            val userId = (value \ "user" \ "login").as[String]
+            val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
+            val text = (value \ "body").as[String]
+            Some(IntegrationUpdate(ID, commentId.toString, groupId, topicId, userId, timestamp, text))
+          } else None
+        }
+      }
+
+      topicId match {
+        case Commit(hash) => Future(None)//todo: working with commits
+        case Issue(issueId) => update("issues", issueId)
+        case PullRequest(pullId) => update("pulls", pullId)
+      }
+    }
   }
 }

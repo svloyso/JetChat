@@ -36,7 +36,7 @@ trait HookHandler {
 
 trait MessageHandler {
   def collectMessages(token: String): Future[CollectedMessages]
-  def sendMessage(messages: Seq[AbstractMessage]) //todo: Future?
+  def sendMessage(token: String, groupId: String, topicId: String, message: AbstractMessage): Future[Option[IntegrationUpdate]]
 }
 
 trait UserHandler {

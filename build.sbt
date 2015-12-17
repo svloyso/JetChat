@@ -23,7 +23,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster" % "2.4-SNAPSHOT",
   "com.typesafe.akka" %% "akka-cluster-tools" % "2.4-SNAPSHOT",
   "org.mousio" % "etcd4j" % "2.7.0",
-  "com.fasterxml.jackson.jaxrs" % "jackson-jaxrs-json-provider" % "2.5.4"
+  "com.fasterxml.jackson.jaxrs" % "jackson-jaxrs-json-provider" % "2.5.4",
+  "org.apache.commons" % "commons-lang3" % "3.3.2"
 )
 
 unmanagedBase <<= baseDirectory { base => base / "lib" }
