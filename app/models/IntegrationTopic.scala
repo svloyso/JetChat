@@ -9,7 +9,8 @@ import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class IntegrationTopic(integrationId: String, integrationTopicId: String, integrationGroupId: String, integrationUserId: String,
+case class IntegrationTopic(integrationId: String, integrationTopicId: String, integrationGroupId: String,
+                            userId: Long, integrationUserId: String,
                             date: Timestamp, text: String, title: String) extends AbstractIntegrationMessage
 
 trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationUsersComponent with IntegrationGroupsComponent with UsersComponent {
@@ -18,6 +19,8 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
   import driver.api._
 
   class IntegrationTopicsTable(tag: Tag) extends Table[IntegrationTopic](tag, "integration_topics") {
+    def userId = column[Long]("user_id")
+
     def integrationId = column[String]("integration_id")
 
     def integrationTopicId = column[String]("integration_topic_id")
@@ -32,15 +35,17 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
     def title = column[String]("title")
 
-    def pk = primaryKey("integration_topic_index", (integrationId, integrationTopicId))
+    def pk = primaryKey("integration_topic_index", (integrationId, integrationTopicId, userId))
 
-    def integrationGroup = foreignKey("integration_topic_integration_group_fk", (integrationId, integrationGroupId), integrationGroups)(g => (g.integrationId, g.integrationGroupId))
+    def user = foreignKey("integration_token_user_fk", userId, users)(_.id)
+
+    def integrationGroup = foreignKey("integration_topic_integration_group_fk", (integrationId, integrationGroupId, userId), integrationGroups)(g => (g.integrationId, g.integrationGroupId, userId))
 
     def integrationUser = foreignKey("integration_topic_integration_user_fk", (integrationId, integrationUserId), integrationUsers)(u => (u.integrationId, u.integrationUserId))
 
-    def integrationGroupIndex = index("integration_topic_integration_group_index", (integrationId, integrationGroupId), unique = false)
+    def integrationGroupIndex = index("integration_topic_integration_group_index", (integrationId, integrationGroupId, userId), unique = false)
 
-    def * = (integrationId, integrationTopicId, integrationGroupId, integrationUserId, date, text, title) <>(IntegrationTopic.tupled, IntegrationTopic.unapply)
+    def * = (integrationId, integrationTopicId, integrationGroupId, userId, integrationUserId, date, text, title) <>(IntegrationTopic.tupled, IntegrationTopic.unapply)
   }
 
   val integrationTopics = TableQuery[IntegrationTopicsTable]
@@ -52,12 +57,13 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
 
   import driver.api._
 
-  def find(integrationId: String, integrationTopicId: String): Future[Option[IntegrationTopic]] = {
-    db.run(integrationTopics.filter(t => t.integrationTopicId === integrationTopicId && t.integrationId === integrationId).result.headOption)
+  def find(integrationId: String, integrationTopicId: String, userId: Long): Future[Option[IntegrationTopic]] = {
+    db.run(integrationTopics.filter(t => t.integrationTopicId === integrationTopicId
+      && t.integrationId === integrationId && t.userId === userId).result.headOption)
   }
 
   def merge(topic: IntegrationTopic): Future[Boolean] = {
-    find(topic.integrationId, topic.integrationTopicId).flatMap {
+    find(topic.integrationId, topic.integrationTopicId, topic.userId).flatMap {
       case None =>
         db.run(integrationTopics += topic).map(_ => true)
       case Some(existing) =>

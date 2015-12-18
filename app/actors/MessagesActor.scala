@@ -38,7 +38,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
       integrationTokensDAO.allTokens(integration.id).flatMap { tokens =>
         Future.sequence(tokens.map { integrationToken =>
           val token = integrationToken.token
-          integration.messageHandler.collectMessages(token).map {
+          integration.messageHandler.collectMessages(integrationToken).map {
             case CollectedMessages(messages, nextCheck) =>
               MessagesActor.LOG.debug(s"${integration.id} messages was collected. Topic updates: ${messages.size}.")
               for ((topic, updates) <- messages) {
@@ -53,7 +53,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
                 }
                 (for {
                   groupName <- integration.userHandler.groupName(token, topic.integrationGroupId)
-                  result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, topic.integrationGroupId, groupName))
+                  result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, topic.integrationGroupId, integrationToken.userId, groupName))
                 } yield result).onSuccess {
                   case true =>
                     mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
@@ -74,13 +74,14 @@ class MessagesActor(integration: Integration, system: ActorSystem,
                   }
                   (for {
                     groupName <- integration.userHandler.groupName(token, update.integrationGroupId)
-                    result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, update.integrationGroupId, groupName))
+                    result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, update.integrationGroupId, integrationToken.userId, groupName))
                   } yield result).onSuccess {
                     case true =>
                       mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
                   }
-                  integrationUpdatesDAO.merge(update).onSuccess {
-                    case true =>
+                  // TODO: We need to temporarily store ids and merge instead of inserting
+                  integrationUpdatesDAO.insert(update).onSuccess {
+                    case id =>
                       mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
                   }}
               }

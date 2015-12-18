@@ -7,6 +7,7 @@ import javax.inject.Singleton
 
 import api._
 import github.GitHubIntegration.GitHubMessageHandler
+import models.api.IntegrationToken
 import models.{IntegrationTopic, IntegrationUpdate, AbstractMessage}
 import org.apache.commons.lang3.StringEscapeUtils
 import play.api.{http, Play}
@@ -103,7 +104,7 @@ object GitHubIntegration {
   class GitHubMessageHandler extends MessageHandler {
     private val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
 
-    override def collectMessages(token: String): Future[CollectedMessages] = {
+    override def collectMessages(integrationToken: IntegrationToken): Future[CollectedMessages] = {
       def eventText(json: JsValue): String = {
         (json \ "event").asOpt[String] match {
           case Some("closed") =>
@@ -150,7 +151,7 @@ object GitHubIntegration {
 
       val since = dateFormat.format(new Date(System.currentTimeMillis() - sincePeriod))
       val notificationsUrl = s"https://api.github.com/notifications?all=true&since=$since"
-      askAPI(notificationsUrl, token).flatMap { response =>
+      askAPI(notificationsUrl, integrationToken.token).flatMap { response =>
         val pollInterval: Int = response.header("X-Poll-Interval") match {
           case Some(p) =>
             try {
@@ -175,7 +176,7 @@ object GitHubIntegration {
 
           val topicId = s"$tp/$lastPart"
 
-          askAPI(url, token).flatMap { response =>
+          askAPI(url, integrationToken.token).flatMap { response =>
             val json = response.json
             val topicAuthor = tp match {
               case "Commit" => (json \ "author" \ "login").as[String]
@@ -189,9 +190,9 @@ object GitHubIntegration {
               case "Commit" => new Timestamp(dateFormat.parse((json \ "commit" \ "author" \ "date").as[String]).getTime)
               case _ => new Timestamp(dateFormat.parse((json \ "created_at").as[String]).getTime)
             }
-            val integrationTopic = IntegrationTopic(ID, topicId, groupId, topicAuthor, topicTimestamp, topicText, topicTitle)
+            val integrationTopic = IntegrationTopic(ID, topicId, groupId, integrationToken.userId, topicAuthor, topicTimestamp, topicText, topicTitle)
 
-            val commentsFuture = askAPI((json \ "comments_url").as[String], token).map { response =>
+            val commentsFuture = askAPI((json \ "comments_url").as[String], integrationToken.token).map { response =>
               val json = response.json
               val comments = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
               comments.map { value =>
@@ -199,13 +200,13 @@ object GitHubIntegration {
                 val userId = (value \ "user" \ "login").as[String]
                 val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
                 val text = (value \ "body").as[String]
-                IntegrationUpdate(ID, commentId.toString, groupId, topicId, userId, timestamp, text)
+                IntegrationUpdate(0, ID, Some(commentId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
               }
             }
             ((json \ "events_url").asOpt[String].orElse((json \ "statuses_url").asOpt[String]) match {
               case Some(events_url) =>
                 commentsFuture.zip {
-                  askAPI(events_url, token).map { response =>
+                  askAPI(events_url, integrationToken.token).map { response =>
                     val json = response.json
                     val events = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
                     events.collect {
@@ -216,7 +217,7 @@ object GitHubIntegration {
                         )
                         val timestamp = new Timestamp(dateFormat.parse((v \ "created_at").as[String]).getTime)
                         val text = eventText(v)
-                        IntegrationUpdate(ID, eventId.toString, groupId, topicId, userId, timestamp, text)
+                        IntegrationUpdate(0, ID, Some(eventId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
                     }
                   }
                 }.map { case (comments, events) => comments ++ events }
@@ -227,7 +228,7 @@ object GitHubIntegration {
       }
     }
 
-    override def sendMessage(token: String, groupId: String, topicId: String,
+    override def sendMessage(integrationToken: IntegrationToken, groupId: String, topicId: String,
                              message: AbstractMessage): Future[Option[IntegrationUpdate]] = {
       val Commit = """Commit/(.*)""".r
       val Issue = """Issue/(.*)""".r
@@ -235,7 +236,7 @@ object GitHubIntegration {
 
       def update(issueType: String, id: String): Future[Option[IntegrationUpdate]] = {
         WS.url(s"https://api.github.com/repos/$groupId/$issueType/$id/comments")(Play.current).
-          withQueryString("access_token" -> token).
+          withQueryString("access_token" -> integrationToken.token).
           withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON,
             HeaderNames.CONTENT_TYPE -> MimeTypes.JSON
           ).post(
@@ -251,7 +252,7 @@ object GitHubIntegration {
             val userId = (value \ "user" \ "login").as[String]
             val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
             val text = (value \ "body").as[String]
-            Some(IntegrationUpdate(ID, commentId.toString, groupId, topicId, userId, timestamp, text))
+            Some(IntegrationUpdate(0, ID, Some(commentId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text))
           } else None
         }
       }

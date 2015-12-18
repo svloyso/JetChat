@@ -1,5 +1,6 @@
 package api
 
+import models.api.IntegrationToken
 import models.{IntegrationTopic, IntegrationUpdate, AbstractMessage}
 import play.api.Play
 import play.api.mvc.{Result, Request, AnyContent}
@@ -35,8 +36,8 @@ trait HookHandler {
 }
 
 trait MessageHandler {
-  def collectMessages(token: String): Future[CollectedMessages]
-  def sendMessage(token: String, groupId: String, topicId: String, message: AbstractMessage): Future[Option[IntegrationUpdate]]
+  def collectMessages(integrationToken: IntegrationToken): Future[CollectedMessages]
+  def sendMessage(integrationToken: IntegrationToken, groupId: String, topicId: String, message: AbstractMessage): Future[Option[IntegrationUpdate]]
 }
 
 trait UserHandler {
