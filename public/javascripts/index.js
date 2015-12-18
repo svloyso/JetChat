@@ -619,20 +619,18 @@ var IntegrationsPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     render: function() {
-        var integrationItems = this.state.store.integrations.filter(function(integration) {
-            return true
-        }).map(function(integration) {
+        var integrationItems = this.state.store.integrations.map(function(integration) {
             var checked = integration.enabled ? 'true' : null;
-            console.log(checked);
             return (
-                <div className="row">
+                <div className="row" key={integration.id}>
                     <div className="col-md-8">{integration.name}</div>
                     <div className="col-md-4"><span className="pull-right">
-                        <input type="checkbox" data-size="mini" checked={checked} readOnly/>
+                        <input type="checkbox" data-size="mini" checked={checked}
+                               data-integration-id={integration.id}/>
                     </span></div>
                 </div>
 
-            )
+            );
         });
         return (
             <div id="integration-pane" style={{display: this.state.store.displaySettings ? "" : "none"}}>
@@ -641,6 +639,28 @@ var IntegrationsPane = React.createClass({
             </div>
         );
     }
+});
+
+window.setInterval(function () {
+    $("input[type='checkbox']").bootstrapSwitch().off('switchChange.bootstrapSwitch')
+        .on('switchChange.bootstrapSwitch', function (event, state) {
+            var integrationId = $(this).attr("data-integration-id");
+            if (state) {
+                window.location.replace("/integration/" + integrationId + "/auth?id=" +
+                    integrationId + "&redirectUrl=" + encodeURIComponent(document.location.href));
+            } else {
+                $.ajax({
+                    context: this,
+                    type: "GET",
+                    url: "/integration/" + integrationId + "/disable",
+                    success: function (message) {
+                    },
+                    fail: function (e) {
+                        console.error(e);
+                    }
+                })
+            }
+        });
 });
 
 var App = React.createClass({
