@@ -1,5 +1,6 @@
 package test
 
+import java.io.File
 import java.sql.Timestamp
 import java.util.Calendar
 
@@ -7,6 +8,8 @@ import models._
 import models.api.{IntegrationToken, IntegrationTokensDAO}
 import org.specs2.mutable.Specification
 import play.api.Application
+import play.api.db.{DBApi, Database}
+import play.api.db.evolutions.{Evolutions, ClassLoaderEvolutionsReader}
 import play.api.test.{FakeApplication, WithApplication}
 
 import scala.concurrent.Await
@@ -14,12 +17,7 @@ import scala.concurrent.duration.Duration
 
 
 class ModelSpec extends Specification {
-  def appWithMemoryDatabase() = FakeApplication(additionalConfiguration = Map(
-    "slick.dbs.default.driver" -> "slick.driver.H2Driver$",
-    "slick.dbs.default.db.driver" -> "org.h2.Driver",
-    "slick.dbs.default.db.url" -> "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false",
-    "slick.dbs.default.db.root" -> "sa"
-  ))
+  def appWithMemoryDatabase() = FakeApplication()
 
   def usersDAO(implicit app: Application) = {
     val app2UsersDAO = Application.instanceCache[UsersDAO]
@@ -51,8 +49,14 @@ class ModelSpec extends Specification {
     app2IntegrationUpdatesDAO(app)
   }
 
+  def database(implicit app: Application) = {
+    app.injector.instanceOf[DBApi].database("default")
+  }
+
   "Integration model" should {
     "work as expected" in new WithApplication(appWithMemoryDatabase()) {
+      Evolutions.applyEvolutions(database, ClassLoaderEvolutionsReader.forPrefix("test/"))
+
       Await.result(usersDAO.insert(User(0, "test-user", "Test User", None)), Duration.Inf)
       val user = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
 
@@ -106,19 +110,25 @@ class ModelSpec extends Specification {
 
       var integrationUpdate = Await.result(integrationUpdatesDAO.find("test-integration", "test-integration-update", user.get.id), Duration.Inf)
       integrationUpdate.isDefined mustEqual true
+
+      Evolutions.cleanupEvolutions(database)
     }
   }
 
   "User model" should {
     "work as expected" in new WithApplication(appWithMemoryDatabase()) {
-        var test = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
-        if (test.isEmpty) {
-          Await.result(usersDAO.insert(User(0, "test-user", "Test User", None)), Duration.Inf)
-          test = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
-        }
+      Evolutions.applyEvolutions(database, ClassLoaderEvolutionsReader.forPrefix("test/"))
 
-        val users = Await.result(usersDAO.all, Duration.Inf)
-        users.length mustEqual 1
+      var test = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
+      if (test.isEmpty) {
+        Await.result(usersDAO.insert(User(0, "test-user", "Test User", None)), Duration.Inf)
+        test = Await.result(usersDAO.findByLogin("test-user"), Duration.Inf)
+      }
+
+      val users = Await.result(usersDAO.all, Duration.Inf)
+      users.length mustEqual 1
+
+      Evolutions.cleanupEvolutions(database)
     }
   }
 }
