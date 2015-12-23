@@ -53,7 +53,7 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
 @Singleton()
 class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
-  extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationTopicsComponent with UsersComponent {
+  extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationTopicsComponent with IntegrationUpdatesComponent with IntegrationUsersComponent  with UsersComponent {
 
   import driver.api._
 
@@ -72,4 +72,50 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
         }
     }
   }
+
+  def allWithCounts(userId: Long, integrationGroupId: Option[String]): Future[Seq[(String, Timestamp, String, String, String, String, String, Long, String, Int)]] = {
+    db.run((integrationTopics
+      join integrationUsers on { case (topic, integrationUser) => topic.integrationUserId === integrationUser.integrationUserId }
+      join users on { case ((topic, integrationUser), user) => topic.userId === user.id }
+      join integrationGroups on { case (((topic, integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
+      .filter { case (((topic, integrationUser), user), group) =>
+        integrationGroupId match {
+          case Some(id) => topic.integrationGroupId === id
+          case None => topic.integrationGroupId === topic.integrationGroupId
+        }
+    }.sortBy(_._1._1._1.date desc).map {
+      case (((topic, integrationUser), user), group) =>
+        (topic.integrationTopicId, topic.date, topic.text, group.integrationGroupId, group.name, integrationUser.integrationUserId,
+          integrationUser.integrationUserName, user.id, user.name) -> 0
+    }.result).flatMap { case f =>
+      val userTopics = f.toMap
+
+      db.run((integrationTopics joinLeft integrationUpdates on { case (topic, update) => update.integrationTopicId === topic.integrationTopicId }
+        join integrationUsers on { case ((topic, update), integrationUser) => topic.integrationUserId === integrationUser.integrationUserId }
+        join users on { case (((topic, update), integrationUser), user) => topic.userId === user.id }
+        join integrationGroups on { case ((((topic, update), integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
+        .filter { case ((((topic, update), integrationUser), user), group) =>
+          integrationGroupId match {
+            case Some(id) => topic.integrationGroupId === id
+            case None => topic.integrationGroupId === topic.integrationGroupId
+          }
+      }.groupBy { case ((((topic, update), integrationUser), user), group) =>
+        (topic.integrationTopicId, topic.date, topic.text, group.integrationGroupId, group.name, integrationUser.integrationUserId,
+          integrationUser.integrationUserName, user.id, user.name)
+      }.map { case ((topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName), g) =>
+        (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, g.map(_._1._1._1._1.integrationTopicId).countDistinct, g.map(_._1._1._1._1.date).max)
+      }.sortBy(_._11 desc).result).map { case f =>
+        val commentedTopics = f.map { case (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c, d) =>
+          (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName) -> c
+        }.toMap
+
+        val total = (userTopics ++ commentedTopics).toSeq.sortBy(-_._1._2.getTime)
+
+        total.map { case ((topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName), c) =>
+          (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c)
+        }
+      }
+    }
+  }
+
 }

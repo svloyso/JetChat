@@ -26,6 +26,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                             val usersDAO: UsersDAO, val groupsDAO: GroupsDAO,
                             val topicsDAO: TopicsDAO, val commentsDAO: CommentsDAO,
                             val directMessagesDAO: DirectMessagesDAO,
+                            val integrationTopicsDAO: IntegrationTopicsDAO,
                             val integrationTokensDAO: IntegrationTokensDAO) extends Controller {
 
   implicit val tsReads: Reads[Timestamp] = Reads.of[Long] map (new Timestamp(_))
@@ -156,6 +157,22 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
         JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> Json.toJson(topicDate), "group" -> JsObject
         (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
           "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "messages" -> JsNumber(c)))
+      }))
+    }.map(Ok(_))
+  }
+
+  def getAllIntegrationTopics(userId: Long) = getIntegrationTopics(userId, None)
+
+  def getIntegrationGroupTopics(userId: Long, groupId: String) = getIntegrationTopics(userId, None)
+
+  def getIntegrationTopics(userId: Long, groupId: Option[String]) = Action.async { implicit rs =>
+    integrationTopicsDAO.allWithCounts(userId, groupId).map { f =>
+      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c) =>
+        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsString(topicId), "date" -> Json.toJson(topicDate), "group" -> JsObject
+        (Seq("id" -> JsString(gId), "name" -> JsString(groupName))),
+          "text" -> JsString(topicText),
+          "integrationUser" -> JsObject(Seq("id" -> JsString(integrationUserId), "name" -> JsString(integrationUserName))),
+          "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "messages" -> JsNumber(c)))
       }))
     }.map(Ok(_))
   }

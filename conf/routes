@@ -7,6 +7,9 @@ GET         /json/user/:userId/topics                      controllers.Applicati
 GET         /json/user/:userId/topics/:groupId             controllers.Application.getGroupTopics(userId: Long, groupId: Long)
 GET         /json/user/:userId/messages/:topicId           controllers.Application.getMessages(userId: Long, topicId: Long)
 
+GET         /json/user/:userId/integration/topics                      controllers.Application.getAllIntegrationTopics(userId: Long)
+GET         /json/user/:userId/integration/topics/:groupId             controllers.Application.getIntegrationGroupTopics(userId: Long, groupId: String)
+
 GET         /json/user/:fromUserId/direct/:toUserId        controllers.Application.getDirectMessages(fromUserId: Long, toUserId: Long)
 
 POST        /json/topic/add                                controllers.Application.addTopic
