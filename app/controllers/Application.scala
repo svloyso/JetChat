@@ -168,11 +168,14 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   def getIntegrationTopics(userId: Long, groupId: Option[String]) = Action.async { implicit rs =>
     integrationTopicsDAO.allWithCounts(userId, groupId).map { f =>
       Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c) =>
-        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsString(topicId), "date" -> Json.toJson(topicDate), "group" -> JsObject
+        var topic = JsObject(Seq("id" -> JsString(topicId), "date" -> Json.toJson(topicDate), "group" -> JsObject
         (Seq("id" -> JsString(gId), "name" -> JsString(groupName))),
           "text" -> JsString(topicText),
-          "integrationUser" -> JsObject(Seq("id" -> JsString(integrationUserId), "name" -> JsString(integrationUserName))),
-          "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "messages" -> JsNumber(c)))
+          "integrationUser" -> JsObject(Seq("id" -> JsString(integrationUserId), "name" -> JsString(integrationUserName)))))
+        if (uId.isDefined) {
+          topic = topic ++ Json.obj("user" -> JsObject(Seq("id" -> JsNumber(uId.get), "name" -> JsString(userName.get))))
+        }
+        JsObject(Seq("topic" -> topic, "updates" -> JsNumber(c)))
       }))
     }.map(Ok(_))
   }
