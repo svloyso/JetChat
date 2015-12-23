@@ -44,7 +44,7 @@ trait IntegrationUpdatesComponent extends HasDatabaseConfigProvider[JdbcProfile]
 
     def integrationUser = foreignKey("integration_update_integration_user_fk", (integrationId, integrationUserId), integrationUsers)(u => (u.integrationId, u.integrationUserId))
 
-    def integrationTopic = foreignKey("integration_update_integration_topic_fk", (integrationId, integrationTopicId, userId), integrationTopics)(u => (u.integrationId, u.integrationTopicId, u.userId))
+    def integrationTopic = foreignKey("integration_update_integration_topic_fk", (integrationId, integrationTopicId, integrationGroupId, userId), integrationTopics)(u => (u.integrationId, u.integrationTopicId, u.integrationGroupId, u.userId))
 
     def integrationGroupIndex = index("integration_update_integration_group_index", (integrationId, integrationGroupId, userId), unique = false)
 

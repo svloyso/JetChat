@@ -42,7 +42,7 @@ CREATE UNIQUE INDEX integration_token_index ON integration_tokens (user_id, inte
 CREATE INDEX integration_token_user_index ON integration_tokens (user_id);
 
 CREATE TABLE integration_topics (integration_id VARCHAR(254) NOT NULL, integration_topic_id VARCHAR(254) NOT NULL, integration_group_id VARCHAR(254) NOT NULL, integration_user_id  VARCHAR(254) NOT NULL, date TIMESTAMP NOT NULL, text TEXT NOT NULL, title VARCHAR(254), user_id BIGINT(20) NOT NULL);
-ALTER TABLE integration_topics ADD PRIMARY KEY (integration_topic_id, integration_id, user_id);
+ALTER TABLE integration_topics ADD PRIMARY KEY (integration_topic_id, integration_group_id, integration_id, user_id);
 ALTER TABLE integration_topics ADD CONSTRAINT integration_topic_integration_group_fk FOREIGN KEY (integration_group_id, integration_id, user_id) REFERENCES integration_groups (integration_group_id, integration_id, user_id);
 ALTER TABLE integration_topics ADD CONSTRAINT integration_topic_integration_user_fk FOREIGN KEY (integration_id, integration_user_id) REFERENCES integration_users (integration_id, integration_user_id);
 ALTER TABLE integration_topics ADD CONSTRAINT integration_topic_user_fk FOREIGN KEY (user_id) REFERENCES users (id);
@@ -52,7 +52,7 @@ CREATE INDEX integration_topic_user_fk ON integration_topics (user_id);
 
 CREATE TABLE integration_updates (id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY, user_id BIGINT(20) NOT NULL, integration_id VARCHAR(254) NOT NULL, integration_group_id  VARCHAR(254) NOT NULL, integration_topic_id VARCHAR(254) NOT NULL, integration_update_id VARCHAR(254), integration_user_id VARCHAR(254) NOT NULL, date TIMESTAMP NOT NULL, text TEXT NOT NULL);
 ALTER TABLE integration_updates ADD CONSTRAINT integration_update_integration_group_fk FOREIGN KEY (integration_group_id, integration_id, user_id) REFERENCES integration_groups (integration_group_id, integration_id, user_id);
-ALTER TABLE integration_updates ADD CONSTRAINT integration_update_integration_topic_fk FOREIGN KEY (integration_topic_id, integration_id, user_id) REFERENCES integration_topics (integration_topic_id, integration_id, user_id);
+ALTER TABLE integration_updates ADD CONSTRAINT integration_update_integration_topic_fk FOREIGN KEY (integration_topic_id, integration_group_id, integration_id, user_id) REFERENCES integration_topics (integration_topic_id, integration_id, user_id);
 ALTER TABLE integration_updates ADD CONSTRAINT integration_update_integration_user_fk FOREIGN KEY (integration_id, integration_user_id) REFERENCES integration_users (integration_id, integration_user_id);
 ALTER TABLE integration_updates ADD CONSTRAINT integration_update_user_fk FOREIGN KEY (user_id) REFERENCES users (id);
 CREATE INDEX integration_update_index ON integration_updates (integration_update_id, integration_id, user_id);

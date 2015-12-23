@@ -9,6 +9,9 @@ import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
+import play.api.Logger
+
+
 case class IntegrationTopic(integrationId: String, integrationTopicId: String, integrationGroupId: String,
                             userId: Long, integrationUserId: String,
                             date: Timestamp, text: String, title: String) extends AbstractIntegrationMessage
@@ -35,7 +38,7 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
     def title = column[String]("title")
 
-    def pk = primaryKey("integration_topic_index", (integrationId, integrationTopicId, userId))
+    def pk = primaryKey("integration_topic_index", (integrationId, integrationTopicId, integrationGroupId, userId))
 
     def user = foreignKey("integration_token_user_fk", userId, users)(_.id)
 
@@ -57,16 +60,19 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
 
   import driver.api._
 
-  def find(integrationId: String, integrationTopicId: String, userId: Long): Future[Option[IntegrationTopic]] = {
+  def find(integrationId: String, integrationTopicId: String, integrationGroupId: String, userId: Long): Future[Option[IntegrationTopic]] = {
     db.run(integrationTopics.filter(t => t.integrationTopicId === integrationTopicId
-      && t.integrationId === integrationId && t.userId === userId).result.headOption)
+      && t.integrationGroupId === integrationGroupId
+      && t.integrationId === integrationId
+      && t.userId === userId).result.headOption)
   }
 
   def merge(topic: IntegrationTopic): Future[Boolean] = {
-    find(topic.integrationId, topic.integrationTopicId, topic.userId).flatMap {
+    find(topic.integrationId, topic.integrationTopicId, topic.integrationGroupId, topic.userId).flatMap {
       case None =>
         db.run(integrationTopics += topic).map(_ => true)
       case Some(existing) =>
+        Logger.debug(s"Skipped $existing")
         Future {
           false
         }

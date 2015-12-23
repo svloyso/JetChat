@@ -18,6 +18,8 @@
   <logger name="scala.slick" level="SQL" />
   <logger name="play.api.db.slick" level="DEBUG" />
 
+  <logger name="slick.jdbc" level="DEBUG" />
+
   <root level="ERROR">
     <appender-ref ref="STDOUT" />
   </root>
