@@ -85,7 +85,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
                     case Success(inserted) =>
                       mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
                     case Failure(e) =>
-                      Logger.error(e.getMessage)
+                      Logger.error(s"Can't merge an integration update: $update", e)
                   }}
               }
               nextCheck
