@@ -99,7 +99,7 @@ var ChatStore = Reflux.createStore({
             this.state.messages = [];
             this.trigger(this.state);
             // TODO: pushState
-            window.history.replaceState(this.state, window.title, this.state.selectedGroup ? ("?groupId=" + this.state.selectedGroup.id) : "");
+            window.history.replaceState(this.state, window.title, this.state.selectedGroup ? ("?groupId=" + this.state.selectedGroup.id) : "/");
         }
     },
 
