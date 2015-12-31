@@ -1,6 +1,6 @@
 @import play.api.libs.json.JsValue
 
-@(user: User, integrations: JsValue, users: JsValue, groups: JsValue, webSocketUrl: String,
+@(user: User, integrations: JsValue, users: JsValue, groups: JsValue, integrationGroups: JsValue, webSocketUrl: String,
         selectedGroupId: Option[Long], selectedTopic: Option[JsValue], selectedUserId: Option[Long],
         displaySettings: Option[Boolean])
 
@@ -29,6 +29,7 @@
 			}},
             users: @{Html(users.toString)},
             groups: @{Html(groups.toString)},
+            integrationGroups: @{Html(integrationGroups.toString)},
             selectedGroupId: @{selectedGroupId match {
 				case Some(id) => id
 				case None => Html("undefined")

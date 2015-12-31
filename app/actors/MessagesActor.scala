@@ -7,11 +7,12 @@ import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import models._
 import models.api.IntegrationTokensDAO
 import play.api.Logger
-import play.api.libs.json.JsObject
+import play.api.libs.json.{JsBoolean, JsObject}
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.Future
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.util.{Failure, Success}
 
 /**
  * @author Alefas
@@ -79,10 +80,12 @@ class MessagesActor(integration: Integration, system: ActorSystem,
                     case true =>
                       mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
                   }
-                  // TODO: We need to temporarily store ids and merge instead of inserting
-                  integrationUpdatesDAO.insert(update).onSuccess {
-                    case id =>
+                  // TODO: We need to check if the update has been already inserted
+                  integrationUpdatesDAO.merge(update).onComplete {
+                    case Success(inserted) =>
                       mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
+                    case Failure(e) =>
+                      Logger.error(e.getMessage)
                   }}
               }
               nextCheck

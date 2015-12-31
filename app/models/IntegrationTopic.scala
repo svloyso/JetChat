@@ -60,7 +60,7 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
 
   import driver.api._
 
-  def find(integrationId: String, integrationTopicId: String, integrationGroupId: String, userId: Long): Future[Option[IntegrationTopic]] = {
+  def find(integrationId: String, integrationGroupId: String, integrationTopicId: String, userId: Long): Future[Option[IntegrationTopic]] = {
     db.run(integrationTopics.filter(t => t.integrationTopicId === integrationTopicId
       && t.integrationGroupId === integrationGroupId
       && t.integrationId === integrationId
@@ -68,26 +68,27 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
   }
 
   def merge(topic: IntegrationTopic): Future[Boolean] = {
-    find(topic.integrationId, topic.integrationTopicId, topic.integrationGroupId, topic.userId).flatMap {
+    find(topic.integrationId, topic.integrationGroupId, topic.integrationTopicId, topic.userId).flatMap {
       case None =>
         db.run(integrationTopics += topic).map(_ => true)
       case Some(existing) =>
-        Logger.debug(s"Skipped $existing")
         Future {
           false
         }
     }
   }
 
-  def allWithCounts(userId: Long, integrationGroupId: Option[String]): Future[Seq[(String, Timestamp, String, String, String, String, String, Option[Long], Option[String], Int)]] = {
+  def allWithCounts(userId: Long, integrationId: Option[String], integrationGroupId: Option[String]): Future[Seq[(String, Timestamp, String, String, String, String, String, Option[Long], Option[String], Int)]] = {
     db.run((integrationTopics
       join integrationUsers on { case (topic, integrationUser) => topic.integrationUserId === integrationUser.integrationUserId }
       joinLeft users on { case ((topic, integrationUser), user) => integrationUser.userId === user.id }
       join integrationGroups on { case (((topic, integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
       .filter { case (((topic, integrationUser), user), group) =>
-        integrationGroupId match {
-          case Some(id) => topic.integrationGroupId === id
-          case None => topic.integrationGroupId === topic.integrationGroupId
+        (integrationId, integrationGroupId) match {
+          case (Some(integrationId), Some(integrationGroupId)) => topic.userId === userId &&
+            topic.integrationId === integrationId &&
+            topic.integrationGroupId === integrationGroupId
+          case _ => topic.userId === userId
         }
     }.sortBy(_._1._1._1.date desc).map {
       case (((topic, integrationUser), user), group) =>
@@ -101,15 +102,15 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
         joinLeft users on { case ((topic, integrationUser), user) => integrationUser.userId === user.id }
         join integrationGroups on { case ((((topic, update), integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
         .filter { case ((((topic, update), integrationUser), user), group) =>
-          integrationGroupId match {
-            case Some(id) => topic.integrationGroupId === id
-            case None => topic.integrationGroupId === topic.integrationGroupId
+          (integrationId, integrationGroupId) match {
+            case (Some(integrationId), Some(integrationGroupId)) => topic.integrationId === integrationId && topic.integrationGroupId === integrationGroupId
+            case _ => topic.integrationGroupId === topic.integrationGroupId
           }
       }.groupBy { case ((((topic, update), integrationUser), user), group) =>
         (topic.integrationTopicId, topic.date, topic.text, group.integrationGroupId, group.name, integrationUser.integrationUserId,
           integrationUser.integrationUserName, user.map(_.id), user.map(_.name))
       }.map { case ((topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName), g) =>
-        (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, g.map(_._1._1._1._1.integrationTopicId).countDistinct, g.map(_._1._1._1._1.date).max)
+        (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, g.length, g.map(_._1._1._1._1.date).max)
       }.sortBy(_._11 desc).result).map { case f =>
         val commentedTopics = f.map { case (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c, d) =>
           (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName) -> c

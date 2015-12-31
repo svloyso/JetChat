@@ -98,7 +98,7 @@ class ModelSpec extends Specification {
         new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration topic", "Test integraiton topic title")), Duration.Inf)
       m mustEqual true
 
-      var integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "test-integration-topic", user.get.id), Duration.Inf)
+      var integrationTopic = Await.result(integrationTopicsDAO.find("test-integration", "test-integration-group", "test-integration-topic", user.get.id), Duration.Inf)
       integrationTopic.isDefined mustEqual true
 
       var integrationUpdateId = Await.result(integrationUpdatesDAO.insert(IntegrationUpdate(0, "test-integration", None, "test-integration-group",
@@ -108,7 +108,7 @@ class ModelSpec extends Specification {
         "test-integration-topic", user.get.id, "test-integration-user", new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration update")), Duration.Inf)
       m mustEqual false
 
-      var integrationUpdate = Await.result(integrationUpdatesDAO.find("test-integration", "test-integration-update", user.get.id), Duration.Inf)
+      var integrationUpdate = Await.result(integrationUpdatesDAO.find("test-integration", "test-integration-group", "test-integration-update", user.get.id), Duration.Inf)
       integrationUpdate.isDefined mustEqual true
 
       Evolutions.cleanupEvolutions(database)

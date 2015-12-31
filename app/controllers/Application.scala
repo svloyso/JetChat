@@ -27,7 +27,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                             val topicsDAO: TopicsDAO, val commentsDAO: CommentsDAO,
                             val directMessagesDAO: DirectMessagesDAO,
                             val integrationTopicsDAO: IntegrationTopicsDAO,
-                            val integrationTokensDAO: IntegrationTokensDAO) extends Controller {
+                            val integrationTokensDAO: IntegrationTokensDAO,
+                            val integrationGroupsDAO: IntegrationGroupsDAO) extends Controller {
 
   implicit val tsReads: Reads[Timestamp] = Reads.of[Long] map (new Timestamp(_))
   implicit val tsWrites: Writes[Timestamp] = Writes { (ts: Timestamp) => JsString(ts.toString) }
@@ -79,13 +80,14 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             (for {
               users <- getUsersJsValue(user.id)
               groups <- getGroupsJsValue(user.id)
+              integrationGroups <- getIntegrationGroupsJsValue(user.id)
               integrations <- getUserIntegrationsJson(user.id)
               topic <- topicId match {
                 case Some(value) => topicsDAO.findById(value)
                 case None => Future { None }
               }
-            } yield (integrations, users, groups, topic)) map { case (userIntegrations, users, groups, topic) =>
-              Ok(views.html.index(user, userIntegrations, users, groups, webSocketUrl, groupId,
+            } yield (integrations, users, groups, integrationGroups, topic)) map { case (userIntegrations, users, groups, integrationGroups, topic) =>
+              Ok(views.html.index(user, userIntegrations, users, groups, integrationGroups, webSocketUrl, groupId,
                 topic match { case Some(value) => Some(Json.toJson(value)) case None => None }, userId, displaySettings))
             }
           case None =>
@@ -133,9 +135,22 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     getGroupsJsValue(userId).map(Ok(_))
   }
 
+  def getIntegrationGroups(userId: Long) = Action.async { implicit request =>
+    getIntegrationGroupsJsValue(userId).map(Ok(_))
+  }
+
   def getGroupsJsValue(userId: Long): Future[JsValue] = {
     groupsDAO.allWithCounts(userId).map { f =>
       Json.toJson(JsArray(f.map { case (group, count) => JsObject(Seq("id" -> JsNumber(group.id),
+        "name" -> JsString(group.name), "count" -> JsNumber(count)))
+      }))
+    }
+  }
+
+  def getIntegrationGroupsJsValue(userId: Long): Future[JsValue] = {
+    integrationGroupsDAO.allWithCounts(userId).map { f =>
+      Json.toJson(JsArray(f.map { case (group, count) => JsObject(Seq("integrationId" -> JsString(group.integrationId),
+        "integrationGroupId" -> JsString(group.integrationGroupId),
         "name" -> JsString(group.name), "count" -> JsNumber(count)))
       }))
     }
@@ -161,12 +176,12 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }.map(Ok(_))
   }
 
-  def getAllIntegrationTopics(userId: Long) = getIntegrationTopics(userId, None)
+  def getAllIntegrationTopics(userId: Long) = getIntegrationTopics(userId, None, None)
 
-  def getIntegrationGroupTopics(userId: Long, groupId: String) = getIntegrationTopics(userId, None)
+  def getIntegrationGroupTopics(userId: Long, integrationId: String, groupId: String) = getIntegrationTopics(userId, Some(integrationId), Some(groupId))
 
-  def getIntegrationTopics(userId: Long, groupId: Option[String]) = Action.async { implicit rs =>
-    integrationTopicsDAO.allWithCounts(userId, groupId).map { f =>
+  def getIntegrationTopics(userId: Long, integrationId: Option[String], groupId: Option[String]) = Action.async { implicit rs =>
+    integrationTopicsDAO.allWithCounts(userId, integrationId, groupId).map { f =>
       Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c) =>
         var topic = JsObject(Seq("id" -> JsString(topicId), "date" -> Json.toJson(topicDate), "group" -> JsObject
         (Seq("id" -> JsString(gId), "name" -> JsString(groupName))),

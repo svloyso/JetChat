@@ -9,6 +9,8 @@ import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
+import play.api.Logger
+
 case class IntegrationUpdate(id: Long, integrationId: String, integrationUpdateId: Option[String], integrationGroupId: String,
                              integrationTopicId: String, userId: Long,
                              integrationUserId: String, date: Timestamp, text: String) extends AbstractIntegrationMessage
@@ -60,9 +62,9 @@ class IntegrationUpdatesDAO @Inject()(val dbConfigProvider: DatabaseConfigProvid
 
   import driver.api._
 
-  def find(integrationId: String, integrationUpdateId: String, userId: Long): Future[Option[IntegrationUpdate]] = {
-    db.run(integrationUpdates.filter(t => t.integrationUpdateId === integrationUpdateId &&
-      t.integrationId === integrationId && t.userId === userId).result.headOption)
+  def find(integrationId: String, integrationGroupId: String, integrationUpdateId: String, userId: Long): Future[Option[IntegrationUpdate]] = {
+    db.run(integrationUpdates.filter(u => u.integrationUpdateId === integrationUpdateId &&
+      u.integrationId === integrationId && u.integrationGroupId === integrationGroupId && u.userId === userId).result.headOption)
   }
 
   def find(id: Long): Future[Option[IntegrationUpdate]] = {
@@ -73,13 +75,26 @@ class IntegrationUpdatesDAO @Inject()(val dbConfigProvider: DatabaseConfigProvid
     db.run((integrationUpdates returning integrationUpdates.map(_.id)) += update)
   }
 
-
   def merge(update: IntegrationUpdate): Future[Boolean] = {
-    find(update.id).flatMap {
-      case None =>
-        db.run(integrationUpdates += update).map(_ => true)
-      case Some(existing) =>
-        db.run(integrationUpdates.filter(u => u.id === update.id).map(_.integrationUpdateId).update(update.integrationUpdateId)).map(_ => false)
+    if (update.id > 0) {
+      find(update.id).flatMap {
+        case None =>
+          db.run(integrationUpdates += update).map(_ => true)
+        case Some(existing) =>
+          db.run(integrationUpdates.filter(u => u.id === update.id)
+            .map(_.integrationUpdateId).update(update.integrationUpdateId)).map(_ => false)
+      }
+    } else if (update.integrationUpdateId.isDefined) {
+      find(update.integrationId, update.integrationGroupId, update.integrationUpdateId.get, update.userId).flatMap {
+        case None =>
+          db.run(integrationUpdates += update).map(_ => true)
+        case Some(existing) =>
+          db.run(integrationUpdates.filter(u => u.integrationUpdateId === update.integrationUpdateId.get &&
+            u.integrationId === update.integrationId && u.integrationGroupId === update.integrationGroupId && u.userId === update.userId)
+            .map(_.integrationUpdateId).update(update.integrationUpdateId)).map(_ => false)
+      }
+    } else {
+      throw new IllegalArgumentException
     }
   }
 }

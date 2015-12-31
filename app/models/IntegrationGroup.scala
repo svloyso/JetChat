@@ -34,7 +34,8 @@ trait IntegrationGroupsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
 @Singleton()
 class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
-  extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationGroupsComponent {
+  extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationGroupsComponent
+  with IntegrationTopicsComponent with IntegrationUpdatesComponent {
 
   import driver.api._
 
@@ -53,4 +54,40 @@ class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
         }
     }
   }
+
+  def allWithCounts(userId: Long): Future[Seq[(IntegrationGroup, Int)]] = {
+    db.run(integrationGroups.filter(_.userId === userId).result).flatMap { f =>
+      val groupMap = f.map { g => (g.integrationId, g.integrationGroupId) ->(g.name, 0) }.toMap
+
+      db.run((integrationTopics.filter(_.userId === userId)
+        join integrationGroups on { case (topic, group) => topic.integrationGroupId === group.integrationGroupId && topic.integrationId === group.integrationId })
+        .groupBy { case (topic, group) => (group.integrationId, group.integrationGroupId, group.name) }
+        .map { case ((integrationId, integrationGroupId, groupName), g) => (integrationId, integrationGroupId, groupName, g.length) }.result)
+        .flatMap { f =>
+          val topicMap = f.map { case (integrationId, integrationGroupId, groupName, count) =>
+            (integrationId, integrationGroupId) ->(groupName, count)
+          }.toMap
+
+          db.run((integrationUpdates.filter(_.userId === userId)
+            join integrationGroups on { case (update, group) => update.integrationGroupId === group.integrationGroupId && update.integrationId === group.integrationId })
+            .groupBy { case (update, group) => (group.integrationId, group.integrationGroupId, group.name) }
+            .map { case ((integrationId, integrationGroupId, groupName), g) => (integrationId, integrationGroupId, groupName, g.length) }.result)
+            .map { f =>
+              val updateMap = f.map { case (integrationId, integrationGroupId, groupName, count) =>
+                (integrationId, integrationGroupId) ->(groupName, count)
+              }.toMap
+
+              val groupTotal = groupMap ++ (groupMap ++ topicMap.map { case ((integrationId, integrationGroupId), groupTopicToken) =>
+                val groupUpdateMap = updateMap.getOrElse((integrationId, integrationGroupId), (groupTopicToken._1, 0))
+                (integrationId, integrationGroupId) -> (groupTopicToken._1 -> (groupTopicToken._2 + groupUpdateMap._2))
+              })
+
+              groupTotal.toSeq.sortBy(a => a._2._2).map { case ((integrationId, integrationGroupId), token) =>
+                (IntegrationGroup(integrationId, integrationGroupId, userId, token._1), token._2)
+              }
+            }
+        }
+    }
+  }
+
 }
