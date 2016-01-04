@@ -7,15 +7,8 @@
 @head = {
     <link rel="stylesheet" href="@routes.Assets.at("stylesheets/index.css")"/>
 
-    <script src="@routes.Assets.at("javascripts/react-with-addons.js")"></script>
-    <script src="@routes.Assets.at("javascripts/JSXTransformer.js")"></script>
-    <script src="@routes.Assets.at("javascripts/jquery-dateFormat.min.js")"></script>
-    <script src="@routes.Assets.at("javascripts/reflux.js")"></script>
-    <script src="@routes.Assets.at("javascripts/react-autolink.js")"></script>
-    <script src="@routes.Assets.at("javascripts/react-emoji.js")"></script>
-    <script type="text/jsx" src="@routes.Assets.at("javascripts/index.js")"></script>
     <script>
-        var global = {
+        var _global = {
             user: {
                 id: @{user.id},
                 name: "@{user.name}",
@@ -44,6 +37,7 @@
 			}}
         }
     </script>
+    <script src="@routes.Assets.at("javascripts/webpack/main.js")"></script>
 }
 
 @main("JetChat", head) {

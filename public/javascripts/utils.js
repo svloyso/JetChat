@@ -1,3 +1,7 @@
+import React from 'react';
+import ReactDOM from 'react-dom';
+var prettydate = require("pretty-date");
+
 // Patch Bootstrap popover to take a React component instead of a
 // plain HTML string
 $.extend($.fn.popover.Constructor.DEFAULTS, {react: false});
@@ -18,12 +22,12 @@ $.fn.popover.Constructor.prototype.setContent = function () {
         // Render title, if any
         var $title = $tip.find('.popover-title');
         if (title) {
-            React.render(title, $title[0]);
+            ReactDOM.render(title, $title[0]);
         } else {
             $title.hide();
         }
 
-        React.render(content, $tip.find('.popover-content')[0]);
+        ReactDOM.render(content, $tip.find('.popover-content')[0]);
     }
 };
 
@@ -44,7 +48,7 @@ window.setInterval(function () {
 
 window.setInterval(function () {
     $(".pretty").map(function () {
-        $(this).text($.format.prettyDate(parseInt($(this).attr("data-date"))))
+        $(this).text(prettydate.format(new Date(parseInt($(this).attr("data-date")))))
     })
 }, 1000 * 60);
 
