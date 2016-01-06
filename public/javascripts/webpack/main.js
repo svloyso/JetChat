@@ -21435,6 +21435,7 @@
 	            integrations: _global.integrations,
 	            displaySettings: _global.displaySettings,
 	            groups: _global.groups,
+	            integrationGroups: _global.integrationGroups,
 	            topics: [],
 	            messages: [],
 	            selectedGroup: _global.selectedGroupId ? _global.groups.filter(function (g) {
@@ -21606,7 +21607,7 @@
 	
 	var _reflux2 = _interopRequireDefault(_reflux);
 	
-	var ChatActions = _reflux2['default'].createActions(['selectGroup', 'selectTopic', 'selectUser', 'newGroup', 'newUser', 'newTopic', 'newMessage', 'showIntegrations']);
+	var ChatActions = _reflux2['default'].createActions(['selectGroup', 'selectTopic', 'selectUser', 'newGroup', 'newUser', 'newTopic', 'newMessage', 'showIntegrations', 'selectIntegrationGroup', 'selectIntegration']);
 	
 	exports['default'] = ChatActions;
 	module.exports = exports['default'];
@@ -21700,6 +21701,14 @@
 	        _eventsChatActions2['default'].selectUser(user);
 	    },
 	
+	    onIntegrationClick: function onIntegrationClick(integration) {
+	        _eventsChatActions2['default'].selectIntegration(integration);
+	    },
+	
+	    onIntegrationGroupClick: function onIntegrationGroupClick(group) {
+	        _eventsChatActions2['default'].selectIntegrationGroup(group);
+	    },
+	
 	    render: function render() {
 	        var self = this;
 	        var groupItems = self.state.store.groups.map(function (group) {
@@ -21735,16 +21744,46 @@
 	            );
 	        });
 	
-	        var integrationItems = self.state.store.integrations.filter(function (integration) {
-	            return true;
-	        }).map(function (integration) {
+	        var groupsByIntegrationId = self.state.store.integrationGroups.group(function (g) {
+	            return g.integrationId;
+	        });
+	        var integrationItems = groupsByIntegrationId.map(function (group) {
+	            var integration = self.state.store.integrations.find(function (i) {
+	                return i.id == group.key;
+	            });
+	            var integrationGroupItems = group.data.map(function (group) {
+	                var groupClass = "";
+	                return _react2['default'].createElement(
+	                    'li',
+	                    { 'data-group': group.id, className: groupClass,
+	                        onClick: self.onIntegrationGroupClick.bind(self, group), key: group.integrationGroupId },
+	                    _react2['default'].createElement(
+	                        'span',
+	                        { className: 'group-header' },
+	                        '#'
+	                    ),
+	                    _react2['default'].createElement(
+	                        'span',
+	                        null,
+	                        group.name
+	                    )
+	                );
+	            });
 	            return _react2['default'].createElement(
-	                'span',
-	                { className: 'integration-name', key: integration.id },
-	                integration.name
+	                'ul',
+	                { className: 'integration-groups', key: integration.id },
+	                _react2['default'].createElement(
+	                    'li',
+	                    { 'data-integration': integration.id, onClick: self.onIntegrationClick.bind(self, integration) },
+	                    _react2['default'].createElement(
+	                        'span',
+	                        { className: 'integration-name' },
+	                        integration.name
+	                    )
+	                ),
+	                integrationGroupItems
 	            );
 	        });
-	
 	        var allGroupsClass = !self.state.store.selectedGroup && !self.state.store.selectedUser && !self.state.store.displaySettings ? "selected" : "";
 	
 	        return _react2['default'].createElement(
@@ -22709,6 +22748,21 @@
 	    $("#message-pane").height($(window).height() - 100);
 	    $("#message-roll").css({ maxHeight: $(window).height() - 95 + "px" });
 	    $("#message-bar").find("#input").width($("#message-bar").width() - 85);
+	});
+	
+	Object.defineProperty(Array.prototype, 'group', {
+	    enumerable: false,
+	    value: function value(key) {
+	        var map = {};
+	        this.forEach(function (e) {
+	            var k = key(e);
+	            map[k] = map[k] || [];
+	            map[k].push(e);
+	        });
+	        return Object.keys(map).map(function (k) {
+	            return { key: k, data: map[k] };
+	        });
+	    }
 	});
 
 /***/ }

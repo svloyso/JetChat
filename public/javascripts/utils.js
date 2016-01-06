@@ -62,3 +62,18 @@ window.setInterval(function() {
     $("#message-roll").css({maxHeight: ($(window).height() - 95) + "px"});
     $("#message-bar").find("#input").width($("#message-bar").width() - 85);
 });
+
+Object.defineProperty(Array.prototype, 'group', {
+    enumerable: false,
+    value: function (key) {
+        var map = {};
+        this.forEach(function (e) {
+            var k = key(e);
+            map[k] = map[k] || [];
+            map[k].push(e);
+        });
+        return Object.keys(map).map(function (k) {
+            return {key: k, data: map[k]};
+        });
+    }
+});

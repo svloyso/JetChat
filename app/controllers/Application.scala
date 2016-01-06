@@ -178,7 +178,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getAllIntegrationTopics(userId: Long) = getIntegrationTopics(userId, None, None)
 
-  def getIntegrationGroupTopics(userId: Long, integrationId: String, groupId: String) = getIntegrationTopics(userId, Some(integrationId), Some(groupId))
+  def getIntegrationGroupTopics(userId: Long, integrationId: String, groupId: Option[String]) = getIntegrationTopics(userId, Some(integrationId), groupId)
 
   def getIntegrationTopics(userId: Long, integrationId: Option[String], groupId: Option[String]) = Action.async { implicit rs =>
     integrationTopicsDAO.allWithCounts(userId, integrationId, groupId).map { f =>

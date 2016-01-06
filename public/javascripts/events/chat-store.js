@@ -28,6 +28,7 @@ var ChatStore = Reflux.createStore({
             integrations: _global.integrations,
             displaySettings: _global.displaySettings,
             groups: _global.groups,
+            integrationGroups: _global.integrationGroups,
             topics: [],
             messages: [],
             selectedGroup: _global.selectedGroupId ? _global.groups.filter(function (g) {

@@ -16,6 +16,14 @@ var GroupPane = React.createClass({
         ChatActions.selectUser(user);
     },
 
+    onIntegrationClick: function (integration) {
+        ChatActions.selectIntegration(integration);
+    },
+
+    onIntegrationGroupClick: function (group) {
+        ChatActions.selectIntegrationGroup(group);
+    },
+
     render: function () {
         var self = this;
         var groupItems = self.state.store.groups.map(function (group) {
@@ -39,15 +47,27 @@ var GroupPane = React.createClass({
             );
         });
 
-
-        var integrationItems = self.state.store.integrations.filter(function (integration) {
-            return true
-        }).map(function (integration) {
+        var groupsByIntegrationId = self.state.store.integrationGroups.group(g => g.integrationId);
+        var integrationItems = groupsByIntegrationId.map((group) => {
+            var integration = self.state.store.integrations.find(i => i.id == group.key);
+            var integrationGroupItems = group.data.map(group => {
+                var groupClass = "";
+                return (
+                    <li data-group={group.id} className={groupClass}
+                        onClick={self.onIntegrationGroupClick.bind(self, group)} key={group.integrationGroupId}>
+                        <span className="group-header">#</span>
+                        <span>{group.name}</span>
+                    </li>
+                )
+            });
             return (
-                <span className="integration-name" key={integration.id}>{integration.name}</span>
+                <ul className="integration-groups" key={integration.id}>
+                    <li data-integration={integration.id} onClick={self.onIntegrationClick.bind(self, integration)} >
+                        <span className="integration-name">{integration.name}</span></li>
+                    {integrationGroupItems}
+                </ul>
             );
         });
-
         var allGroupsClass = (!self.state.store.selectedGroup && !self.state.store.selectedUser && !self.state.store.displaySettings) ? "selected" : "";
 
         return (

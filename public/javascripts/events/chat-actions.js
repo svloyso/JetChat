@@ -8,7 +8,9 @@ var ChatActions = Reflux.createActions([
     'newUser',
     'newTopic',
     'newMessage',
-    'showIntegrations'
+    'showIntegrations',
+    'selectIntegrationGroup',
+    'selectIntegration'
 ]);
 
 export default ChatActions;
