@@ -210,8 +210,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getIntegrationTopics(userId: Long, integrationId: Option[String], groupId: Option[String]) = Action.async { implicit rs =>
     integrationTopicsDAO.allWithCounts(userId, integrationId, groupId).map { f =>
-      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c) =>
-        var topic = JsObject(Seq("id" -> JsString(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
+      Json.toJson(JsArray(f.map { case (topicIntegrationId, topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c) =>
+        var topic = JsObject(Seq("id" -> JsString(topicId), "integrationId" -> JsString(topicIntegrationId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsString(gId), "name" -> JsString(groupName))),
           "text" -> JsString(topicText),
           "integrationUser" -> JsObject(Seq("id" -> JsString(integrationUserId), "name" -> JsString(integrationUserName)))))

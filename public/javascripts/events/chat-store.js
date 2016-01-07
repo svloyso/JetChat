@@ -139,7 +139,7 @@ var ChatStore = Reflux.createStore({
             this.trigger(this.state);
             window.history.replaceState(self.state, window.title,
                 "?integrationId=" + self.state.selectedIntegration.id +
-                "&integrationGroupId=" + self.state.selectedIntegrationGroup.integrationGroupId + "&integrationTopicId=" + topic.id);
+                "&integrationGroupId=" + group.integrationGroupId + "&integrationTopicId=" + topic.id);
         } else {
             this.state.integrationUpdates = [];
             this.trigger(this.state);

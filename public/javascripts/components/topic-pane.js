@@ -11,7 +11,7 @@ var TopicPane = React.createClass({
         var self = this;
         var topicItems = [];
         if (self.state.store.integrationTopics) {
-            var group = self.state.store.selectedGroup ? self.state.store.selectedGroup : undefined;
+            var group = self.state.store.selectedIntegrationGroup ? self.state.store.selectedIntegrationGroup : undefined;
             topicItems = self.state.store.integrationTopics.map(function (t) {
                 var integration = self.state.store.integrations.find(i => i.id == t.topic.integrationId);
                 return (
