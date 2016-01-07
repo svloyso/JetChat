@@ -24,7 +24,7 @@ GET         /auth/callback                                               control
 
 GET         /assets/*file                                                controllers.Assets.at(path="/public", file)
 
-GET         /                                                            controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userId: Option[Long], settings: Option[Boolean])
+GET         /                                                            controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userId: Option[Long], integrationId: Option[String], integrationGroupId: Option[String], settings: Option[Boolean])
 
 # Integration Auth
 GET         /integration/:id/disable                                     controllers.IntegrationAuth.disable(id: String)
