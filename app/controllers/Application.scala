@@ -160,7 +160,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   def getAllTopics(userId: Long) = Action.async { implicit request =>
     topicsDAO.allWithCounts(userId, None).map { f =>
       Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, c) =>
-        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> Json.toJson(topicDate), "group" -> JsObject
+        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
           "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "messages" -> JsNumber(c)))
       }))
@@ -170,7 +170,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   def getGroupTopics(userId: Long, groupId: Long) = Action.async { implicit rs =>
     topicsDAO.allWithCounts(userId, Some(groupId)).map { f =>
       Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, c) =>
-        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> Json.toJson(topicDate), "group" -> JsObject
+        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
           "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "messages" -> JsNumber(c)))
       }))
@@ -184,7 +184,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   def getIntegrationTopics(userId: Long, integrationId: Option[String], groupId: Option[String]) = Action.async { implicit rs =>
     integrationTopicsDAO.allWithCounts(userId, integrationId, groupId).map { f =>
       Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c) =>
-        var topic = JsObject(Seq("id" -> JsString(topicId), "date" -> Json.toJson(topicDate), "group" -> JsObject
+        var topic = JsObject(Seq("id" -> JsString(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsString(gId), "name" -> JsString(groupName))),
           "text" -> JsString(topicText),
           "integrationUser" -> JsObject(Seq("id" -> JsString(integrationUserId), "name" -> JsString(integrationUserName)))))
