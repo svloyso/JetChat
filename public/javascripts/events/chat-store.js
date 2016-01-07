@@ -62,6 +62,7 @@ var ChatStore = Reflux.createStore({
             (group ? "/" + group.id : ""),
             success: function (topics) {
                 self.state.topics = topics;
+                self.state.integrationTopics = undefined;
                 if (topics.length > 0) {
                     self.onSelectTopic(topics[0].topic);
                 } else {
@@ -176,6 +177,7 @@ var ChatStore = Reflux.createStore({
             type: "GET",
             url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics",
             success: function (topics) {
+                self.state.topics = undefined;
                 self.state.integrationTopics = topics;
                 if (topics.length > 0) {
                     self.onSelectIntegrationTopic(integration, undefined, topics[0].topic);
@@ -199,8 +201,9 @@ var ChatStore = Reflux.createStore({
         $.ajax({
             context: this,
             type: "GET",
-            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics?groupId=" + group.id,
+            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics?groupId=" + group.integrationGroupId,
             success: function (topics) {
+                self.state.topics = undefined;
                 self.state.integrationTopics = topics;
                 if (topics.length > 0) {
                     self.onSelectIntegrationTopic(integration, group, topics[0].topic);
