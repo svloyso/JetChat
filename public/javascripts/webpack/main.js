@@ -21419,8 +21419,10 @@
 	            this.onSelectUser(this.state.selectedUser);
 	        } else if (this.state.selectedIntegration && !this.state.selectedIntegrationGroup) {
 	            this.onSelectIntegration(this.state.selectedIntegration);
-	        } else if (this.state.selectedIntegration && this.state.selectedIntegrationGroup) {
+	        } else if (this.state.selectedIntegration && this.state.selectedIntegrationGroup && !this.state.selectedIntegrationTopic) {
 	            this.onSelectIntegrationGroup(this.state.selectedIntegration, this.state.selectedIntegrationGroup);
+	        } else if (this.state.selectedIntegration && this.state.selectedIntegrationGroup && this.state.selectedIntegrationTopic) {
+	            this.onSelectIntegrationTopic(this.state.selectedIntegration, this.state.selectedIntegrationGroup, this.state.selectedIntegrationTopic);
 	        } else {
 	            this.onSelectGroup(this.state.selectedGroup);
 	        }
@@ -21518,11 +21520,12 @@
 	        var self = this;
 	        this.state.selectedIntegration = integration;
 	        this.state.selectedIntegrationGroup = group;
+	        this.state.selectedIntegrationTopic = topic;
 	        this.state.selectedTopic = undefined;
 	        this.state.selectedUser = undefined;
 	        this.state.displaySettings = undefined;
-	        /*if (topic) {
-	            $.ajax({
+	        if (topic) {
+	            /*$.ajax({
 	                context: this,
 	                type: "GET",
 	                url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/updates/" + topic.id,
@@ -21537,8 +21540,11 @@
 	                fail: function (e) {
 	                    console.error(e);
 	                }
-	            })
-	        } else */{
+	            })*/
+	            this.state.integrationUpdates = [];
+	            this.trigger(this.state);
+	            window.history.replaceState(self.state, window.title, "?integrationId=" + self.state.selectedIntegration.id + "&integrationGroupId=" + self.state.selectedIntegrationGroup.integrationGroupId + "&integrationTopicId=" + topic.id);
+	        } else {
 	            this.state.integrationUpdates = [];
 	            this.trigger(this.state);
 	            // TODO: pushState
@@ -21708,7 +21714,7 @@
 	
 	var _reflux2 = _interopRequireDefault(_reflux);
 	
-	var ChatActions = _reflux2['default'].createActions(['selectGroup', 'selectTopic', 'selectUser', 'newGroup', 'newUser', 'newTopic', 'newMessage', 'showIntegrations', 'selectIntegrationGroup', 'selectIntegration']);
+	var ChatActions = _reflux2['default'].createActions(['selectGroup', 'selectTopic', 'selectUser', 'newGroup', 'newUser', 'newTopic', 'newMessage', 'showIntegrations', 'selectIntegrationGroup', 'selectIntegration', 'selectIntegrationTopic']);
 	
 	exports['default'] = ChatActions;
 	module.exports = exports['default'];

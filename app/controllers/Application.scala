@@ -61,6 +61,27 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     (JsPath \ "text").write[String]
   )(unlift(Topic.unapply))
 
+  implicit val integrationTopicReads: Reads[IntegrationTopic] = (
+    (JsPath \ "integrationId").read[String] and
+      (JsPath \ "integrationTopicId").read[String] and
+      (JsPath \ "integrationGroupId").read[String] and
+      (JsPath \ "userId").read[Long] and
+      (JsPath \ "integrationUserId").read[String] and
+      (JsPath \ "date").read[Timestamp] and
+      (JsPath \ "text").read[String] and
+      (JsPath \ "title").read[String]
+    ) (IntegrationTopic.apply _)
+  implicit val integrationTopicWrites: Writes[IntegrationTopic] = (
+    (JsPath \ "integrationId").write[String] and
+      (JsPath \ "integrationTopicId").write[String] and
+      (JsPath \ "integrationGroupId").write[String] and
+      (JsPath \ "userId").write[Long] and
+      (JsPath \ "integrationUserId").write[String] and
+      (JsPath \ "date").write[Timestamp] and
+      (JsPath \ "text").write[String] and
+      (JsPath \ "title").write[String]
+  )(unlift(IntegrationTopic.unapply))
+
   val TICK = JsString("Tick")
   val TACK = JsString("Tack")
 
@@ -68,9 +89,10 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   var actorCounter = 0
 
-  // TODO: Get rid out of "integrationGroupId"
+  // TODO: Get rid out of "integrationGroupId" and "integrationTopicId"
   def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None,
             integrationId: Option[String] = None, integrationGroupId: Option[String] = None,
+            integrationTopicId: Option[String] = None,
             displaySettings: Option[Boolean] = None) = Action.async { implicit request =>
     request.cookies.get("user") match {
       case Some(cookie) =>
@@ -86,17 +108,22 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                 case Some(value) => topicsDAO.findById(value)
                 case None => Future { None }
               }
-            } yield (integrations, users, groups, integrationGroups, topic)) map { case (userIntegrations, users, groups, integrationGroups, topic) =>
+              integrationTopic <- integrationTopicId match {
+                case Some(value) => integrationTopicsDAO.find(integrationId.get, integrationGroupId.get, value, user.id)
+                case None => Future { None }
+              }
+            } yield (integrations, users, groups, integrationGroups, topic, integrationTopic)) map { case (userIntegrations, users, groups, integrationGroups, topic, integrationTopic) =>
               Ok(views.html.index(user, userIntegrations, users, groups, integrationGroups, webSocketUrl, groupId,
-                topic match { case Some(value) => Some(Json.toJson(value)) case None => None }, userId,
-                integrationId, integrationGroupId, displaySettings))
+                topic match { case Some(value) => Some(Json.toJson(value)) case None => None },
+                integrationTopic match { case Some(value) => Some(Json.toJson(value)) case None => None },
+                userId, integrationId, integrationGroupId, displaySettings))
             }
           case None =>
-            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
         }
       case _ =>
         val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
-        val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None).absoluteURL()
+        val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None).absoluteURL()
         Future.successful(Redirect(controllers.routes.IntegrationAuth.auth(integration.id, Option(redirectUrl))))
     }
   }
@@ -118,7 +145,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def logout() = Action.async { implicit request =>
-    Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+    Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
   }
 
   def getUser(login: String) = Action.async { implicit request =>

@@ -1,8 +1,8 @@
 @import play.api.libs.json.JsValue
 
 @(user: User, integrations: JsValue, users: JsValue, groups: JsValue, integrationGroups: JsValue, webSocketUrl: String,
-        selectedGroupId: Option[Long], selectedTopic: Option[JsValue], selectedUserId: Option[Long],
-        selectedIntegrationId: Option[String], selectedIntegrationGroupId: Option[String],
+        selectedGroupId: Option[Long], selectedTopic: Option[JsValue], selectedIntegrationTopic: Option[JsValue],
+        selectedUserId: Option[Long], selectedIntegrationId: Option[String], selectedIntegrationGroupId: Option[String],
         displaySettings: Option[Boolean])
 
 @head = {
@@ -43,8 +43,11 @@
             selectedIntegrationGroupId: @{selectedIntegrationGroupId match {
 				case Some(id) => Html("\"" + id + "\"")
 				case None => Html("undefined")
+			}},
+            selectedIntegrationTopic: @{selectedIntegrationTopic match {
+				case Some(value) => Html(value.toString())
+				case None => Html("undefined")
 			}}
-
         }
     </script>
     <script src="@routes.Assets.at("javascripts/webpack/main.js")"></script>

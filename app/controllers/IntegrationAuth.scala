@@ -91,7 +91,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                       mediator ! Publish("cluster-events", ClusterEvent(user.login, JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
                       result
                     }).map { _ =>
-                      Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None).absoluteURL()))
+                      Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None, None).absoluteURL()))
                     }.recover { case e: Throwable => BadRequest(e.getMessage) }
                   case _ =>
                     integrationUsersDAO.findByIntegrationUserId(integrationUserId, integrationId).flatMap {
@@ -105,7 +105,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                           mediator ! Publish("cluster-events", ClusterEvent(user.get.login, JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
                           user.get.login
                         }).map { login =>
-                          Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None).absoluteURL())).withCookies(
+                          Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None, None).absoluteURL())).withCookies(
                             Cookie("user", login, httpOnly = false))
                         }.recover { case e: Throwable => BadRequest(e.getMessage) }
                       case None =>
@@ -127,7 +127,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                               mediator ! Publish("cluster-events", ClusterEvent(user.login, JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
                               result
                             }).map { _ =>
-                              Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None).absoluteURL())).withCookies(
+                              Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None, None).absoluteURL())).withCookies(
                                 Cookie("user", loginFromIntegration, httpOnly = false))
                             }.recover { case e: Throwable => BadRequest(e.getMessage) }
                           }
