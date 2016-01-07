@@ -63,7 +63,7 @@ class Auth @Inject()(val system: ActorSystem,
 
     // TODO: Store a random state in session
     // TODO: Store group, topic, user
-    codeFlowBuilder.state(controllers.routes.Application.index(None, None, None, None).absoluteURL())
+    codeFlowBuilder.state(controllers.routes.Application.index(None, None, None, None, None, None).absoluteURL())
 
     (hubClient, oauthClient, hubClient.getAccountsClient(HUB_CLIENT_ID, HUB_SECRET), codeFlowBuilder.build())
   }
@@ -93,6 +93,6 @@ class Auth @Inject()(val system: ActorSystem,
           }
         }
     }
-    Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None)).withCookies(Cookie("user", hubUser.getLogin, httpOnly = false)))
+    Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None)).withCookies(Cookie("user", hubUser.getLogin, httpOnly = false)))
   }
 }

@@ -21,7 +21,7 @@ var GroupPane = React.createClass({
     },
 
     onIntegrationGroupClick: function (group) {
-        ChatActions.selectIntegrationGroup(group);
+        ChatActions.selectIntegrationGroup(this.state.store.integrations.find(i => i.id == group.integrationId), group);
     },
 
     render: function () {
@@ -51,7 +51,8 @@ var GroupPane = React.createClass({
         var integrationItems = groupsByIntegrationId.map((group) => {
             var integration = self.state.store.integrations.find(i => i.id == group.key);
             var integrationGroupItems = group.data.map(group => {
-                var groupClass = "";
+                var groupClass = (self.state.store.selectedIntegrationGroup &&
+                self.state.store.selectedIntegrationGroup.integrationGroupId == group.integrationGroupId) ? "selected" : "";
                 return (
                     <li data-group={group.id} className={groupClass}
                         onClick={self.onIntegrationGroupClick.bind(self, group)} key={group.integrationGroupId}>
@@ -60,15 +61,22 @@ var GroupPane = React.createClass({
                     </li>
                 )
             });
+            var integrationClass = (self.state.store.selectedIntegration &&
+                !self.state.store.selectedIntegrationGroup &&
+                self.state.store.selectedIntegration.id == group.key) ? "selected" : "";
             return (
                 <ul className="integration-groups" key={integration.id}>
-                    <li data-integration={integration.id} onClick={self.onIntegrationClick.bind(self, integration)} >
+                    <li data-integration={integration.id} onClick={self.onIntegrationClick.bind(self, integration)} className={integrationClass}>
                         <span className="integration-name">{integration.name}</span></li>
                     {integrationGroupItems}
                 </ul>
             );
         });
-        var allGroupsClass = (!self.state.store.selectedGroup && !self.state.store.selectedUser && !self.state.store.displaySettings) ? "selected" : "";
+        var allGroupsClass = (!self.state.store.selectedGroup &&
+        !self.state.store.selectedUser &&
+        !self.state.store.selectedIntegration &&
+        !self.state.store.selectedIntegrationGroup &&
+        !self.state.store.displaySettings) ? "selected" : "";
 
         return (
             <ul id="group-pane">

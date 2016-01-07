@@ -21417,6 +21417,10 @@
 	            this.onShowIntegrations(true);
 	        } else if (this.state.selectedUser) {
 	            this.onSelectUser(this.state.selectedUser);
+	        } else if (this.state.selectedIntegration && !this.state.selectedIntegrationGroup) {
+	            this.onSelectIntegration(this.state.selectedIntegration);
+	        } else if (this.state.selectedIntegration && this.state.selectedIntegrationGroup) {
+	            this.onSelectIntegrationGroup(this.state.selectedIntegration, this.state.selectedIntegrationGroup);
 	        } else {
 	            this.onSelectGroup(this.state.selectedGroup);
 	        }
@@ -21442,6 +21446,12 @@
 	                return g.id == _global.selectedGroupId;
 	            })[0] : undefined,
 	            selectedTopic: _global.selectedTopic,
+	            selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(function (i) {
+	                return i.id == _global.selectedIntegrationId;
+	            }) : undefined,
+	            selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(function (g) {
+	                return g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId;
+	            }) : undefined,
 	            selectedUser: _global.selectedUserId ? _global.users.filter(function (u) {
 	                return u.id == _global.selectedUserId;
 	            })[0] : undefined
@@ -21452,6 +21462,8 @@
 	        var self = this;
 	        this.state.selectedGroup = group;
 	        this.state.selectedUser = undefined;
+	        this.state.selectedIntegration = undefined;
+	        this.state.selectedIntegrationGroup = undefined;
 	        this.state.displaySettings = undefined;
 	        $.ajax({
 	            context: this,
@@ -21475,6 +21487,8 @@
 	        var self = this;
 	        this.state.selectedTopic = topic;
 	        this.state.selectedUser = undefined;
+	        this.state.selectedIntegration = undefined;
+	        this.state.selectedIntegrationGroup = undefined;
 	        this.state.displaySettings = undefined;
 	        if (topic) {
 	            $.ajax({
@@ -21499,11 +21513,45 @@
 	        }
 	    },
 	
+	    onSelectIntegrationTopic: function onSelectIntegrationTopic(integration, group, topic) {
+	        var self = this;
+	        this.state.selectedIntegration = integration;
+	        this.state.selectedIntegrationGroup = group;
+	        this.state.selectedTopic = undefined;
+	        this.state.selectedUser = undefined;
+	        this.state.displaySettings = undefined;
+	        /*if (topic) {
+	            $.ajax({
+	                context: this,
+	                type: "GET",
+	                url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/updates/" + topic.id,
+	                success: function (updates) {
+	                    self.state.integrationUpdates = updates;
+	                    self.trigger(self.state);
+	                    // TODO: pushState
+	                    window.history.replaceState(self.state, window.title,
+	                        "?integrationId=" + self.state.selectedIntegration.id +
+	                            "&integrationTopicId=" + self.state.selectedTopic.id);
+	                },
+	                fail: function (e) {
+	                    console.error(e);
+	                }
+	            })
+	        } else */{
+	            this.state.integrationUpdates = [];
+	            this.trigger(this.state);
+	            // TODO: pushState
+	            window.history.replaceState(this.state, window.title, "?integrationId=" + this.state.selectedIntegration.id + (this.state.selectedIntegrationGroup ? "&integrationGroupId=" + this.state.selectedIntegrationGroup.integrationGroupId : ""));
+	        }
+	    },
+	
 	    onSelectUser: function onSelectUser(user) {
 	        var self = this;
 	        this.state.selectedUser = user;
 	        this.state.selectedGroup = undefined;
 	        this.state.selectedTopic = undefined;
+	        this.state.selectedIntegration = undefined;
+	        this.state.selectedIntegrationGroup = undefined;
 	        this.state.displaySettings = undefined;
 	        $.ajax({
 	            context: this,
@@ -21513,6 +21561,56 @@
 	                self.state.messages = messages;
 	                self.trigger(self.state);
 	                window.history.replaceState(this.state, window.title, "?userId=" + self.state.selectedUser.id);
+	            },
+	            fail: function fail(e) {
+	                console.error(e);
+	            }
+	        });
+	    },
+	
+	    onSelectIntegration: function onSelectIntegration(integration) {
+	        var self = this;
+	        this.state.selectedIntegration = integration;
+	        this.state.selectedGroup = undefined;
+	        this.state.selectedUser = undefined;
+	        this.state.selectedIntegrationGroup = undefined;
+	        this.state.displaySettings = undefined;
+	        $.ajax({
+	            context: this,
+	            type: "GET",
+	            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics",
+	            success: function success(topics) {
+	                self.state.integrationTopics = topics;
+	                if (topics.length > 0) {
+	                    self.onSelectIntegrationTopic(integration, undefined, topics[0].topic);
+	                } else {
+	                    self.onSelectIntegrationTopic(integration);
+	                }
+	            },
+	            fail: function fail(e) {
+	                console.error(e);
+	            }
+	        });
+	    },
+	
+	    onSelectIntegrationGroup: function onSelectIntegrationGroup(integration, group) {
+	        var self = this;
+	        this.state.selectedIntegration = integration;
+	        this.state.selectedIntegrationGroup = group;
+	        this.state.selectedGroup = undefined;
+	        this.state.selectedUser = undefined;
+	        this.state.displaySettings = undefined;
+	        $.ajax({
+	            context: this,
+	            type: "GET",
+	            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics?groupId=" + group.id,
+	            success: function success(topics) {
+	                self.state.integrationTopics = topics;
+	                if (topics.length > 0) {
+	                    self.onSelectIntegrationTopic(integration, group, topics[0].topic);
+	                } else {
+	                    self.onSelectIntegrationTopic(integration, group);
+	                }
 	            },
 	            fail: function fail(e) {
 	                console.error(e);
@@ -21706,7 +21804,9 @@
 	    },
 	
 	    onIntegrationGroupClick: function onIntegrationGroupClick(group) {
-	        _eventsChatActions2['default'].selectIntegrationGroup(group);
+	        _eventsChatActions2['default'].selectIntegrationGroup(this.state.store.integrations.find(function (i) {
+	            return i.id == group.integrationId;
+	        }), group);
 	    },
 	
 	    render: function render() {
@@ -21752,7 +21852,7 @@
 	                return i.id == group.key;
 	            });
 	            var integrationGroupItems = group.data.map(function (group) {
-	                var groupClass = "";
+	                var groupClass = self.state.store.selectedIntegrationGroup && self.state.store.selectedIntegrationGroup.integrationGroupId == group.integrationGroupId ? "selected" : "";
 	                return _react2['default'].createElement(
 	                    'li',
 	                    { 'data-group': group.id, className: groupClass,
@@ -21769,12 +21869,13 @@
 	                    )
 	                );
 	            });
+	            var integrationClass = self.state.store.selectedIntegration && !self.state.store.selectedIntegrationGroup && self.state.store.selectedIntegration.id == group.key ? "selected" : "";
 	            return _react2['default'].createElement(
 	                'ul',
 	                { className: 'integration-groups', key: integration.id },
 	                _react2['default'].createElement(
 	                    'li',
-	                    { 'data-integration': integration.id, onClick: self.onIntegrationClick.bind(self, integration) },
+	                    { 'data-integration': integration.id, onClick: self.onIntegrationClick.bind(self, integration), className: integrationClass },
 	                    _react2['default'].createElement(
 	                        'span',
 	                        { className: 'integration-name' },
@@ -21784,7 +21885,7 @@
 	                integrationGroupItems
 	            );
 	        });
-	        var allGroupsClass = !self.state.store.selectedGroup && !self.state.store.selectedUser && !self.state.store.displaySettings ? "selected" : "";
+	        var allGroupsClass = !self.state.store.selectedGroup && !self.state.store.selectedUser && !self.state.store.selectedIntegration && !self.state.store.selectedIntegrationGroup && !self.state.store.displaySettings ? "selected" : "";
 	
 	        return _react2['default'].createElement(
 	            'ul',
