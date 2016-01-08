@@ -41,6 +41,8 @@ window.setInterval(function () {
         var img = $("<img>");
         img.load(function () {
             $(_a).replaceWith($("<a target='_blank'>").append($(img)).attr("href", _a.href));
+        }).error(function () {
+            $(_a).removeClass("imagify");
         }).attr("src", _a.href).addClass("").
             attr("class", "preview");
     });

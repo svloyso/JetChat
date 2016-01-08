@@ -125,4 +125,27 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     }
   }
 
+  def messages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String): Future[Seq[(AbstractIntegrationMessage, IntegrationUser, IntegrationGroup)]] = {
+    db.run((integrationTopics.filter(t => t.userId === userId && t.integrationId === integrationId &&
+        t.integrationGroupId === integrationGroupId && t.integrationTopicId === integrationTopicId)
+      join integrationUsers on { case (topic, user) => user.integrationId === integrationId &&
+        user.integrationUserId === topic.integrationUserId }
+      join integrationGroups on { case ((topic, user), group) => group.userId === userId &&
+        group.integrationId === integrationId && group.integrationGroupId === topic.integrationGroupId})
+      .map { case ((topic, user), group) => (topic, user, group) }.result.head
+    ).flatMap { case t =>
+      db.run((integrationUpdates.filter(u => u.userId === userId && u.integrationId === integrationId
+        && u.integrationGroupId === integrationGroupId && u.integrationTopicId === integrationTopicId)
+        join integrationUsers on { case (update, user) => user.integrationId === integrationId &&
+          user.integrationUserId === update.integrationUserId }
+        join integrationGroups on { case ((update, user), group) => group.userId === userId &&
+        group.integrationId === integrationId && group.integrationGroupId === update.integrationGroupId})
+        .map { case ((update, user), group) =>
+          (update, user, group)
+        }.sortBy(_._1.date).result
+      ).map { case f =>
+        f.+:(t)
+      }
+    }
+  }
 }

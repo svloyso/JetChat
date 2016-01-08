@@ -92,7 +92,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   // TODO: Get rid out of "integrationGroupId" and "integrationTopicId"
   def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None,
             integrationId: Option[String] = None, integrationGroupId: Option[String] = None,
-            integrationTopicId: Option[String] = None,
+            integrationTopicGroupId: Option[String] = None, integrationTopicId: Option[String] = None,
             displaySettings: Option[Boolean] = None) = Action.async { implicit request =>
     request.cookies.get("user") match {
       case Some(cookie) =>
@@ -109,7 +109,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                 case None => Future { None }
               }
               integrationTopic <- integrationTopicId match {
-                case Some(value) => integrationTopicsDAO.find(integrationId.get, integrationGroupId.get, value, user.id)
+                case Some(value) => integrationTopicsDAO.find(integrationId.get, integrationTopicGroupId.get, value, user.id)
                 case None => Future { None }
               }
             } yield (integrations, users, groups, integrationGroups, topic, integrationTopic)) map { case (userIntegrations, users, groups, integrationGroups, topic, integrationTopic) =>
@@ -119,11 +119,11 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                 userId, integrationId, integrationGroupId, displaySettings))
             }
           case None =>
-            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
         }
       case _ =>
         val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
-        val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None).absoluteURL()
+        val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()
         Future.successful(Redirect(controllers.routes.IntegrationAuth.auth(integration.id, Option(redirectUrl))))
     }
   }
@@ -145,7 +145,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def logout() = Action.async { implicit request =>
-    Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+    Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
   }
 
   def getUser(login: String) = Action.async { implicit request =>
@@ -238,6 +238,29 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
           "text" -> JsString(message.text)) ++ (message match {
           case c: Comment =>
             Seq("topicId" -> JsNumber(c.topicId))
+          case _ => Seq()
+        })
+        JsObject(fields)
+      })))
+    }
+  }
+
+  def getIntegrationMessages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String) = Action.async { implicit request =>
+    integrationTopicsDAO.messages(userId, integrationId, integrationGroupId, integrationTopicId).map { f =>
+      Ok(Json.toJson(JsArray(f.map { case (message, user, group) =>
+        val integrationUserJson = Seq("integrationUserId" -> JsString(user.integrationUserId), "name" -> JsString(user.name)) ++
+          (user.avatar match {
+            case Some(value) => Seq("avatar" -> JsString(value))
+            case None => Seq()
+          })
+        val fields = Seq("group" -> JsObject(Seq("integrationId" -> JsString(group.integrationId),
+          "integrationGroupId" -> JsString(group.integrationGroupId), "name" -> JsString(group.name))),
+          "integrationTopicId" -> JsString(message.integrationTopicId),
+            "integrationUser" -> JsObject(integrationUserJson),
+          "date" -> JsNumber(message.date.getTime),
+          "text" -> JsString(message.text)) ++ (message match {
+          case u: IntegrationUpdate =>
+            Seq("id" -> JsNumber(u.id))
           case _ => Seq()
         })
         JsObject(fields)

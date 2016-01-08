@@ -19697,7 +19697,7 @@
 	
 	var _componentsMessageBar2 = _interopRequireDefault(_componentsMessageBar);
 	
-	var _utils = __webpack_require__(199);
+	var _utils = __webpack_require__(200);
 	
 	var _utils2 = _interopRequireDefault(_utils);
 	
@@ -21417,12 +21417,10 @@
 	            this.onShowIntegrations(true);
 	        } else if (this.state.selectedUser) {
 	            this.onSelectUser(this.state.selectedUser);
-	        } else if (this.state.selectedIntegration && !this.state.selectedIntegrationGroup) {
+	        } else if (this.state.selectedIntegration && !this.state.selectedIntegrationGroup && !this.state.selectedIntegrationTopic) {
 	            this.onSelectIntegration(this.state.selectedIntegration);
-	        } else if (this.state.selectedIntegration && this.state.selectedIntegrationGroup && !this.state.selectedIntegrationTopic) {
+	        } else if (this.state.selectedIntegration) {
 	            this.onSelectIntegrationGroup(this.state.selectedIntegration, this.state.selectedIntegrationGroup);
-	        } else if (this.state.selectedIntegration && this.state.selectedIntegrationGroup && this.state.selectedIntegrationTopic) {
-	            this.onSelectIntegrationTopic(this.state.selectedIntegration, this.state.selectedIntegrationGroup, this.state.selectedIntegrationTopic);
 	        } else {
 	            this.onSelectGroup(this.state.selectedGroup);
 	        }
@@ -21448,6 +21446,7 @@
 	                return g.id == _global.selectedGroupId;
 	            })[0] : undefined,
 	            selectedTopic: _global.selectedTopic,
+	            selectedIntegrationTopic: _global.selectedIntegrationTopic,
 	            selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(function (i) {
 	                return i.id == _global.selectedIntegrationId;
 	            }) : undefined,
@@ -21500,6 +21499,7 @@
 	                url: "/json/user/" + _global.user.id + "/messages/" + topic.id,
 	                success: function success(messages) {
 	                    self.state.messages = messages;
+	                    self.state.integrationMessages = undefined;
 	                    self.trigger(self.state);
 	                    // TODO: pushState
 	                    window.history.replaceState(self.state, window.title, self.state.selectedGroup ? "?groupId=" + self.state.selectedGroup.id + "&topicId=" + self.state.selectedTopic.id : "?topicId=" + self.state.selectedTopic.id);
@@ -21525,30 +21525,30 @@
 	        this.state.selectedUser = undefined;
 	        this.state.displaySettings = undefined;
 	        if (topic) {
-	            /*$.ajax({
+	            // TODO: Refactor it
+	            var integrationTopicId = topic.integrationTopicId ? topic.integrationTopicId : topic.id;
+	            var integrationTopicGroupId = topic.integrationGroupId ? topic.integrationGroupId : topic.group.id;
+	            $.ajax({
 	                context: this,
 	                type: "GET",
-	                url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/updates/" + topic.id,
-	                success: function (updates) {
-	                    self.state.integrationUpdates = updates;
+	                url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/messages?integrationGroupId=" + integrationTopicGroupId + "&integrationTopicId=" + integrationTopicId,
+	                success: function success(messages) {
+	                    self.state.messages = undefined;
+	                    self.state.integrationMessages = messages;
 	                    self.trigger(self.state);
 	                    // TODO: pushState
-	                    window.history.replaceState(self.state, window.title,
-	                        "?integrationId=" + self.state.selectedIntegration.id +
-	                            "&integrationTopicId=" + self.state.selectedTopic.id);
+	                    window.history.replaceState(self.state, window.title, "?integrationId=" + integration.id + (group ? "&integrationGroupId=" + group.integrationGroupId : "") + "&integrationTopicGroupId=" + integrationTopicGroupId + "&integrationTopicId=" + integrationTopicId);
 	                },
-	                fail: function (e) {
+	                fail: function fail(e) {
 	                    console.error(e);
 	                }
-	            })*/
-	            this.state.integrationUpdates = [];
-	            this.trigger(this.state);
-	            window.history.replaceState(self.state, window.title, "?integrationId=" + self.state.selectedIntegration.id + "&integrationGroupId=" + self.state.selectedIntegrationGroup.integrationGroupId + "&integrationTopicId=" + topic.id);
+	            });
 	        } else {
-	            this.state.integrationUpdates = [];
+	            this.state.messages = undefined;
+	            this.state.integrationMessages = []; // TODO
 	            this.trigger(this.state);
 	            // TODO: pushState
-	            window.history.replaceState(this.state, window.title, "?integrationId=" + this.state.selectedIntegration.id + (this.state.selectedIntegrationGroup ? "&integrationGroupId=" + this.state.selectedIntegrationGroup.integrationGroupId : ""));
+	            window.history.replaceState(this.state, window.title, "?integrationId=" + this.state.selectedIntegration.id + (group ? "&integrationGroupId=" + group.integrationGroupId : ""));
 	        }
 	    },
 	
@@ -21566,6 +21566,7 @@
 	            url: "/json/user/" + _global.user.id + "/direct/" + user.id,
 	            success: function success(messages) {
 	                self.state.messages = messages;
+	                self.state.integrationMessages = undefined;
 	                self.trigger(self.state);
 	                window.history.replaceState(this.state, window.title, "?userId=" + self.state.selectedUser.id);
 	            },
@@ -21611,12 +21612,15 @@
 	        $.ajax({
 	            context: this,
 	            type: "GET",
-	            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics?groupId=" + group.integrationGroupId,
+	            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics" + (group ? "?groupId=" + group.integrationGroupId : ""),
 	            success: function success(topics) {
 	                self.state.topics = undefined;
 	                self.state.integrationTopics = topics;
 	                if (topics.length > 0) {
-	                    self.onSelectIntegrationTopic(integration, group, topics[0].topic);
+	                    var selectedIntegrationTopicId = self.state.selectedIntegrationTopic ? self.state.selectedIntegrationTopic.integrationTopicId ? self.state.selectedIntegrationTopic.integrationTopicId : self.state.selectedIntegrationTopic.id : undefined;
+	                    self.onSelectIntegrationTopic(integration, group, self.state.selectedIntegrationTopic && topics.find(function (t) {
+	                        return t.topic.id == selectedIntegrationTopicId;
+	                    }) ? self.state.selectedIntegrationTopic : topics[0].topic);
 	                } else {
 	                    self.onSelectIntegrationTopic(integration, group);
 	                }
@@ -22370,13 +22374,15 @@
 	        var self = this;
 	        var topicItems = [];
 	        if (self.state.store.integrationTopics) {
-	            var group = self.state.store.selectedGroup ? self.state.store.selectedGroup : undefined;
+	            var group = self.state.store.selectedIntegrationGroup ? self.state.store.selectedIntegrationGroup : undefined;
 	            topicItems = self.state.store.integrationTopics.map(function (t) {
 	                var integration = self.state.store.integrations.find(function (i) {
 	                    return i.id == t.topic.integrationId;
 	                });
+	                var selectedIntegrationTopicGroupId = self.state.store.selectedIntegrationTopic ? self.state.store.selectedIntegrationTopic.integrationGroupId ? self.state.store.selectedIntegrationTopic.integrationGroupId : self.state.store.selectedIntegrationTopic.group.id : undefined;
+	                var selectedIntegrationTopicId = self.state.store.selectedIntegrationTopic ? self.state.store.selectedIntegrationTopic.integrationTopicId ? self.state.store.selectedIntegrationTopic.integrationTopicId : self.state.store.selectedIntegrationTopic.id : undefined;
 	                return _react2['default'].createElement(_integrationTopicItem2['default'], { integration: integration, group: group, topic: t.topic,
-	                    selected: self.state.store.selectedIntegrationTopic && self.state.store.selectedIntegrationTopic.id == t.topic.id,
+	                    selected: self.state.store.selectedIntegrationTopic && selectedIntegrationTopicId == t.topic.id && selectedIntegrationTopicGroupId == t.topic.group.id,
 	                    showGroup: !self.state.store.selectedIntegrationGroup,
 	                    key: t.topic.id });
 	            });
@@ -22629,6 +22635,10 @@
 	
 	var _messageItem2 = _interopRequireDefault(_messageItem);
 	
+	var _integrationMessageItem = __webpack_require__(199);
+	
+	var _integrationMessageItem2 = _interopRequireDefault(_integrationMessageItem);
+	
 	var _eventsChatStore = __webpack_require__(180);
 	
 	var _eventsChatStore2 = _interopRequireDefault(_eventsChatStore);
@@ -22721,23 +22731,31 @@
 	        var userId;
 	        var topic = self.state.store.selectedUser === undefined;
 	        var sameUser = false;
-	        var messageItems = self.state.store.messages.map(function (message, index) {
+	        var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
+	        var messageItems = messages.map(function (message, index) {
+	            var user = message.user ? message.user : message.integrationUser;
 	            if (index == 0) {
-	                userId = message.user.id;
+	                userId = user.id ? user.id : user.integrationUserId;
 	            } else {
-	                if (message.user.id != userId) {
+	                if (user.id != userId) {
 	                    sameUser = false;
 	                    topic = false;
-	                    userId = message.user.id;
+	                    userId = user.id ? user.id : user.integrationUserId;
 	                } else {
 	                    sameUser = true;
 	                }
 	            }
-	            var key = message.topicId ? message.topicId + "_" + message.id : message.id;
-	            return _react2['default'].createElement(_messageItem2['default'], { message: message, topic: topic, sameUser: sameUser,
-	                key: key });
+	            if (message.integrationTopicId) {
+	                var key = message.integrationTopicId + (message.id ? "_" + message.id : "");
+	                return _react2['default'].createElement(_integrationMessageItem2['default'], { message: message, topic: topic, sameUser: sameUser,
+	                    key: key });
+	            } else {
+	                var key = message.topicId ? message.topicId + "_" + message.id : message.id;
+	                return _react2['default'].createElement(_messageItem2['default'], { message: message, topic: topic, sameUser: sameUser,
+	                    key: key });
+	            }
 	        });
-	        var inputPlaceHolder = self.state.store.selectedTopic ? "Message..." : "Topic...";
+	        var inputPlaceHolder = self.state.store.selectedIntegrationTopic || self.state.store.selectedTopic ? "Message..." : "Topic...";
 	        var userHeader;
 	        if (self.state.store.selectedUser) {
 	            userHeader = _react2['default'].createElement(
@@ -22887,6 +22905,85 @@
 
 	'use strict';
 	
+	Object.defineProperty(exports, '__esModule', {
+	    value: true
+	});
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+	
+	var _react = __webpack_require__(1);
+	
+	var _react2 = _interopRequireDefault(_react);
+	
+	var _reactEmoji = __webpack_require__(197);
+	
+	var _reactEmoji2 = _interopRequireDefault(_reactEmoji);
+	
+	var _reactAutolink = __webpack_require__(198);
+	
+	var _reactAutolink2 = _interopRequireDefault(_reactAutolink);
+	
+	var prettydate = __webpack_require__(193);
+	
+	var IntegrationMessageItem = _react2['default'].createClass({
+	    displayName: 'IntegrationMessageItem',
+	
+	    mixins: [_reactEmoji2['default'], _reactAutolink2['default']],
+	
+	    render: function render() {
+	        var self = this;
+	        var className = ("clearfix" + " " + (self.props.topic ? "topic" : "") + " " + (self.props.sameUser ? "same-user" : "")).trim();
+	        var avatar;
+	        var info;
+	        if (!self.props.sameUser) {
+	            avatar = _react2['default'].createElement('img', { className: 'img avatar pull-left', src: self.props.message.integrationUser.avatar });
+	            var prettyDate = prettydate.format(new Date(self.props.message.date));
+	            info = _react2['default'].createElement(
+	                'div',
+	                { className: 'info' },
+	                _react2['default'].createElement(
+	                    'span',
+	                    { className: 'author' },
+	                    self.props.message.integrationUser.name
+	                ),
+	                ' ',
+	                _react2['default'].createElement(
+	                    'span',
+	                    { className: 'pretty date',
+	                        'data-date': self.props.message.date },
+	                    prettyDate
+	                )
+	            );
+	        }
+	        return _react2['default'].createElement(
+	            'li',
+	            { className: className, 'data-user': self.props.message.integrationUser.id },
+	            avatar,
+	            _react2['default'].createElement(
+	                'div',
+	                { className: 'details' },
+	                info,
+	                _react2['default'].createElement(
+	                    'div',
+	                    { className: 'text' },
+	                    this.autolink(self.props.message.text, { className: "imagify" }).map(function (el) {
+	                        if (typeof el === "string") return self.emojify(el);else return el;
+	                    })
+	                )
+	            )
+	        );
+	    }
+	});
+	
+	exports['default'] = IntegrationMessageItem;
+	module.exports = exports['default'];
+
+/***/ },
+/* 200 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 	
 	var _react = __webpack_require__(1);
@@ -22938,6 +23035,8 @@
 	        var img = $("<img>");
 	        img.load(function () {
 	            $(_a).replaceWith($("<a target='_blank'>").append($(img)).attr("href", _a.href));
+	        }).error(function () {
+	            $(_a).removeClass("imagify");
 	        }).attr("src", _a.href).addClass("").attr("class", "preview");
 	    });
 	}, 100);

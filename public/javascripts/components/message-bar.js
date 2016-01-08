@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import Reflux from 'reflux';
 import MessageItem from './message-item';
+import IntegrationMessageItem from './integration-message-item';
 import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
 
@@ -87,25 +88,33 @@ var MessageBar = React.createClass({
         var userId;
         var topic = self.state.store.selectedUser === undefined;
         var sameUser = false;
-        var messageItems = self.state.store.messages.map(function (message, index) {
+        var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
+        var messageItems = messages.map(function (message, index) {
+            var user = message.user ? message.user : message.integrationUser;
             if (index == 0) {
-                userId = message.user.id;
+                userId = user.id ? user.id : user.integrationUserId;
             } else {
-                if (message.user.id != userId) {
+                if (user.id != userId) {
                     sameUser = false;
                     topic = false;
-                    userId = message.user.id;
+                    userId = user.id ? user.id : user.integrationUserId;
                 } else {
                     sameUser = true;
                 }
             }
-            var key = message.topicId ? message.topicId + "_" + message.id : message.id;
-            return (
-                <MessageItem message={message} topic={topic} sameUser={sameUser}
+            if (message.integrationTopicId) {
+                var key = message.integrationTopicId + (message.id ? "_" + message.id : "");
+                return <IntegrationMessageItem message={message} topic={topic} sameUser={sameUser}
                              key={key}/>
-            )
+            } else {
+                var key = message.topicId ? message.topicId + "_" + message.id : message.id;
+                return (
+                    <MessageItem message={message} topic={topic} sameUser={sameUser}
+                                 key={key}/>
+                )
+            }
         });
-        var inputPlaceHolder = self.state.store.selectedTopic ?
+        var inputPlaceHolder = self.state.store.selectedIntegrationTopic || self.state.store.selectedTopic ?
             "Message..." : "Topic...";
         var userHeader;
         if (self.state.store.selectedUser) {

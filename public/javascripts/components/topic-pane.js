@@ -14,10 +14,12 @@ var TopicPane = React.createClass({
             var group = self.state.store.selectedIntegrationGroup ? self.state.store.selectedIntegrationGroup : undefined;
             topicItems = self.state.store.integrationTopics.map(function (t) {
                 var integration = self.state.store.integrations.find(i => i.id == t.topic.integrationId);
+                var selectedIntegrationTopicGroupId = self.state.store.selectedIntegrationTopic ? (self.state.store.selectedIntegrationTopic.integrationGroupId ? self.state.store.selectedIntegrationTopic.integrationGroupId : self.state.store.selectedIntegrationTopic.group.id) : undefined;
+                var selectedIntegrationTopicId = self.state.store.selectedIntegrationTopic ? (self.state.store.selectedIntegrationTopic.integrationTopicId ? self.state.store.selectedIntegrationTopic.integrationTopicId : self.state.store.selectedIntegrationTopic.id) : undefined;
                 return (
                     <IntegrationTopicItem integration={integration} group={group} topic={t.topic}
                                selected={self.state.store.selectedIntegrationTopic &&
-                           self.state.store.selectedIntegrationTopic.id == t.topic.id}
+                               selectedIntegrationTopicId == t.topic.id && selectedIntegrationTopicGroupId == t.topic.group.id }
                                showGroup={!self.state.store.selectedIntegrationGroup}
                                key={t.topic.id}/>
                 )
