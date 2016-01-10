@@ -1,3 +1,5 @@
+import play.PlayImport.PlayKeys.playRunHooks
+
 name := "jetchat"
 
 version := System.getProperty("build.number", "0.1-SNAPSHOT")
@@ -33,6 +35,22 @@ fork in Test := false
 javaOptions in Test += "-Dconfig.file=conf/application.test.conf"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala, DockerPlugin)
+
+playRunHooks <+= baseDirectory.map(Webpack.apply)
+
+lazy val webpack = taskKey[Unit]("Running webpack when packaging the application...")
+
+def runWebpack(file: File) = {
+  Process("npm install", file) !
+}
+
+webpack := {
+  if (runWebpack(baseDirectory.value) != 0) throw new Exception("Something goes wrong when running webpack")
+}
+
+dist <<= dist dependsOn webpack
+
+stage <<= stage dependsOn webpack
 
 routesGenerator := InjectedRoutesGenerator
 
