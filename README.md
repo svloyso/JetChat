@@ -33,3 +33,7 @@ Running a single Docker container:
 ```bash
 docker run -p <public_http_port>:<http_port> <image_id> -Dapi.GitHub.clientSecret=<github_secret_id> -Dapi.GitHub.clientId=<github_client_id> -Dslick.dbs.default.db.user=<db_user> -Dslick.dbs.default.db.password=<db_password> -Dplay.evolutions.autoApply=true -DETCDCTL_PEERS=<etcd_peers> -Dakka.remote.netty.tcp.hostname=<seed_host> -Dakka.remote.netty.tcp.port=<seed_port> -Dhttp.port=<http_port>
 ```
+
+TODO:
+
+ - Investigate https://github.com/vegasbrianc/docker-compose-demo/blob/master/docker-compose.yml

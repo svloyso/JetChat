@@ -1,0 +1,65 @@
+mysql:
+ image: mysql
+ container_name: mysql
+ ports:
+  - 3306:3306
+ environment:
+  MYSQL_DATABASE: "jetchat"
+  MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
+etcd:
+  image: quay.io/coreos/etcd
+  container_name: etcd
+  ports:
+    - 4001:4001
+    - 2379:2379
+    - 2380:2380
+  command:
+    - --name=etcd0
+    - --advertise-client-urls=http://127.0.0.1:2379,http://127.0.0.1:4001
+    - --listen-client-urls=http://0.0.0.0:2379,http://0.0.0.0:4001
+    - --initial-advertise-peer-urls=http://127.0.0.1:2380
+    - --listen-peer-urls=http://0.0.0.0:2380
+    - --initial-cluster-token=etcd-cluster-1
+    - --initial-cluster=etcd0=http://127.0.0.1:2380
+    - --initial-cluster-state=new
+
+jetchat0:
+  build: target/docker/stage/
+  container_name: jetchat0
+  ports:
+   - 80:9000
+  links:
+   - mysql
+   - etcd
+  command:
+   - -Dapi.GitHub.clientId=875908da66afd5c86463
+   - -Dapi.GitHub.clientSecret=38a287506600b0c6b59f2777e6ce04b487636549
+   - -Dslick.dbs.default.db.url=jdbc:mysql://mysql:3306/jetchat
+   - -Dslick.dbs.default.db.user=root
+   - -Dslick.dbs.default.db.password=
+   - -Dplay.evolutions.autoApply=true
+   - -Dhttp.port=9000
+   - -Dakka.remote.netty.tcp.port=2500
+   - -Dapplication.secret=docker
+   - -DETCDCTL_PEERS=http://etcd:2379,http://etcd:4001
+
+jetchat1:
+  build: target/docker/stage/
+  container_name: jetchat1
+  ports:
+   - 81:9001
+  links:
+   - mysql
+   - etcd
+  command:
+   - -Dapi.GitHub.clientId=805391a9464341c0243d
+   - -Dapi.GitHub.clientSecret=eaaf62a85c576c8b7802409d9c1e2db67260e4e3
+   - -Dslick.dbs.default.db.url=jdbc:mysql://mysql:3306/jetchat
+   - -Dslick.dbs.default.db.user=root
+   - -Dslick.dbs.default.db.password=
+   - -Dplay.evolutions.autoApply=true
+   - -Dhttp.port=9001
+   - -Dakka.remote.netty.tcp.port=2501
+   - -Dapplication.secret=docker
+   - -DETCDCTL_PEERS=http://etcd:2379,http://etcd:4001
