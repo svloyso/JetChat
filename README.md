@@ -6,6 +6,8 @@ docker-compose pull
 docker-compose up
 
 docker-compose scale web=2
+
+docker-compose up --force-recreate -d
 ```
 
 Running a single container via _docker_:
