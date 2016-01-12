@@ -24,11 +24,10 @@ etcd:
     - --initial-cluster=etcd0=http://127.0.0.1:2380
     - --initial-cluster-state=new
 
-jetchat0:
+web:
   build: target/docker/stage/
-  container_name: jetchat0
-  ports:
-   - 80:9000
+  expose:
+   - 9000
   links:
    - mysql
    - etcd
@@ -44,22 +43,12 @@ jetchat0:
    - -Dapplication.secret=docker
    - -DETCDCTL_PEERS=http://etcd:2379,http://etcd:4001
 
-jetchat1:
-  build: target/docker/stage/
-  container_name: jetchat1
-  ports:
-   - 81:9001
+lb:
+  image: tutum/haproxy
   links:
-   - mysql
-   - etcd
-  command:
-   - -Dapi.GitHub.clientId=805391a9464341c0243d
-   - -Dapi.GitHub.clientSecret=eaaf62a85c576c8b7802409d9c1e2db67260e4e3
-   - -Dslick.dbs.default.db.url=jdbc:mysql://mysql:3306/jetchat
-   - -Dslick.dbs.default.db.user=root
-   - -Dslick.dbs.default.db.password=
-   - -Dplay.evolutions.autoApply=true
-   - -Dhttp.port=9001
-   - -Dakka.remote.netty.tcp.port=2501
-   - -Dapplication.secret=docker
-   - -DETCDCTL_PEERS=http://etcd:2379,http://etcd:4001
+   - web
+  ports:
+   - "80:80"
+  environment:
+   - BACKEND_PORT=9000
+   - BALANCE=roundrobin
