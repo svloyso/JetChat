@@ -113,6 +113,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                 case None => Future { None }
               }
             } yield (integrations, users, groups, integrationGroups, topic, integrationTopic)) map { case (userIntegrations, users, groups, integrationGroups, topic, integrationTopic) =>
+              Logger.info("integrationTopic: " + integrationTopic)
               Ok(views.html.index(user, userIntegrations, users, groups, integrationGroups, webSocketUrl, groupId,
                 topic match { case Some(value) => Some(Json.toJson(value)) case None => None },
                 integrationTopic match { case Some(value) => Some(Json.toJson(value)) case None => None },
@@ -145,7 +146,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def logout() = Action.async { implicit request =>
-    Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+    val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
+    Future.successful(Redirect(controllers.routes.IntegrationAuth.disable(integration.id).absoluteURL()))
   }
 
   def getUser(login: String) = Action.async { implicit request =>

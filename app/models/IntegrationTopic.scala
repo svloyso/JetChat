@@ -103,8 +103,10 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
         join integrationGroups on { case ((((topic, update), integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
         .filter { case ((((topic, update), integrationUser), user), group) =>
           (integrationId, integrationGroupId) match {
-            case (Some(integrationId), Some(integrationGroupId)) => topic.integrationId === integrationId && topic.integrationGroupId === integrationGroupId
-            case _ => topic.integrationGroupId === topic.integrationGroupId
+            case (Some(integrationId), Some(integrationGroupId)) => topic.userId === userId &&
+              topic.integrationId === integrationId &&
+              topic.integrationGroupId === integrationGroupId
+            case _ => topic.userId === userId
           }
       }.groupBy { case ((((topic, update), integrationUser), user), group) =>
         (topic.integrationId, topic.integrationTopicId, topic.date, topic.text, group.integrationGroupId, group.name, integrationUser.integrationUserId,
@@ -132,7 +134,7 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
         user.integrationUserId === topic.integrationUserId }
       join integrationGroups on { case ((topic, user), group) => group.userId === userId &&
         group.integrationId === integrationId && group.integrationGroupId === topic.integrationGroupId})
-      .map { case ((topic, user), group) => (topic, user, group) }.result.head
+      .map { case ((topic, user), group) => (topic, user, group) }.result
     ).flatMap { case t =>
       db.run((integrationUpdates.filter(u => u.userId === userId && u.integrationId === integrationId
         && u.integrationGroupId === integrationGroupId && u.integrationTopicId === integrationTopicId)
@@ -144,7 +146,7 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
           (update, user, group)
         }.sortBy(_._1.date).result
       ).map { case f =>
-        f.+:(t)
+        f.++:(t)
       }
     }
   }
