@@ -41,14 +41,20 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                   case Some(token) =>
                     integrationTokensDAO.delete(token).flatMap { _ =>
                       integration.authentificator.disable(token.token).flatMap { _ =>
-                        Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+                        Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()))
                       }
                     }
-                  case _ => Future.successful(BadRequest("Already disabled"))
+                  case _ => {
+                    // Already disabled
+                    Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()))
+                  }
                 }
               case None => Future.successful(BadRequest("Wrong user"))
             }
-          case _ => Future.successful(BadRequest("User is logged off"))
+          case _ => {
+            // User is already logged off
+            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()))
+          }
         }
       case None => Future.successful(BadRequest("Wrong service"))
     }

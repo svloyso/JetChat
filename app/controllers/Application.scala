@@ -147,7 +147,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def logout() = Action.async { implicit request =>
     val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
-    Future.successful(Redirect(controllers.routes.IntegrationAuth.disable(integration.id).absoluteURL()))
+    Future.successful(Redirect(controllers.routes.IntegrationAuth.disable(integration.id).absoluteURL()).discardingCookies(DiscardingCookie("user")))
   }
 
   def getUser(login: String) = Action.async { implicit request =>
