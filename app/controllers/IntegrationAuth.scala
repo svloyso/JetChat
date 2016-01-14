@@ -11,7 +11,7 @@ import api.{Integration, Utils}
 import models.{IntegrationUser, User, IntegrationUsersDAO, UsersDAO}
 import models.api.{IntegrationToken, IntegrationTokensDAO}
 import play.api.libs.json.{JsNumber, JsString, JsObject}
-import play.api.mvc.{Cookie, Action, Controller}
+import play.api.mvc.{DiscardingCookie, Cookie, Action, Controller}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -40,8 +40,10 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                 integrationTokensDAO.find(user.id, integration.id).flatMap {
                   case Some(token) =>
                     integrationTokensDAO.delete(token).flatMap { _ =>
-                      integration.authentificator.disable(token.token)
-                    }.map(_ => Ok("Succesfully disabled"))
+                      integration.authentificator.disable(token.token).flatMap { _ =>
+                        Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+                      }
+                    }
                   case _ => Future.successful(BadRequest("Already disabled"))
                 }
               case None => Future.successful(BadRequest("Wrong user"))
