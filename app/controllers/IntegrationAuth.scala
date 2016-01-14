@@ -108,7 +108,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                           Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL())).withCookies(
                             Cookie("user", login, httpOnly = false))
                         }.recover { case e: Throwable => BadRequest(e.getMessage) }
-                      case None =>
+                      case _ =>
                         val loginFromIntegration = s"$integrationId/$integrationUserId"
                         usersDAO.insert(User(login = loginFromIntegration, name = integrationName, avatar = integrationAvatarUrl)) flatMap { case id =>
                           usersDAO.findByLogin(loginFromIntegration) flatMap { case Some(user) =>
