@@ -61,7 +61,18 @@ CREATE INDEX integration_update_integration_topic_fk ON integration_updates (int
 CREATE INDEX integration_update_integration_user_fk ON integration_updates (integration_id, integration_user_id);
 CREATE INDEX integration_update_user_fk ON integration_updates (user_id);
 
+CREATE TABLE `topic_read_statuses` (`topic_id` BIGINT NOT NULL, `user_id` BIGINT NOT NULL);
+ALTER TABLE `topic_read_statuses` ADD PRIMARY KEY (`topic_id`, `user_id`);
+ALTER TABLE `topic_read_statuses` ADD CONSTRAINT `topic_read_status_topic_fk` FOREIGN KEY(`topic_id`) REFERENCES `topics`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION;
+ALTER TABLE `topic_read_statuses` ADD CONSTRAINT `topic_read_status_user_fk` FOREIGN KEY(`user_id`) REFERENCES `users`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION;
+
+CREATE TABLE `comment_read_statuses` (`comment_id` BIGINT NOT NULL, `user_id` BIGINT NOT NULL);
+ALTER TABLE `comment_read_statuses` ADD PRIMARY KEY (`comment_id`, `user_id`);
+ALTER TABLE `comment_read_statuses` ADD CONSTRAINT `comment_read_status_comment_fk` FOREIGN KEY(`comment_id`) REFERENCES `comments`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION;
+ALTER TABLE `comment_read_statuses` ADD CONSTRAINT `comment_read_status_user_fk` FOREIGN KEY(`user_id`) REFERENCES `users`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION;
+
 # --- !Downs
+
 
 ALTER TABLE integration_updates DROP FOREIGN KEY integration_update_integration_group_fk;
 ALTER TABLE integration_updates DROP FOREIGN KEY integration_update_integration_topic_fk;
@@ -80,6 +91,9 @@ ALTER TABLE topics DROP FOREIGN KEY topic_group_fk;
 ALTER TABLE topics DROP FOREIGN KEY topic_user_fk;
 ALTER TABLE integration_users DROP FOREIGN KEY integration_user_user_fk;
 ALTER TABLE integration_groups DROP FOREIGN KEY integration_group_user_fk;
+
+DROP TABLE `topic_read_statuses`;
+DROP TABLE `comment_read_statuses`;
 DROP TABLE integration_updates;
 DROP TABLE integration_tokens;
 DROP TABLE direct_messages;

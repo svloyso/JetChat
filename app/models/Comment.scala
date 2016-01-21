@@ -11,6 +11,8 @@ import scala.concurrent.Future
 case class Comment(id: Long = 0, groupId: Long, topicId: Long, userId: Long, date: Timestamp, text: String) extends
 AbstractGroupMessage
 
+case class CommentReadStatus(commentId: Long = 0, userId: Long) extends ReadStatus
+
 trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile] with GroupsComponent with UsersComponent with TopicsComponent {
   protected val driver: JdbcProfile
   import driver.api._
@@ -31,6 +33,23 @@ trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Grou
   }
 
   val comments = TableQuery[CommentsTable]
+
+
+  class CommentReadStatusesTable(tag: Tag) extends Table[CommentReadStatus](tag, "comment_read_statuses") {
+    def commentId = column[Long]("comment_id")
+
+    def userId = column[Long]("user_id")
+
+    def pk = primaryKey("comment_read_status_pk", (commentId, userId))
+
+    def comment = foreignKey("comment_read_status_comment_fk", commentId, comments)(_.id)
+
+    def user = foreignKey("comment_read_status_user_fk", userId, users)(_.id)
+
+    def * = (commentId, userId) <>(CommentReadStatus.tupled, CommentReadStatus.unapply)
+  }
+
+  val commentReadStatuses = TableQuery[CommentReadStatusesTable]
 }
 
   @Singleton()

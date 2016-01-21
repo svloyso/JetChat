@@ -113,7 +113,6 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                 case None => Future { None }
               }
             } yield (integrations, users, groups, integrationGroups, topic, integrationTopic)) map { case (userIntegrations, users, groups, integrationGroups, topic, integrationTopic) =>
-              Logger.info("integrationTopic: " + integrationTopic)
               Ok(views.html.index(user, userIntegrations, users, groups, integrationGroups, webSocketUrl, groupId,
                 topic match { case Some(value) => Some(Json.toJson(value)) case None => None },
                 integrationTopic match { case Some(value) => Some(Json.toJson(value)) case None => None },
@@ -171,8 +170,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getGroupsJsValue(userId: Long): Future[JsValue] = {
     groupsDAO.allWithCounts(userId).map { f =>
-      Json.toJson(JsArray(f.map { case (group, count) => JsObject(Seq("id" -> JsNumber(group.id),
-        "name" -> JsString(group.name), "count" -> JsNumber(count)))
+      Json.toJson(JsArray(f.map { case (group, unreadCount, count) => JsObject(Seq("id" -> JsNumber(group.id),
+        "name" -> JsString(group.name), "unreadCount" -> JsNumber(count - unreadCount), "count" -> JsNumber(count)))
       }))
     }
   }

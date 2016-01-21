@@ -12,6 +12,8 @@ import scala.concurrent.Future
 
 case class Topic(id: Long = 0, groupId: Long, userId: Long, date: Timestamp, text: String) extends AbstractGroupMessage
 
+case class TopicReadStatus(topicId: Long = 0, userId: Long) extends ReadStatus
+
 trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with GroupsComponent with UsersComponent {
   protected val driver: JdbcProfile
 
@@ -40,6 +42,22 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Groups
   }
 
   val topics = TableQuery[TopicsTable]
+
+  class TopicReadStatusesTable(tag: Tag) extends Table[TopicReadStatus](tag, "topic_read_statuses") {
+    def topicId = column[Long]("topic_id")
+
+    def userId = column[Long]("user_id")
+
+    def pk = primaryKey("topic_read_status_pk", (topicId, userId))
+
+    def topic = foreignKey("topic_read_status_topic_fk", topicId, topics)(_.id)
+
+    def user = foreignKey("topic_read_status_user_fk", userId, users)(_.id)
+
+    def * = (topicId, userId) <>(TopicReadStatus.tupled, TopicReadStatus.unapply)
+  }
+
+  val topicReadStatuses = TableQuery[TopicReadStatusesTable]
 }
 
 @Singleton()

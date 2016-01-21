@@ -1,6 +1,8 @@
 Running a cluster via _docker-compose_:
 
 ```bash
+sbt clean docker:stage
+
 docker-compose pull
 
 docker-compose up

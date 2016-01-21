@@ -36,34 +36,43 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run((groups returning groups.map(_.id)) += group)
   }
 
-  def allWithCounts(userId: Long): Future[Seq[(Group, Int)]] = {
+  def allWithCounts(userId: Long): Future[Seq[(Group, Int, Int)]] = {
     db.run(groups.result).flatMap { f =>
-      val groupMap = f.map { g => g.id ->(g.name, 0) }.toMap
+      val groupMap = f.map { g => g.id ->(g.name, 0, 0) }.toMap
 
-      db.run((topics.filter(_.userId === userId)
-        join groups on { case (topic, group) => topic.groupId === group.id })
-        .groupBy { case (topic, group) => (group.id, group.name) }
-        .map { case ((groupId, groupName), g) => (groupId, groupName, g.map(_._1.groupId).countDistinct) }.result)
+      db.run((topics
+        joinLeft topicReadStatuses on { case (topic, topicReadStatus) => topic.id === topicReadStatus.topicId && topicReadStatus.userId === userId }
+        join groups on { case ((topic, topicReadStatus), group) => topic.groupId === group.id })
+        .groupBy { case ((topic, topicReadStatus), group) => (group.id, group.name) }
+        .map { case ((groupId, groupName), g) => (groupId, groupName,
+          g.map(gg => gg._1._2.map(_.topicId)).length,
+          g.length) }.result)
         .flatMap { f =>
-          val topicMap = f.map { case (groupId, groupName, count) =>
-            groupId ->(groupName, count)
+          val topicMap = f.map { case (groupId, groupName, unreadCount, count) =>
+            groupId ->(groupName, unreadCount, count)
           }.toMap
 
-          db.run((comments.filter(_.userId === userId) join groups on { case (comment, group) => comment.groupId === group.id })
-            .groupBy { case (comment, group) => (group.id, group.name) }
-            .map { case ((groupId, groupName), g) => (groupId, groupName, g.map(_._1.groupId).countDistinct) }.result)
+          db.run((comments
+            joinLeft commentReadStatuses on { case (comment, commentReadStatus) => comment.id === commentReadStatus.commentId && commentReadStatus.userId === userId }
+            join groups on { case ((comment, commentReadStatus), group) => comment.groupId === group.id })
+            .groupBy { case (comment, group) =>
+              (group.id, group.name)
+            }
+            .map { case ((groupId, groupName), g) => (groupId, groupName,
+              g.map(gg => gg._1._2.map(_.commentId)).length,
+              g.length) }.result)
             .map { f =>
-              val commentMap = f.map { case (groupId, groupName, count) =>
-                groupId ->(groupName, count)
+              val commentMap = f.map { case (groupId, groupName, unreadCount, count) =>
+                groupId ->(groupName, unreadCount, count)
               }.toMap
 
-              val groupTotal = groupMap ++ (groupMap ++ topicMap.map { case (groupId, groupTopicToken) =>
-                val groupCommentMap = commentMap.getOrElse(groupId, (groupTopicToken._1, 0))
-                groupId -> (groupTopicToken._1 -> (groupTopicToken._2 + groupCommentMap._2))
-              })
+              val groupTotal = groupMap ++ topicMap.map { case (groupId, (groupName, topicReadCount, topicCount)) =>
+                val (_, commentReadCount, commentCount) = commentMap.getOrElse(groupId, (groupName, 0, 0))
+                groupId -> (groupName, topicReadCount + commentReadCount, topicCount + commentCount)
+              }
 
-              groupTotal.toSeq.sortBy(a => a._2._2).map { case (groupId, token) =>
-                (Group(groupId, token._1), token._2)
+              groupTotal.toSeq.sortBy(g => g._2._3).map { case (groupId, (groupName, readCount, count)) =>
+                (Group(groupId, groupName), readCount, count)
               }
             }
         }
