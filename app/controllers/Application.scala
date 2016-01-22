@@ -187,20 +187,20 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getAllTopics(userId: Long) = Action.async { implicit request =>
     topicsDAO.allWithCounts(userId, None).map { f =>
-      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, c) =>
+      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, readCount, count) =>
         JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
-          "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "messages" -> JsNumber(c)))
+          "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)))
       }))
     }.map(Ok(_))
   }
 
   def getGroupTopics(userId: Long, groupId: Long) = Action.async { implicit rs =>
     topicsDAO.allWithCounts(userId, Some(groupId)).map { f =>
-      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, c) =>
+      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, readCount, count) =>
         JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
-          "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "messages" -> JsNumber(c)))
+          "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))), "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)))
       }))
     }.map(Ok(_))
   }
@@ -226,7 +226,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getMessages(userId: Long, topicId: Long) = Action.async { implicit request =>
     topicsDAO.messages(userId, topicId).map { f =>
-      Ok(Json.toJson(JsArray(f.map { case (message, user, group) =>
+      Ok(Json.toJson(JsArray(f.map { case (message, user, group, read) =>
         val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
           (user.avatar match {
             case Some(value) => Seq("avatar" -> JsString(value))
@@ -236,11 +236,12 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
           "group" -> JsObject(Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
           "user" -> JsObject(userJson),
           "date" -> JsNumber(message.date.getTime),
-          "text" -> JsString(message.text)) ++ (message match {
-          case c: Comment =>
-            Seq("topicId" -> JsNumber(c.topicId))
-          case _ => Seq()
-        })
+          "text" -> JsString(message.text),
+          "unread" -> JsBoolean(!read)) ++ (message match {
+              case c: Comment =>
+                Seq("topicId" -> JsNumber(c.topicId))
+              case _ => Seq()
+            })
         JsObject(fields)
       })))
     }
