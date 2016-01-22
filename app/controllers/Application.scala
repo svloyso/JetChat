@@ -5,7 +5,7 @@ import java.util.Calendar
 import javax.inject.{Inject, Singleton}
 
 import _root_.api.Integration
-import actors.{ActorUtils, ClusterEvent, WebSocketActor}
+import actors._
 import akka.actor.{ActorSystem, PoisonPill}
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
@@ -28,7 +28,9 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                             val directMessagesDAO: DirectMessagesDAO,
                             val integrationTopicsDAO: IntegrationTopicsDAO,
                             val integrationTokensDAO: IntegrationTokensDAO,
-                            val integrationGroupsDAO: IntegrationGroupsDAO) extends Controller {
+                            val integrationGroupsDAO: IntegrationGroupsDAO,
+                            val integrationUpdatesDAO: IntegrationUpdatesDAO,
+                            val integrationUsersDAO: IntegrationUsersDAO) extends Controller {
 
   implicit val tsReads: Reads[Timestamp] = Reads.of[Long] map (new Timestamp(_))
   implicit val tsWrites: Writes[Timestamp] = Writes { (ts: Timestamp) => JsString(ts.toString) }
@@ -400,5 +402,38 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getUserIntegrations(userId: Long): Future[Map[Integration, Boolean]] = {
     integrationTokensDAO.find(userId).map { _.map { case (i, t) => i -> t.isDefined } }
+  }
+
+  def addIntegrationComment(integrationId: String) = Action.async(parse.json) { implicit request =>
+    val userId = (request.body \ "user" \ "id").get.asInstanceOf[JsNumber].value.toLong
+    val integrationGroupId = (request.body \ "integrationGroupId").as[String]
+    val integrationTopicId = (request.body \ "integrationTopicId").as[String]
+    val text = (request.body \ "text").get.asInstanceOf[JsString].value
+    val date = new Timestamp(Calendar.getInstance.getTime.getTime)
+    import scala.collection.JavaConversions._
+    integrations.find(_.id == integrationId) match {
+      case Some(integration) =>
+        (for {
+          topicOption <- integrationTopicsDAO.find(integrationId, integrationGroupId, integrationTopicId, userId)
+          if topicOption.isDefined
+          topic = topicOption.get
+          tokenOption <- integrationTokensDAO.find(userId, integrationId)
+          if tokenOption.isDefined
+          token = tokenOption.get
+          integrationUserIdOption <- integrationUsersDAO.findByUserId(userId, integrationId)
+          if integrationUserIdOption.isDefined
+          integrationUserId = integrationUserIdOption.get
+          integrationUpdate = IntegrationUpdate(0, integrationId, None, integrationGroupId, integrationTopicId, userId, integrationUserId.integrationUserId, date, text)
+          result <- integrationUpdatesDAO.insert(integrationUpdate)
+        } yield {
+          mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
+          MessagesActor.actorSelection(integration, system) ! SendMessageEvent(userId, integrationGroupId, integrationTopicId, text, result)
+          Created("Good!")
+        }).recover {
+          case t: Throwable =>
+            BadRequest(t.getMessage)
+        }
+      case None => Future(BadRequest("No integration for this id"))
+    }
   }
 }

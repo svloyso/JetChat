@@ -1,9 +1,9 @@
 package api
 
 import models.api.IntegrationToken
-import models.{IntegrationTopic, IntegrationUpdate, AbstractMessage}
+import models.{IntegrationTopic, IntegrationUpdate}
 import play.api.Play
-import play.api.mvc.{Result, Request, AnyContent}
+import play.api.mvc.{AnyContent, Request, Result}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -37,7 +37,7 @@ trait HookHandler {
 
 trait MessageHandler {
   def collectMessages(integrationToken: IntegrationToken): Future[CollectedMessages]
-  def sendMessage(integrationToken: IntegrationToken, groupId: String, topicId: String, message: AbstractMessage): Future[Option[IntegrationUpdate]]
+  def sendMessage(integrationToken: IntegrationToken, groupId: String, topicId: String, message: SentMessage, messageId: Long): Future[Option[IntegrationUpdate]]
 }
 
 trait UserHandler {
@@ -48,3 +48,6 @@ trait UserHandler {
 }
 
 case class CollectedMessages(messages: Map[IntegrationTopic, Seq[IntegrationUpdate]], nextCheck: FiniteDuration)
+
+sealed trait SentMessage
+case class TopicComment(text: String) extends SentMessage

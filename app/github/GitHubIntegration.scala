@@ -8,18 +8,18 @@ import javax.inject.Singleton
 import api._
 import github.GitHubIntegration.GitHubMessageHandler
 import models.api.IntegrationToken
-import models.{IntegrationTopic, IntegrationUpdate, AbstractMessage}
+import models.{IntegrationTopic, IntegrationUpdate}
 import org.apache.commons.lang3.StringEscapeUtils
-import play.api.{http, Play}
-import play.api.http.{MimeTypes, HeaderNames}
+import play.api.http.{HeaderNames, MimeTypes}
 import play.api.libs.json.JsValue
 import play.api.libs.ws.WSAuthScheme.BASIC
-import play.api.libs.ws.{WSResponse, WS}
+import play.api.libs.ws.{WS, WSResponse}
 import play.api.mvc.Results._
-import play.api.mvc.{Result, AnyContent, Request}
+import play.api.mvc.{AnyContent, Request, Result}
+import play.api.{Play, http}
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -229,38 +229,42 @@ object GitHubIntegration {
     }
 
     override def sendMessage(integrationToken: IntegrationToken, groupId: String, topicId: String,
-                             message: AbstractMessage): Future[Option[IntegrationUpdate]] = {
-      val Commit = """Commit/(.*)""".r
-      val Issue = """Issue/(.*)""".r
-      val PullRequest = """PullRequest/(.*)""".r
+                             message: SentMessage, messageId: Long): Future[Option[IntegrationUpdate]] = {
+      message match {
+        case TopicComment(text) =>
+          val Commit = """Commit/(.*)""".r
+          val Issue = """Issue/(.*)""".r
+          val PullRequest = """PullRequest/(.*)""".r
 
-      def update(issueType: String, id: String): Future[Option[IntegrationUpdate]] = {
-        WS.url(s"https://api.github.com/repos/$groupId/$issueType/$id/comments")(Play.current).
-          withQueryString("access_token" -> integrationToken.token).
-          withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON,
-            HeaderNames.CONTENT_TYPE -> MimeTypes.JSON
-          ).post(
-          s"""
-             |{
-             |  "body": "${StringEscapeUtils.escapeJson(message.text)}"
-             |}
+          def update(issueType: String, id: String): Future[Option[IntegrationUpdate]] = {
+            WS.url(s"https://api.github.com/repos/$groupId/$issueType/$id/comments")(Play.current).
+              withQueryString("access_token" -> integrationToken.token).
+              withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON,
+                HeaderNames.CONTENT_TYPE -> MimeTypes.JSON
+              ).post(
+              s"""
+                 |{
+                 |  "body": "${StringEscapeUtils.escapeJson(text)}"
+                 |}
               """.stripMargin.trim).map { response =>
-          if (response.status == http.Status.OK) {
-            val json = response.json
-            val value = json.as[JsValue]
-            val commentId = (value \ "id").as[Long]
-            val userId = (value \ "user" \ "login").as[String]
-            val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
-            val text = (value \ "body").as[String]
-            Some(IntegrationUpdate(0, ID, Some(commentId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text))
-          } else None
-        }
-      }
+              if (response.status == http.Status.CREATED) {
+                val json = response.json
+                val value = json.as[JsValue]
+                val commentId = (value \ "id").as[Long]
+                val userId = (value \ "user" \ "login").as[String]
+                val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
+                val text = (value \ "body").as[String]
+                Some(IntegrationUpdate(messageId, ID, Some(commentId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text))
+              } else None
+            }
+          }
 
-      topicId match {
-        case Commit(hash) => Future(None)//todo: working with commits
-        case Issue(issueId) => update("issues", issueId)
-        case PullRequest(pullId) => update("pulls", pullId)
+          topicId match {
+            case Commit(hash) => Future(None)//todo: working with commits
+            case Issue(issueId) => update("issues", issueId)
+            case PullRequest(pullId) => update("pulls", pullId)
+          }
+        case _ => Future(None)
       }
     }
   }

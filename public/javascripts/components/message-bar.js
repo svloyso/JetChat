@@ -42,7 +42,7 @@ var MessageBar = React.createClass({
                         console.error(e);
                     }
                 });
-            } else {
+            } else if (self.state.store.messages) {
                 var newMessage = {
                     "user": _global.user,
                     "date": new Date().getTime(),
@@ -72,6 +72,36 @@ var MessageBar = React.createClass({
                         } else {
                             ChatActions.newTopic(m, true);
                         }
+                    },
+                    fail: function (e) {
+                        console.error(e);
+                    }
+                });
+            } else { //integration messages
+                //todo: remove duplicates with previous case?
+                var integrationTopicId =
+                    self.state.store.selectedIntegrationTopic.integrationTopicId ?
+                        self.state.store.selectedIntegrationTopic.integrationTopicId :
+                        self.state.store.selectedIntegrationTopic.id;
+                var newIntegrationMessage = {
+                    "user": _global.user,
+                    "date": new Date().getTime(),
+                    "integrationGroupId": self.state.store.selectedIntegrationGroup.integrationGroupId,
+                    "integrationTopicId": integrationTopicId,
+                    "text": input.value
+                };
+
+                //todo: add new topic case
+
+                var url = self.state.store.selectedIntegrationTopic ? "/integration/" + self.state.store.selectedIntegration.id + "/comment" : null;
+                if (url) $.ajax({
+                    type: "POST",
+                    url: url,
+                    data: JSON.stringify(newIntegrationMessage),
+                    contentType: "application/json",
+                    success: function (id) {
+                        // TODO: Send full object from server
+                        //todo: update integration messages, onNewIntegrationMessage
                     },
                     fail: function (e) {
                         console.error(e);
