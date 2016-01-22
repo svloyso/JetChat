@@ -98,7 +98,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
       case Some(cookie) =>
         usersDAO.findByLogin(cookie.value).flatMap {
           case Some(user) =>
-            val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL().replaceAll("http", "ws")
+            val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL(request.secure).replaceAll("http", "ws")
             (for {
               users <- getUsersJsValue(user.id)
               groups <- getGroupsJsValue(user.id)
@@ -119,11 +119,11 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                 userId, integrationId, integrationGroupId, displaySettings))
             }
           case None =>
-            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(request.secure)).discardingCookies(DiscardingCookie("user")))
         }
       case _ =>
         val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
-        val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL()
+        val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(request.secure)
         Future.successful(Redirect(controllers.routes.IntegrationAuth.auth(integration.id, Option(redirectUrl))))
     }
   }
@@ -146,7 +146,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def logout() = Action.async { implicit request =>
     val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
-    Future.successful(Redirect(controllers.routes.IntegrationAuth.disable(integration.id).absoluteURL()).discardingCookies(DiscardingCookie("user")))
+    Future.successful(Redirect(controllers.routes.IntegrationAuth.disable(integration.id).absoluteURL(request.secure)).discardingCookies(DiscardingCookie("user")))
   }
 
   def getUser(login: String) = Action.async { implicit request =>
