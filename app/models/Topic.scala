@@ -76,30 +76,30 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[(Long, Timestamp, String, Long, String, Long, String, Int, Int)]] = {
     db.run((topics
-      joinLeft topicReadStatuses on { case (topic, topicReadStatus) => topic.id === topicReadStatus.topicId && topicReadStatus.userId === userId }
-      join users on { case ((topic, topicReadStatus), user) => topic.userId === user.id }
-      join groups on { case (((topic, topicReadStatus), user), group) => topic.groupId === group.id }).filter { case (((topic, topicReadStatus), user), group) =>
+      joinLeft topicReadStatuses on { case (topic, status) => topic.id === status.topicId && status.userId === userId }
+      join users on { case ((topic, status), user) => topic.userId === user.id }
+      join groups on { case (((topic, status), user), group) => topic.groupId === group.id }).filter { case (((topic, status), user), group) =>
       groupId match {
         case Some(id) => topic.groupId === id
         case None => topic.groupId === topic.groupId
       }
     }.sortBy(_._1._1._1.date desc).map {
-      case (((topic, topicReadStatus), user), group) =>
-        (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> (topicReadStatus.isDefined, 0)
+      case (((topic, status), user), group) =>
+        (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> (status.map(_.topicId).isDefined, 0)
     }.result).flatMap { case f =>
       val userTopics = f.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (read, c)) =>
         (topicId, topicDate, topicText, gId, groupName, uId, userName) -> (if (read) 1 else 0, c) }.toMap
 
       db.run((comments
         join topics on { case (comment, topic) => comment.topicId === topic.id }
-        joinLeft commentReadStatuses on { case ((comment, topic), commentReadStatus) => comment.id === commentReadStatus.commentId && commentReadStatus.userId === userId }
-        join users on { case (((comment, topic), commentReadStatus), user) => topic.userId === user.id }
-        join groups on { case ((((comment, topic), commentReadStatus), user), group) => topic.groupId === group.id }).filter { case ((((topic, comment), commentReadStatus), user), group) =>
+        joinLeft commentReadStatuses on { case ((comment, topic), status) => comment.id === status.commentId && status.userId === userId }
+        join users on { case (((comment, topic), status), user) => topic.userId === user.id }
+        join groups on { case ((((comment, topic), status), user), group) => topic.groupId === group.id }).filter { case ((((topic, comment), status), user), group) =>
         groupId match {
           case Some(id) => topic.groupId === id
           case None => topic.groupId === topic.groupId
         }
-      }.groupBy { case ((((comment, topic), commentReadStatus), user), group) =>
+      }.groupBy { case ((((comment, topic), status), user), group) =>
         (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name)
       }.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), g) =>
         (topicId, topicDate, topicText, gId, groupName, uId, userName, g.map(_._1._1._2.map(_.commentId)).length, g.map(_._1._1._1._1.id).countDistinct, g.map(_._1._1._1._1.date).max)
