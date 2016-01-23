@@ -55,7 +55,7 @@ class Auth @Inject()(val system: ActorSystem,
 
     val codeFlowBuilder = oauthClient.codeFlow()
     codeFlowBuilder.clientId(HUB_CLIENT_ID)
-    codeFlowBuilder.redirectUri(controllers.routes.Auth.callback(None, None).absoluteURL(request.secure))
+    codeFlowBuilder.redirectUri(controllers.routes.Auth.callback(None, None).absoluteURL(RequestUtils.secure))
 
     codeFlowBuilder.credentials(credentials)
 
@@ -63,7 +63,7 @@ class Auth @Inject()(val system: ActorSystem,
 
     // TODO: Store a random state in session
     // TODO: Store group, topic, user
-    codeFlowBuilder.state(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(request.secure))
+    codeFlowBuilder.state(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure))
 
     (hubClient, oauthClient, hubClient.getAccountsClient(HUB_CLIENT_ID, HUB_SECRET), codeFlowBuilder.build())
   }

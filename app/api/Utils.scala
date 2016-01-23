@@ -1,5 +1,6 @@
 package api
 
+import controllers.RequestUtils
 import play.api.mvc.{AnyContent, Request}
 
 /**
@@ -8,5 +9,5 @@ import play.api.mvc.{AnyContent, Request}
  */
 object Utils {
   def callbackUrl(integrationId: String, redirectUrl: Option[String])(implicit request: Request[AnyContent]): String =
-    controllers.routes.IntegrationAuth.callback(integrationId, None, None, redirectUrl).absoluteURL(request.secure)
+    controllers.routes.IntegrationAuth.callback(integrationId, None, None, redirectUrl).absoluteURL(RequestUtils.secure)
 }
