@@ -8,6 +8,23 @@
     </encoder>
   </appender>
 
+  <appender name="SYSLOG-TLS" class="com.papertrailapp.logback.Syslog4jAppender">
+    <layout class="ch.qos.logback.classic.PatternLayout">
+      <pattern>%-5level %logger{35}: %m%n%xEx</pattern>
+    </layout>
+
+    <syslogConfig class="org.productivity.java.syslog4j.impl.net.tcp.ssl.SSLTCPNetSyslogConfig">
+      <!-- remote system to log to -->
+      <host>logs3.papertrailapp.com</host>
+      <!-- remote port to log to -->
+      <port>16132</port>
+      <!-- program name to log as -->
+      <ident>java-app</ident>
+      <!-- max log message length in bytes -->
+      <maxMessageLength>128000</maxMessageLength>
+    </syslogConfig>
+  </appender>
+
   <!--
     The logger name is typically the Java/Scala package name.
     This configures the log level to log at for a package and its children packages.
@@ -22,6 +39,7 @@
 
   <root level="ERROR">
     <appender-ref ref="STDOUT" />
+    <appender-ref ref="SYSLOG-TLS" />
   </root>
 
 </configuration>
