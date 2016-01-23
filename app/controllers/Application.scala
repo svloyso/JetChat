@@ -9,9 +9,10 @@ import actors._
 import akka.actor.{ActorSystem, PoisonPill}
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
+import com.typesafe.config.ConfigRenderOptions
 import models._
 import models.api.IntegrationTokensDAO
-import play.api.Logger
+import play.api.{Play, Logger}
 import play.api.libs.functional.syntax._
 import play.api.libs.iteratee.{Concurrent, Iteratee}
 import play.api.libs.json._
@@ -439,5 +440,9 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def httpHeaders() = Action.async { implicit request =>
     Future.successful(Ok("headers:" + request.headers.toString() + "; secure = " + RequestUtils.secure))
+  }
+
+  def config() = Action.async { implicit request =>
+    Future.successful(Ok(Play.current.configuration.underlying.root.render(ConfigRenderOptions.concise())).as("application/json"))
   }
 }
