@@ -436,4 +436,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
       case None => Future(BadRequest("No integration for this id"))
     }
   }
+
+  def httpHeaders() = Action.async { implicit request =>
+    Future.successful(Ok("headers:" + request.headers.toString() + "; secure = " + request.secure))
+  }
 }

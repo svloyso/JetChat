@@ -27,7 +27,7 @@ GET         /assets/*file                                                control
 
 GET         /                                                            controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userId: Option[Long], integrationId: Option[String], integrationGroupId: Option[String], integrationTopicGroupId: Option[String], integrationTopicId: Option[String], settings: Option[Boolean])
 
-GET         /httpHeaders                                                 controllers.Application.httpHeaders()
+GET         /httpHeaders                                                 controllers.Application.httpHeaders
 
 # Integration Auth
 GET         /integration/:id/disable                                     controllers.IntegrationAuth.disable(id: String)
