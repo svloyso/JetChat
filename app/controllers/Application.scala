@@ -439,7 +439,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def httpHeaders() = Action.async { implicit request =>
-    Future.successful(Ok("headers:" + request.headers.toString() + "; secure = " + RequestUtils.secure))
+    Future.successful(Ok("headers:" + request.headers.toString() + ";secure:" + RequestUtils.secure))
   }
 
   def config() = Action.async { implicit request =>
