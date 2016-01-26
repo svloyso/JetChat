@@ -8,21 +8,16 @@
     </encoder>
   </appender>
 
-  <appender name="SYSLOG-TLS" class="com.papertrailapp.logback.Syslog4jAppender">
-    <layout class="ch.qos.logback.classic.PatternLayout">
-      <pattern>%-5level %logger{35}: %m%n%xEx</pattern>
-    </layout>
-
-    <syslogConfig class="org.productivity.java.syslog4j.impl.net.tcp.ssl.SSLTCPNetSyslogConfig">
-      &lt;!&ndash; remote system to log to &ndash;&gt;
-      <host>logs3.papertrailapp.com</host>
-      &lt;!&ndash; remote port to log to &ndash;&gt;
-      <port>16132</port>
-      &lt;!&ndash; program name to log as &ndash;&gt;
-      <ident>java-app</ident>
-      &lt;!&ndash; max log message length in bytes &ndash;&gt;
-      <maxMessageLength>128000</maxMessageLength>
-    </syslogConfig>
+  <appender name="LFS" class="com.moonlit.logfaces.appenders.logback.FixedLogfacesAppender">
+    <remoteHost>${lfs.servers}</remoteHost>
+    <port>55200</port>
+    <locationInfo>true</locationInfo>
+    <application>${lfs.app-name}</application>
+    <reconnectionDelay>1000</reconnectionDelay>
+    <offerTimeout>0</offerTimeout>
+    <queueSize>200</queueSize>
+    <appender-ref ref="STDOUT" />
+    <delegateMarker>true</delegateMarker>
   </appender>
 
   <!--
@@ -39,7 +34,7 @@
 
   <root level="ERROR">
     <appender-ref ref="STDOUT" />
-    <appender-ref ref="SYSLOG-TLS" />
+    <appender-ref ref="LFS" />
   </root>
 
 </configuration>
