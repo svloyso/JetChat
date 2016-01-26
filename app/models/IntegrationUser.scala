@@ -8,6 +8,7 @@ import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
+// TODO: Make IntegrationUser.name Option[String]
 case class IntegrationUser(integrationId: String, userId: Option[Long], integrationUserId: String,
                            name: String, avatar: Option[String])
 

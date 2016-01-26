@@ -64,7 +64,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
                   (for {
                     name <- integration.userHandler.name(token, Some(topicLogin))
                     avatar <- integration.userHandler.avatarUrl(token, Some(topicLogin))
-                    result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, topicLogin, name, avatar))
+                    result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, topicLogin, name.getOrElse(topicLogin), avatar))
                   } yield result).onSuccess {
                     case true =>
                       mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
@@ -85,7 +85,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
                     (for {
                       name <- integration.userHandler.name(token, Some(updateLogin))
                       avatar <- integration.userHandler.avatarUrl(token, Some(updateLogin))
-                      result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, updateLogin, name, avatar))
+                      result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, updateLogin, name.getOrElse(updateLogin), avatar))
                     } yield result).onSuccess {
                       case true =>
                         mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
@@ -102,7 +102,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
                       case Success(inserted) =>
                         mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
                       case Failure(e) =>
-                        Logger.error(s"Can't merge an integration update: $update", e)
+                        MessagesActor.LOG.error(s"Can't merge an integration update: $update", e)
                     }
                   }
                 }

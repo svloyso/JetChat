@@ -7,6 +7,7 @@ import slick.driver.JdbcProfile
 
 import scala.concurrent.Future
 
+// TODO: Make User.name Option[String]
 case class User(id: Long = 0, login: String, name: String, avatar: Option[String])
 
 trait UsersComponent extends HasDatabaseConfigProvider[JdbcProfile] {

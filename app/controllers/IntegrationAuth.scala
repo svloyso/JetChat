@@ -92,7 +92,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                     (for {
                       user <- usersDAO.findByLogin(login).map(_.get)
                       userId = user.id
-                      _ <- integrationUsersDAO.merge(IntegrationUser(integrationId, Some(userId), integrationUserId, integrationName, integrationAvatarUrl))
+                      _ <- integrationUsersDAO.merge(IntegrationUser(integrationId, Some(userId), integrationUserId, integrationName.getOrElse(integrationUserId), integrationAvatarUrl))
                       result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken))
                     } yield {
                       system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)
@@ -118,7 +118,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                         }.recover { case e: Throwable => BadRequest(e.getMessage) }
                       case _ =>
                         val loginFromIntegration = s"$integrationId/$integrationUserId"
-                        usersDAO.insert(User(login = loginFromIntegration, name = integrationName, avatar = integrationAvatarUrl)) flatMap { case id =>
+                        usersDAO.insert(User(login = loginFromIntegration, name = integrationName.getOrElse(loginFromIntegration), avatar = integrationAvatarUrl)) flatMap { case id =>
                           usersDAO.findByLogin(loginFromIntegration) flatMap { case Some(user) =>
                             mediator ! Publish("cluster-events", ClusterEvent("*",
                               JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
@@ -128,7 +128,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                                 }))))))
                             val userId = user.id
                             (for {
-                              _ <- integrationUsersDAO.merge(IntegrationUser(integrationId, Some(id), integrationUserId, integrationName, integrationAvatarUrl))
+                              _ <- integrationUsersDAO.merge(IntegrationUser(integrationId, Some(id), integrationUserId, integrationName.getOrElse(integrationUserId), integrationAvatarUrl))
                               result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken))
                             } yield {
                               system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)

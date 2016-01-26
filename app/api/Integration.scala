@@ -42,7 +42,7 @@ trait MessageHandler {
 
 trait UserHandler {
   def login(token: String): Future[String]
-  def name(token: String, login: Option[String] = None): Future[String]
+  def name(token: String, login: Option[String] = None): Future[Option[String]]
   def avatarUrl(token: String, login: Option[String] = None): Future[Option[String]]
   def groupName(token: String, groupId: String): Future[String]
 }

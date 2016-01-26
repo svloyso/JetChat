@@ -65,19 +65,19 @@ class GitHubIntegration extends Integration {
   }
 
   override def userHandler: UserHandler = new UserHandler {
-    private def info(token: String, field: String, login: Option[String] = None): Future[String] = {
+    private def info(token: String, field: String, login: Option[String] = None): Future[Option[String]] = {
       val userUrl = login.map(l => s"https://api.github.com/users/$l").getOrElse(s"https://api.github.com/user")
       GitHubIntegration.askAPI(userUrl, token).map { response =>
-        (response.json \ field).as[String]
+        (response.json \ field).asOpt[String]
       }
     }
 
     override def avatarUrl(token: String, login: Option[String] = None): Future[Option[String]] =
-      info(token, "avatar_url", login).map(Option.apply)
-    override def name(token: String, login: Option[String] = None): Future[String] =
+      info(token, "avatar_url", login)
+    override def name(token: String, login: Option[String] = None): Future[Option[String]] =
       info(token, "name", login)
     override def login(token: String): Future[String] =
-      info(token, "login")
+      info(token, "login").map(_.get)
 
     override def groupName(token: String, groupId: String): Future[String] = Future {
       groupId //for GitHub its pretty normal. See for example Gitter.
