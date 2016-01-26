@@ -159,72 +159,86 @@ object GitHubIntegration {
             } catch { case e: Throwable => 60 }
           case _ => 60
         }
-        val seq: Seq[JsValue] = response.json.as[Seq[JsValue]]
-        Future.sequence(seq.map { value =>
-          val groupId = (value \ "repository" \ "full_name").as[String]
-          val subject = value \ "subject"
-          val title = (subject \ "title").as[String]
-          val tp = (subject \ "type").as[String]
-          val url = (subject \ "url").as[String]
-          val index = url.lastIndexOf('/')
-          val lastPart = url.substring(index + 1)
-          val topicTitle = tp match {
-            case "Commit" => s"$title (${lastPart.substring(0, 7)})"
-            case "Issue" => s"#$lastPart $title"
-            case "PullRequest" => s"PR #$lastPart $title"
-          }
-
-          val topicId = s"$tp/$lastPart"
-
-          askAPI(url, integrationToken.token).flatMap { response =>
-            val json = response.json
-            val topicAuthor = tp match {
-              case "Commit" => (json \ "author" \ "login").as[String]
-              case _ => (json \ "user" \ "login").as[String]
+        response.json.validate[Seq[JsValue]].fold(
+          invalid = { _ =>
+            val pollIntervalBasedOnXRateLimit = response.header("X-RateLimit-Reset") match {
+              case Some(p) =>
+                try {
+                  ((new Date(p.toLong * 1000L).getTime - new Date().getTime) / 1000).asInstanceOf[Int]
+                } catch { case e: Throwable => 60 }
+              case _ => 60
             }
-            val topicText = tp match {
-              case "Commit" => (json \ "commit" \ "message").as[String]
-              case _ => (json \ "title").as[String]
-            }
-            val topicTimestamp = tp match {
-              case "Commit" => new Timestamp(dateFormat.parse((json \ "commit" \ "author" \ "date").as[String]).getTime)
-              case _ => new Timestamp(dateFormat.parse((json \ "created_at").as[String]).getTime)
-            }
-            val integrationTopic = IntegrationTopic(ID, topicId, groupId, integrationToken.userId, topicAuthor, topicTimestamp, topicText, topicTitle)
-
-            val commentsFuture = askAPI((json \ "comments_url").as[String], integrationToken.token).map { response =>
-              val json = response.json
-              val comments = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
-              comments.map { value =>
-                val commentId = (value \ "id").as[Long]
-                val userId = (value \ "user" \ "login").as[String]
-                val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
-                val text = (value \ "body").as[String]
-                IntegrationUpdate(0, ID, Some(commentId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
+            Future { CollectedMessages(Map(), pollIntervalBasedOnXRateLimit.seconds) }
+          },
+          valid = { _ =>
+            val seq: Seq[JsValue] = response.json.as[Seq[JsValue]]
+            Future.sequence(seq.map { value =>
+              val groupId = (value \ "repository" \ "full_name").as[String]
+              val subject = value \ "subject"
+              val title = (subject \ "title").as[String]
+              val tp = (subject \ "type").as[String]
+              val url = (subject \ "url").as[String]
+              val index = url.lastIndexOf('/')
+              val lastPart = url.substring(index + 1)
+              val topicTitle = tp match {
+                case "Commit" => s"$title (${lastPart.substring(0, 7)})"
+                case "Issue" => s"#$lastPart $title"
+                case "PullRequest" => s"PR #$lastPart $title"
               }
-            }
-            ((json \ "events_url").asOpt[String].orElse((json \ "statuses_url").asOpt[String]) match {
-              case Some(events_url) =>
-                commentsFuture.zip {
-                  askAPI(events_url, integrationToken.token).map { response =>
-                    val json = response.json
-                    val events = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
-                    events.collect {
-                      case v if !Set(Option("mentioned"), Option("subscribed")).contains((v \ "event").asOpt[String]) =>
-                        val eventId = (v \ "id").as[Long]
-                        val userId = (v \ "actor" \ "login").asOpt[String].getOrElse(
-                          (v \ "creator" \ "login").as[String]
-                        )
-                        val timestamp = new Timestamp(dateFormat.parse((v \ "created_at").as[String]).getTime)
-                        val text = eventText(v)
-                        IntegrationUpdate(0, ID, Some(eventId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
-                    }
+
+              val topicId = s"$tp/$lastPart"
+
+              askAPI(url, integrationToken.token).flatMap { response =>
+                val json = response.json
+                val topicAuthor = tp match {
+                  case "Commit" => (json \ "author" \ "login").as[String]
+                  case _ => (json \ "user" \ "login").as[String]
+                }
+                val topicText = tp match {
+                  case "Commit" => (json \ "commit" \ "message").as[String]
+                  case _ => (json \ "title").as[String]
+                }
+                val topicTimestamp = tp match {
+                  case "Commit" => new Timestamp(dateFormat.parse((json \ "commit" \ "author" \ "date").as[String]).getTime)
+                  case _ => new Timestamp(dateFormat.parse((json \ "created_at").as[String]).getTime)
+                }
+                val integrationTopic = IntegrationTopic(ID, topicId, groupId, integrationToken.userId, topicAuthor, topicTimestamp, topicText, topicTitle)
+
+                val commentsFuture = askAPI((json \ "comments_url").as[String], integrationToken.token).map { response =>
+                  val json = response.json
+                  val comments = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
+                  comments.map { value =>
+                    val commentId = (value \ "id").as[Long]
+                    val userId = (value \ "user" \ "login").as[String]
+                    val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
+                    val text = (value \ "body").as[String]
+                    IntegrationUpdate(0, ID, Some(commentId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
                   }
-                }.map { case (comments, events) => comments ++ events }
-              case _ => commentsFuture
-            }).map(integrationTopic -> _)
+                }
+                ((json \ "events_url").asOpt[String].orElse((json \ "statuses_url").asOpt[String]) match {
+                  case Some(events_url) =>
+                    commentsFuture.zip {
+                      askAPI(events_url, integrationToken.token).map { response =>
+                        val json = response.json
+                        val events = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
+                        events.collect {
+                          case v if !Set(Option("mentioned"), Option("subscribed")).contains((v \ "event").asOpt[String]) =>
+                            val eventId = (v \ "id").as[Long]
+                            val userId = (v \ "actor" \ "login").asOpt[String].getOrElse(
+                              (v \ "creator" \ "login").as[String]
+                            )
+                            val timestamp = new Timestamp(dateFormat.parse((v \ "created_at").as[String]).getTime)
+                            val text = eventText(v)
+                            IntegrationUpdate(0, ID, Some(eventId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
+                        }
+                      }
+                    }.map { case (comments, events) => comments ++ events }
+                  case _ => commentsFuture
+                }).map(integrationTopic -> _)
+              }
+            }).map(_.toMap).map(CollectedMessages(_, pollInterval.seconds))
           }
-        }).map(_.toMap).map(CollectedMessages(_, pollInterval.seconds))
+        )
       }
     }
 
