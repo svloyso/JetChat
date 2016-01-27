@@ -65,44 +65,49 @@ class MessagesActor(integration: Integration, system: ActorSystem,
                     name <- integration.userHandler.name(token, Some(topicLogin))
                     avatar <- integration.userHandler.avatarUrl(token, Some(topicLogin))
                     result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, topicLogin, name.getOrElse(topicLogin), avatar))
-                  } yield result).onSuccess {
-                    case true =>
+                  } yield result).onSuccess { case success =>
+                    if (success)
                       mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-                  }
-                  (for {
-                    groupName <- integration.userHandler.groupName(token, topic.integrationGroupId)
-                    result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, topic.integrationGroupId, integrationToken.userId, groupName))
-                  } yield result).onSuccess {
-                    case true =>
-                      mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-                  }
-                  integrationTopicsDAO.merge(topic).onSuccess {
-                    case true =>
-                      mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-                  }
-                  updates.foreach { update =>
-                    val updateLogin = update.integrationUserId
+
                     (for {
-                      name <- integration.userHandler.name(token, Some(updateLogin))
-                      avatar <- integration.userHandler.avatarUrl(token, Some(updateLogin))
-                      result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, updateLogin, name.getOrElse(updateLogin), avatar))
-                    } yield result).onSuccess {
-                      case true =>
+                      groupName <- integration.userHandler.groupName(token, topic.integrationGroupId)
+                      result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, topic.integrationGroupId, integrationToken.userId, groupName))
+                    } yield result).onSuccess { case success =>
+                      if (success)
                         mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-                    }
-                    (for {
-                      groupName <- integration.userHandler.groupName(token, update.integrationGroupId)
-                      result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, update.integrationGroupId, integrationToken.userId, groupName))
-                    } yield result).onSuccess {
-                      case true =>
-                        mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-                    }
-                    // TODO: We need to check if the update has been already inserted
-                    integrationUpdatesDAO.merge(update).onComplete {
-                      case Success(inserted) =>
-                        mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-                      case Failure(e) =>
-                        MessagesActor.LOG.error(s"Can't merge an integration update: $update", e)
+
+                      integrationTopicsDAO.merge(topic).onSuccess { case success =>
+                        if (success)
+                          mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
+
+                        updates.foreach { update =>
+                          val updateLogin = update.integrationUserId
+                          (for {
+                            name <- integration.userHandler.name(token, Some(updateLogin))
+                            avatar <- integration.userHandler.avatarUrl(token, Some(updateLogin))
+                            result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, updateLogin, name.getOrElse(updateLogin), avatar))
+                          } yield result).onSuccess { case success =>
+                            if (success)
+                              mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
+
+                              (for {
+                                groupName <- integration.userHandler.groupName(token, update.integrationGroupId)
+                                result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, update.integrationGroupId, integrationToken.userId, groupName))
+                              } yield result).onSuccess { case success =>
+                                if (success)
+                                  mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
+
+                                  // TODO: We need to check if the update has been already inserted
+                                  integrationUpdatesDAO.merge(update).onComplete {
+                                    case Success(inserted) =>
+                                      mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
+                                    case Failure(e) =>
+                                      MessagesActor.LOG.error(s"Can't merge an integration update: $update", e)
+                                  }
+                              }
+                          }
+                        }
+                      }
                     }
                   }
                 }
