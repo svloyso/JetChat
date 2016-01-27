@@ -11,11 +11,14 @@ var TopicItem = React.createClass({
         var self = this;
         var topicClass = self.props.selected ? "selected" : "";
         var prettyDate = prettydate.format(new Date(self.props.topic.date));
-        var groupRef;
+        var groupRef, unreadLabel;
         if (self.props.showGroup) {
             // TODO: Cannot read property 'name' of undefined
             groupRef = <span>in #<span
                 className="group">{self.props.topic.group.name}</span></span>
+        }
+        if (self.props.unreadCount > 0) {
+            unreadLabel = <span className="unread">{self.props.count > 1 ? self.props.unreadCount : ''}</span>
         }
         return (
             <li data-topic={self.props.topic.id} className={topicClass}
@@ -28,6 +31,7 @@ var TopicItem = React.createClass({
                     &nbsp;
                         <span className="pretty date"
                               data-date={self.props.topic.date}>{prettyDate}</span>
+                    {unreadLabel}
                 </div>
             </li>
         );

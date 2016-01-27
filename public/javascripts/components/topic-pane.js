@@ -27,7 +27,7 @@ var TopicPane = React.createClass({
         } else if (self.state.store.topics) {
             topicItems = self.state.store.topics.map(function (t) {
                 return (
-                    <TopicItem topic={t.topic}
+                    <TopicItem topic={t.topic} unreadCount={t.unreadCount} count={t.count}
                                selected={self.state.store.selectedTopic &&
                            self.state.store.selectedTopic.id == t.topic.id}
                                showGroup={!self.state.store.selectedGroup}

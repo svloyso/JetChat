@@ -108,7 +108,7 @@ input, textarea {
 }
 
 #topic-pane li .info .author, #topic-pane li .info .group,
-#message-pane li .info .author, #message-pane li .info .group{
+#message-pane li .info .author, #message-pane li .info .group {
     font-weight: 500;
 }
 
@@ -337,4 +337,18 @@ input.search-query {
 #integration-pane .row {
     padding-bottom: 30px;
     clear: both;
+}
+
+#group-pane .unread > span:last-child:after, #topic-bar .unread:empty:after {
+    content: ' \25CF';
+    font-size: 11px;
+    padding-left: 2px;
+    color: #0077cc;
+}
+
+#topic-bar .unread:not(:empty) {
+    font-size: 12px;
+    color: #0077cc;
+    font-weight: 500;
+    padding-left: 6px;
 }

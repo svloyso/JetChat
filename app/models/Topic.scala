@@ -85,27 +85,28 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       }
     }.sortBy(_._1._1._1.date desc).map {
       case (((topic, status), user), group) =>
-        (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> (status.map(_.topicId).isDefined, 0)
+        (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> (status.map(_.topicId).isDefined, 1)
     }.result).flatMap { case f =>
       val userTopics = f.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (read, c)) =>
         (topicId, topicDate, topicText, gId, groupName, uId, userName) -> (if (read) 1 else 0, c) }.toMap
 
       db.run((comments
         join topics on { case (comment, topic) => comment.topicId === topic.id }
-        joinLeft commentReadStatuses on { case ((comment, topic), status) => comment.id === status.commentId && status.userId === userId }
-        join users on { case (((comment, topic), status), user) => topic.userId === user.id }
-        join groups on { case ((((comment, topic), status), user), group) => topic.groupId === group.id }).filter { case ((((topic, comment), status), user), group) =>
+        joinLeft topicReadStatuses on { case ((comment, topic), topicStatus) => topic.id === topicStatus.topicId && topicStatus.userId === userId }
+        joinLeft commentReadStatuses on { case (((comment, topic), topicStatus), commentStatus) => comment.id === commentStatus.commentId && commentStatus.userId === userId }
+        join users on { case ((((comment, topic), topicStatus), commentStatus), user) => topic.userId === user.id }
+        join groups on { case (((((comment, topic), topicStatus), commentStatus), user), group) => topic.groupId === group.id }).filter { case (((((comment, topic), topicStatus), commentStatus), user), group) =>
         groupId match {
           case Some(id) => topic.groupId === id
           case None => topic.groupId === topic.groupId
         }
-      }.groupBy { case ((((comment, topic), status), user), group) =>
-        (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name)
-      }.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), g) =>
-        (topicId, topicDate, topicText, gId, groupName, uId, userName, g.map(_._1._1._2.map(_.commentId)).length, g.map(_._1._1._1._1.id).countDistinct, g.map(_._1._1._1._1.date).max)
+      }.groupBy { case (((((comment, topic), topicStatus), commentStatus), user), group) =>
+        (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name, topicStatus)
+      }.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus), g) =>
+        (topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus.map(_.topicId).isDefined, g.map(_._1._1._2.map(_.commentId)).length, g.map(_._1._1._1._1._1.id).countDistinct, g.map(_._1._1._1._1._1.date).max)
       }.sortBy(_._10 desc).result).map { case f =>
-        val commentedTopics = f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, readCount, c, d) =>
-          (topicId, topicDate, topicText, gId, groupName, uId, userName) -> (readCount, c)
+        val commentedTopics = f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, topicRead, readCount, c, d) =>
+          (topicId, topicDate, topicText, gId, groupName, uId, userName) -> ((if (topicRead) 1 else 0) + readCount, 1 + c)
         }.toMap
 
         val total = (userTopics ++ commentedTopics).toSeq.sortBy(-_._1._2.getTime)

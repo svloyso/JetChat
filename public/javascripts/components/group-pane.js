@@ -2,6 +2,7 @@ import React from 'react';
 import Reflux from 'reflux';
 import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
+import classNames from 'classnames';
 import NewGroupButton from './new-group-button';
 import SettingsButton from './settings-button'
 
@@ -27,7 +28,11 @@ var GroupPane = React.createClass({
     render: function () {
         var self = this;
         var groupItems = self.state.store.groups.map(function (group) {
-            var groupClass = (self.state.store.selectedGroup && self.state.store.selectedGroup.id == group.id) ? "selected" : "";
+            var groupClass = classNames({
+                    ['selected']: self.state.store.selectedGroup && self.state.store.selectedGroup.id == group.id,
+                    ['unread']: group.unreadCount > 0
+                }
+            );
             return (
                 <li data-group={group.id} className={groupClass}
                     onClick={self.onGroupClick.bind(self, group)} key={group.id}>
@@ -51,8 +56,12 @@ var GroupPane = React.createClass({
         var integrationItems = groupsByIntegrationId.map((group) => {
             var integration = self.state.store.integrations.find(i => i.id == group.key);
             var integrationGroupItems = group.data.map(group => {
-                var groupClass = (self.state.store.selectedIntegrationGroup &&
-                self.state.store.selectedIntegrationGroup.integrationGroupId == group.integrationGroupId) ? "selected" : "";
+                var groupClass = classNames({
+                        ['selected']: self.state.store.selectedIntegrationGroup &&
+                        self.state.store.selectedIntegrationGroup.integrationGroupId == group.integrationGroupId
+                    }
+                );
+
                 return (
                     <li data-group={group.id} className={groupClass}
                         onClick={self.onIntegrationGroupClick.bind(self, group)} key={group.integrationGroupId}>
@@ -72,11 +81,11 @@ var GroupPane = React.createClass({
                 </ul>
             );
         });
-        var allGroupsClass = (!self.state.store.selectedGroup &&
+        var allGroupsClass = classNames({ ['selected']: !self.state.store.selectedGroup &&
         !self.state.store.selectedUser &&
         !self.state.store.selectedIntegration &&
         !self.state.store.selectedIntegrationGroup &&
-        !self.state.store.displaySettings) ? "selected" : "";
+        !self.state.store.displaySettings });
 
         return (
             <ul id="group-pane">
