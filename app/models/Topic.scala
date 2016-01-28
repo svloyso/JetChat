@@ -71,7 +71,9 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
   }
 
   def insert(topic: Topic): Future[Long] = {
-    db.run((topics returning topics.map(_.id)) += topic)
+    db.run((topics returning topics.map(_.id)) += topic).flatMap( id =>
+      db.run(topicReadStatuses += TopicReadStatus(id, topic.userId)).map(_ => id)
+    )
   }
 
   def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[(Long, Timestamp, String, Long, String, Long, String, Int, Int)]] = {

@@ -6,6 +6,7 @@ import javax.inject.{Inject, Singleton}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import slick.driver.JdbcProfile
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 case class Comment(id: Long = 0, groupId: Long, topicId: Long, userId: Long, date: Timestamp, text: String) extends
@@ -59,6 +60,8 @@ class CommentsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     import driver.api._
 
     def insert(comment: Comment): Future[Long] = {
-      db.run((comments returning comments.map(_.id)) += comment)
+      db.run((comments returning comments.map(_.id)) += comment).flatMap( id =>
+        db.run(commentReadStatuses += CommentReadStatus(id, comment.userId)).map(_ => id)
+      )
     }
   }
