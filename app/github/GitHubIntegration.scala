@@ -150,8 +150,8 @@ object GitHubIntegration {
             val title = (json \ "milestone" \ "title").as[String]
             s"demilestoned: $title"
           case Some("renamed") =>
-            val from = (json \ "rename:" \ "from").as[String]
-            val to = (json \ "rename:" \ "to").as[String]
+            val from = (json \ "rename" \ "from").as[String]
+            val to = (json \ "rename" \ "to").as[String]
             s"""renamed from:
                 |  $from
                 |
