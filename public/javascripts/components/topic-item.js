@@ -10,7 +10,7 @@ var TopicItem = React.createClass({
     render: function () {
         var self = this;
         var topicClass = self.props.selected ? "selected" : "";
-        var prettyDate = prettydate.format(new Date(self.props.topic.date));
+        var prettyDate = prettydate.format(new Date(self.props.updateDate));
         var groupRef, unreadLabel;
         if (self.props.showGroup) {
             // TODO: Cannot read property 'name' of undefined
@@ -30,7 +30,7 @@ var TopicItem = React.createClass({
                     {groupRef}
                     &nbsp;
                         <span className="pretty date"
-                              data-date={self.props.topic.date}>{prettyDate}</span>
+                              data-date={self.props.updateDate}>{prettyDate}</span>
                     {unreadLabel}
                 </div>
             </li>
