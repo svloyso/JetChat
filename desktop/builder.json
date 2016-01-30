@@ -1,0 +1,16 @@
+{
+  "osx" : {
+    "title": "JetChat",
+    "background": "assets/osx/installer.png",
+    "icon": "assets/osx/jetchat.icns",
+    "icon-size": 80,
+    "contents": [
+      { "x": 438, "y": 150, "type": "link", "path": "/Applications" },
+      { "x": 192, "y": 150, "type": "file" }
+    ]
+  },
+  "win" : {
+    "title" : "JetChat",
+    "icon" : "assets/win/jetchat.ico"
+  }
+}
