@@ -9,7 +9,7 @@ var TopicItem = React.createClass({
     },
 
     onChange: function (isVisible) {
-        if (isVisible && this.props.unread) {
+        if (isVisible && this.props.unread && $(document.body).hasClass("visible")) {
             ChatActions.markTopicAsRead(this.props.topic);
         }
     },

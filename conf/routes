@@ -19,6 +19,8 @@ POST        /json/comment/add                                            control
 POST        /json/group/add                                              controllers.Application.addGroup
 POST        /json/direct/add                                             controllers.Application.addDirectMessage
 
+POST        /json/markAsRead                                             controllers.Application.markAsRead
+
 GET         /logout                                                      controllers.Application.logout
 
 GET         /auth/callback                                               controllers.Auth.callback(code: Option[String], state: Option[String])

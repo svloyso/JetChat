@@ -11,7 +11,7 @@ var MessageItem = React.createClass({
     ],
 
     onChange: function (isVisible) {
-        if (this.props.message.topicId && isVisible && this.props.message.unread) {
+        if (this.props.message.topicId && isVisible && this.props.message.unread && $(document.body).hasClass("visible")) {
             ChatActions.markMessageAsRead(this.props.message);
         }
     },

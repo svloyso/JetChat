@@ -328,7 +328,7 @@ var ChatStore = Reflux.createStore({
     onMarkMessageAsRead: function(message) {
         var trigger = false;
         if (this.state.messages) {
-            var mm = this.state.messages.find(m => m.id == message.id);
+            var mm = this.state.messages.find(m => m.id == message.id && m.topicId);
             if (mm && mm.unread) {
                 mm.unread = false;
                 _messagesToMarkAsRead.push(mm.id);

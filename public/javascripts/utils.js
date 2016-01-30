@@ -84,13 +84,71 @@ export var _topicsToMarkAsRead = [];
 export var _messagesToMarkAsRead = [];
 
 window.setInterval(function () {
+    var topics = [], messages = [];
     if (_topicsToMarkAsRead.length > 0) {
-        var topics = _topicsToMarkAsRead.splice(0, _topicsToMarkAsRead.length);
+        topics = _topicsToMarkAsRead.splice(0, _topicsToMarkAsRead.length);
         topics.map(id => console.log("Marking topic as read: " + id));
     }
 
     if (_messagesToMarkAsRead.length > 0) {
-        var messages = _messagesToMarkAsRead.splice(0, _messagesToMarkAsRead.length);
+        messages = _messagesToMarkAsRead.splice(0, _messagesToMarkAsRead.length);
         messages.map(id => console.log("Marking message as read: " + id));
     }
+    if (topics.length > 0 || messages.length > 0) {
+        $.ajax({
+            type: "POST",
+            url: "/json/markAsRead",
+            data: JSON.stringify({
+                "userId": _global.user.id,
+                "topicIds": topics,
+                "messageIds": messages
+            }),
+            contentType: "application/json",
+            fail: function (e) {
+                Log.error(e);
+            }
+        })
+    }
 }, 1000);
+
+var enablePageVisiblity = function() {
+    var hidden = "hidden";
+
+    // Standards:
+    if (hidden in document)
+        document.addEventListener("visibilitychange", onchange);
+    else if ((hidden = "mozHidden") in document)
+        document.addEventListener("mozvisibilitychange", onchange);
+    else if ((hidden = "webkitHidden") in document)
+        document.addEventListener("webkitvisibilitychange", onchange);
+    else if ((hidden = "msHidden") in document)
+        document.addEventListener("msvisibilitychange", onchange);
+    // IE 9 and lower:
+    else if ("onfocusin" in document)
+        document.onfocusin = document.onfocusout = onchange;
+    // All others:
+    else
+        window.onpageshow = window.onpagehide
+            = window.onfocus = window.onblur = onchange;
+
+    function onchange (evt) {
+        var v = "visible", h = "hidden",
+            evtMap = {
+                focus:v, focusin:v, pageshow:v, blur:h, focusout:h, pagehide:h
+            };
+
+        evt = evt || window.event;
+        if (evt.type in evtMap)
+            document.body.className = evtMap[evt.type];
+        else
+            document.body.className = this[hidden] ? "hidden" : "visible";
+    }
+
+    // set the initial state (but only if browser supports the Page Visibility API)
+    if( document[hidden] !== undefined )
+        onchange({type: document[hidden] ? "blur" : "focus"});
+};
+
+$(document).ready(e =>
+    enablePageVisiblity()
+);

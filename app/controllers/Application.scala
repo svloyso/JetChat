@@ -256,6 +256,14 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
+  def markAsRead = Action.async(parse.json) { implicit request =>
+    val userId = (request.body \ "userId").as[Long].toLong
+    val topicIds = (request.body \ "topicIds").as[Seq[Long]]
+    val messageIds = (request.body \ "messageIds").as[Seq[Long]]
+    Logger.debug(s"Marking topics and messages as read: user: $userId, topics: $topicIds, messages: $messageIds")
+    topicsDAO.markAsRead(userId, topicIds).flatMap(_ => commentsDAO.markAsRead(userId, messageIds).map(_ => Ok))
+  }
+
   def getIntegrationMessages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String) = Action.async { implicit request =>
     integrationTopicsDAO.messages(userId, integrationId, integrationGroupId, integrationTopicId).map { f =>
       Ok(Json.toJson(JsArray(f.map { case (message, user, group) =>

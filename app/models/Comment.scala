@@ -12,7 +12,7 @@ import scala.concurrent.Future
 case class Comment(id: Long = 0, groupId: Long, topicId: Long, userId: Long, date: Timestamp, text: String) extends
 AbstractGroupMessage
 
-case class CommentReadStatus(commentId: Long = 0, userId: Long) extends ReadStatus
+case class CommentReadStatus(commentId: Long, userId: Long) extends ReadStatus
 
 trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile] with GroupsComponent with UsersComponent with TopicsComponent {
   protected val driver: JdbcProfile
@@ -63,5 +63,9 @@ class CommentsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       db.run((comments returning comments.map(_.id)) += comment).flatMap( id =>
         db.run(commentReadStatuses += CommentReadStatus(id, comment.userId)).map(_ => id)
       )
+    }
+
+    def markAsRead(userId: Long, commentIds: Seq[Long]): Future[Option[Int]] = {
+      db.run(commentReadStatuses ++= commentIds.map(CommentReadStatus(_, userId)))
     }
   }

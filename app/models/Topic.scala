@@ -12,7 +12,7 @@ import scala.concurrent.Future
 
 case class Topic(id: Long = 0, groupId: Long, userId: Long, date: Timestamp, text: String) extends AbstractGroupMessage
 
-case class TopicReadStatus(topicId: Long = 0, userId: Long) extends ReadStatus
+case class TopicReadStatus(topicId: Long, userId: Long) extends ReadStatus
 
 trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with GroupsComponent with UsersComponent {
   protected val driver: JdbcProfile
@@ -74,6 +74,10 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run((topics returning topics.map(_.id)) += topic).flatMap( id =>
       db.run(topicReadStatuses += TopicReadStatus(id, topic.userId)).map(_ => id)
     )
+  }
+
+  def markAsRead(userId: Long, topicIds: Seq[Long]): Future[Option[Int]] = {
+    db.run(topicReadStatuses ++= topicIds.map(TopicReadStatus(_, userId)))
   }
 
   def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[(Long, Timestamp, String, Long, String, Long, String, Timestamp, Boolean, Int, Int)]] = {
