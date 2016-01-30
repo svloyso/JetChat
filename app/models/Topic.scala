@@ -76,7 +76,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     )
   }
 
-  def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[(Long, Timestamp, String, Long, String, Long, String, Timestamp, Int, Int)]] = {
+  def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[(Long, Timestamp, String, Long, String, Long, String, Timestamp, Boolean, Int, Int)]] = {
     db.run((topics
       joinLeft topicReadStatuses on { case (topic, status) => topic.id === status.topicId && status.userId === userId }
       join users on { case ((topic, status), user) => topic.userId === user.id }
@@ -87,10 +87,10 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       }
     }.sortBy(_._1._1._1.date desc).map {
       case (((topic, status), user), group) =>
-        (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> (status.map(_.topicId).isDefined, 1)
+        (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> (status.map(_.topicId).isDefined)
     }.result).flatMap { case f =>
-      val userTopics = f.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (read, c)) =>
-        (topicId, topicDate, topicText, gId, groupName, uId, userName, topicDate) -> (if (read) 1 else 0, c) }.toMap
+      val userTopics = f.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (readStatus)) =>
+        (topicId, topicDate, topicText, gId, groupName, uId, userName) -> (topicDate, readStatus, 0, 0) }.toMap
 
       db.run((comments
         join topics on { case (comment, topic) => comment.topicId === topic.id }
@@ -107,14 +107,14 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       }.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus), g) =>
         (topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus.map(_.topicId).isDefined, g.map(_._1._1._2.map(_.commentId)).length, g.map(_._1._1._1._1._1.id).countDistinct, g.map(_._1._1._1._1._1.date).max)
       }.sortBy(_._10 desc).result).map { case f =>
-        val commentedTopics = f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, topicRead, readCount, c, d) =>
-          (topicId, topicDate, topicText, gId, groupName, uId, userName, d.get) -> ((if (topicRead) 1 else 0) + readCount, 1 + c)
+        val commentedTopics = f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, topicReadStatus, readCount, c, d) =>
+          (topicId, topicDate, topicText, gId, groupName, uId, userName) -> (d.get, topicReadStatus, readCount, c)
         }.toMap
 
-        val total = (userTopics ++ commentedTopics).toSeq.sortBy(-_._1._8.getTime)
+        val total = (userTopics ++ commentedTopics).toSeq.sortBy(-_._2._1.getTime)
 
-        total.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate), (readCount, c)) =>
-          (topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate, readCount, c)
+        total.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (updateDate, readStatus, readCount, c)) =>
+          (topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate, readStatus, readCount, c)
         }
       }
     }

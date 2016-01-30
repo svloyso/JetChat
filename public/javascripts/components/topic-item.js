@@ -22,13 +22,14 @@ var TopicItem = React.createClass({
             groupRef = <span>in #<span
                 className="group">{self.props.topic.group.name}</span></span>
         }
-        if (self.props.unreadCount > 0) {
-            unreadLabel = <span className="unread">{self.props.count > 1 ? self.props.unreadCount : ''}</span>
+        if (self.props.unread || self.props.unreadCount > 0) {
+            var totalUnreadCount = (self.props.unread ? 1 : 0) + self.props.unreadCount;
+            unreadLabel = <span className="unread">{totalUnreadCount > 1 ? totalUnreadCount : ''}</span>
         }
         return (
             <li data-topic={self.props.topic.id} className={topicClass}
                 onClick={self.onClick.bind(self, self.props.topic)}>
-                <VisibilitySensor onChange={self.onChange.bind(self)} />
+                <VisibilitySensor onChange={self.onChange} />
                 <div className="text">{self.props.topic.text}</div>
                 <div className="info">
                     <span className="author">{self.props.topic.user.name}</span>

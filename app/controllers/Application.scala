@@ -190,11 +190,12 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getAllTopics(userId: Long) = Action.async { implicit request =>
     topicsDAO.allWithCounts(userId, None).map { f =>
-      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate, readCount, count) =>
+      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate, readStatus, readCount, count) =>
         JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
           "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))),
           "updateDate" -> JsNumber(updateDate.getTime),
+          "unread" -> JsBoolean(!readStatus),
           "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)))
       }))
     }.map(Ok(_))
@@ -202,11 +203,12 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getGroupTopics(userId: Long, groupId: Long) = Action.async { implicit rs =>
     topicsDAO.allWithCounts(userId, Some(groupId)).map { f =>
-      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate, readCount, count) =>
+      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate, readStatus, readCount, count) =>
         JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
           "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))),
           "updateDate" -> JsNumber(updateDate.getTime),
+          "unread" -> JsBoolean(!readStatus),
           "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)))
       }))
     }.map(Ok(_))

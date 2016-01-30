@@ -26,13 +26,15 @@ var TopicPane = React.createClass({
             });
         } else if (self.state.store.topics) {
             topicItems = self.state.store.topics.map(function (t) {
+                var key = t.topic.id;
+                console.log(key);
                 return (
                     <TopicItem topic={t.topic} updateDate={t.updateDate}
-                               unreadCount={t.unreadCount} count={t.count}
+                               unread={t.unread} unreadCount={t.unreadCount} count={t.count}
                                selected={self.state.store.selectedTopic &&
                            self.state.store.selectedTopic.id == t.topic.id}
                                showGroup={!self.state.store.selectedGroup}
-                               key={t.topic.id}/>
+                               key={key}/>
                 )
             });
         }
