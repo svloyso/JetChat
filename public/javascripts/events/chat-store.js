@@ -69,7 +69,8 @@ var ChatStore = Reflux.createStore({
                 self.state.topics = topics;
                 self.state.integrationTopics = undefined;
                 if (topics.length > 0) {
-                    self.onSelectTopic(topics[0].topic);
+                    var selectedTopic = self.state.selectedTopic ? topics.find(t => t.topic.id == self.state.selectedTopic.id) : undefined;
+                    self.onSelectTopic(selectedTopic ? selectedTopic.topic : topics[0].topic);
                 } else {
                     self.onSelectTopic();
                 }
