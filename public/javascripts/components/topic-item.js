@@ -9,7 +9,9 @@ var TopicItem = React.createClass({
     },
 
     onChange: function (isVisible) {
-        console.log('Topic %s is now %s', this.props.topic.text, isVisible ? 'visible' : 'hidden');
+        if (isVisible && this.props.unread) {
+            ChatActions.markTopicAsRead(this.props.topic);
+        }
     },
 
     render: function () {

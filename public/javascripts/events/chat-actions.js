@@ -11,7 +11,9 @@ var ChatActions = Reflux.createActions([
     'showIntegrations',
     'selectIntegrationGroup',
     'selectIntegration',
-    'selectIntegrationTopic'
+    'selectIntegrationTopic',
+    'markTopicAsRead',
+    'markMessageAsRead'
 ]);
 
 export default ChatActions;

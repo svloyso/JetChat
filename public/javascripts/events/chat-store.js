@@ -1,6 +1,10 @@
 import Reflux from 'reflux';
 import ChatActions from './chat-actions';
+import { _topicsToMarkAsRead, _messagesToMarkAsRead } from './../utils';
 
+/**
+ * TODO: don't mutate state
+ */
 var ChatStore = Reflux.createStore({
     listenables: [ChatActions],
 
@@ -295,6 +299,57 @@ var ChatStore = Reflux.createStore({
             }).length == 0) {
             // TODO: Preserve message order
             this.state.messages.push(message);
+            this.trigger(this.state);
+        }
+    },
+
+    onMarkTopicAsRead: function(topic) {
+        var trigger = false;
+        if (this.state.topics) {
+            var tt = this.state.topics.find(t => t.topic.id == topic.id);
+            if (tt && tt.unread) {
+                tt.unread = false;
+                _topicsToMarkAsRead.push(tt.topic.id);
+                trigger = true;
+            }
+        }
+        if (this.state.groups) {
+            var group = this.state.groups.find(g => g.id == topic.group.id);
+            if (group && group.unreadCount) {
+                group.unreadCount = group.unreadCount - 1;
+                trigger = true;
+            }
+        }
+        if (trigger) {
+            this.trigger(this.state);
+        }
+    },
+
+    onMarkMessageAsRead: function(message) {
+        var trigger = false;
+        if (this.state.messages) {
+            var mm = this.state.messages.find(m => m.id == message.id);
+            if (mm && mm.unread) {
+                mm.unread = false;
+                _messagesToMarkAsRead.push(mm.id);
+                trigger = true;
+            }
+        }
+        if (this.state.groups) {
+            var group = this.state.groups.find(g => g.id == message.group.id);
+            if (group && group.unreadCount) {
+                group.unreadCount = group.unreadCount - 1;
+                trigger = true;
+            }
+        }
+        if (this.state.topics) {
+            var topic = this.state.topics.find(t => t.topic.id == message.topicId);
+            if (topic && topic.unreadCount) {
+                topic.unreadCount = topic.unreadCount - 1;
+                trigger = true;
+            }
+        }
+        if (trigger) {
             this.trigger(this.state);
         }
     }

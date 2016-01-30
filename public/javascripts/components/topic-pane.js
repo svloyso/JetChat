@@ -27,7 +27,6 @@ var TopicPane = React.createClass({
         } else if (self.state.store.topics) {
             topicItems = self.state.store.topics.map(function (t) {
                 var key = t.topic.id;
-                console.log(key);
                 return (
                     <TopicItem topic={t.topic} updateDate={t.updateDate}
                                unread={t.unread} unreadCount={t.unreadCount} count={t.count}

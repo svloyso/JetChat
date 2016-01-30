@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-var prettydate = require("pretty-date");
+import PrettyDate from 'pretty-date'
 
 // Patch Bootstrap popover to take a React component instead of a
 // plain HTML string
@@ -50,7 +50,7 @@ window.setInterval(function () {
 
 window.setInterval(function () {
     $(".pretty").map(function () {
-        $(this).text(prettydate.format(new Date(parseInt($(this).attr("data-date")))))
+        $(this).text(PrettyDate.format(new Date(parseInt($(this).attr("data-date")))))
     })
 }, 1000 * 60);
 
@@ -79,3 +79,18 @@ Object.defineProperty(Array.prototype, 'group', {
         });
     }
 });
+
+export var _topicsToMarkAsRead = [];
+export var _messagesToMarkAsRead = [];
+
+window.setInterval(function () {
+    if (_topicsToMarkAsRead.length > 0) {
+        var topics = _topicsToMarkAsRead.splice(0, _topicsToMarkAsRead.length);
+        topics.map(id => console.log("Marking topic as read: " + id));
+    }
+
+    if (_messagesToMarkAsRead.length > 0) {
+        var messages = _messagesToMarkAsRead.splice(0, _messagesToMarkAsRead.length);
+        messages.map(id => console.log("Marking message as read: " + id));
+    }
+}, 1000);

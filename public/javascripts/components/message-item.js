@@ -1,12 +1,20 @@
 import React from 'react';
 import ReactEmoji from 'react-emoji';
 import ReactAutolink from 'react-autolink';
-var prettydate = require("pretty-date");
+import PrettyDate from 'pretty-date';
+import ChatActions from '../events/chat-actions';
+import VisibilitySensor from 'react-visibility-sensor';
 
 var MessageItem = React.createClass({
     mixins: [
         ReactEmoji, ReactAutolink
     ],
+
+    onChange: function (isVisible) {
+        if (this.props.message.topicId && isVisible && this.props.message.unread) {
+            ChatActions.markMessageAsRead(this.props.message);
+        }
+    },
 
     render: function () {
         var self = this;
@@ -15,7 +23,7 @@ var MessageItem = React.createClass({
         var info;
         if (!self.props.sameUser) {
             avatar = <img className="img avatar pull-left" src={self.props.message.user.avatar}/>;
-            var prettyDate = prettydate.format(new Date(self.props.message.date));
+            var prettyDate = PrettyDate.format(new Date(self.props.message.date));
             info = <div className="info">
                 <span className="author">{self.props.message.user.name}</span>
                 &nbsp;
@@ -25,6 +33,7 @@ var MessageItem = React.createClass({
         }
         return (
             <li className={className} data-user={self.props.message.user.id}>
+                <VisibilitySensor onChange={self.onChange} />
                 {avatar}
                 <div className="details">
                     {info}
