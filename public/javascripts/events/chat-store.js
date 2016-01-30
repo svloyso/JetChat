@@ -280,7 +280,7 @@ var ChatStore = Reflux.createStore({
                 return m.topic.id == topic.id
             }).length == 0) {
             var unread = topic.user.id != _global.user.id;
-            this.state.topics.splice(0, 0, { topic: topic, unread: unread });
+            this.state.topics.splice(0, 0, { topic: topic, unread: unread, updateDate: topic.date });
             var group = this.state.groups.find(g => g.id == topic.group.id);
             if (group) {
                 group.count = group.count + 1;
@@ -315,6 +315,7 @@ var ChatStore = Reflux.createStore({
                 var topic = this.state.topics.find(t => t.topic.id == message.topicId);
                 if (topic) {
                     topic.count = topic.count + 1;
+                    topic.updateDate = message.date;
                     if (unread) {
                         topic.unreadCount = topic.unreadCount + 1;
                     }
