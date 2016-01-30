@@ -300,7 +300,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def addComment() = Action.async(parse.json) { implicit request =>
     val userId = (request.body \ "user" \ "id").get.asInstanceOf[JsNumber].value.toLong
-    val groupId = (request.body \ "groupId").get.asInstanceOf[JsNumber].value.toLong
+    val groupId = (request.body \ "group" \ "id").get.asInstanceOf[JsNumber].value.toLong
     val topicId = (request.body \ "topicId").get.asInstanceOf[JsNumber].value.toLong
     val text = (request.body \ "text").get.asInstanceOf[JsString].value
     val date = new Timestamp(Calendar.getInstance.getTime.getTime)
@@ -314,7 +314,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             case None => Seq()
           })
         mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("id" -> JsNumber(id),
-          "groupId" -> JsNumber(groupId),
+          "group" -> JsObject(Seq("id" -> JsNumber(groupId))),
           "topicId" -> JsNumber(topicId),
           "user" -> JsObject(userJson),
           "date" -> JsNumber(date.getTime),
@@ -386,7 +386,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def addTopic() = Action.async(parse.json) { implicit request =>
     val userId = (request.body \ "user" \ "id").get.asInstanceOf[JsNumber].value.toLong
-    val groupId = (request.body \ "groupId").get.asInstanceOf[JsNumber].value.toLong
+    val groupId = (request.body \ "group" \ "id").get.asInstanceOf[JsNumber].value.toLong
     val text = (request.body \ "text").get.asInstanceOf[JsString].value
     val date = new Timestamp(Calendar.getInstance.getTime.getTime)
     topicsDAO.insert(Topic(groupId = groupId, userId = userId, date = date, text = text)).flatMap { case id =>

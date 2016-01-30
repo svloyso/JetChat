@@ -279,7 +279,15 @@ var ChatStore = Reflux.createStore({
             topic.group.id) && this.state.topics.filter(function (m) {
                 return m.topic.id == topic.id
             }).length == 0) {
-            this.state.topics.splice(0, 0, {topic: topic});
+            var unread = topic.user.id != _global.user.id;
+            this.state.topics.splice(0, 0, { topic: topic, unread: unread });
+            var group = this.state.groups.find(g => g.id == topic.group.id);
+            if (group) {
+                group.count = group.count + 1;
+                if (unread) {
+                    group.unreadCount = group.unreadCount + 1;
+                }
+            }
             if (select) {
                 this.onSelectTopic(topic);
             } else {
@@ -291,15 +299,39 @@ var ChatStore = Reflux.createStore({
     },
 
     onNewMessage: function (message) {
-        if ((this.state.selectedTopic && this.state.selectedTopic.id ==
-            message.topicId || this.state.selectedUser && (this.state.selectedUser.id == message.toUser.id &&
-            _global.user.id == message.user.id || this.state.selectedUser.id == message.user.id &&
-            _global.user.id == message.toUser.id)) && this.state.messages.filter(function (m) {
-                return m.text == message.text
-            }).length == 0) {
-            // TODO: Preserve message order
-            this.state.messages.push(message);
-            this.trigger(this.state);
+        if (this.state.messages && !this.state.messages.find(m => m.text == message.text)) {
+            var trigger = false;
+            var unread = message.user.id != _global.user.id;
+            message.unread = unread;
+            var group = this.state.groups.find(g => g.id == message.group.id);
+            if (group) {
+                group.count = group.count + 1;
+                if (unread) {
+                    group.unreadCount = group.unreadCount + 1;
+                }
+                trigger = true;
+            }
+            if (this.state.topics) {
+                var topic = this.state.topics.find(t => t.topic.id == message.topicId);
+                if (topic) {
+                    topic.count = topic.count + 1;
+                    if (unread) {
+                        topic.unreadCount = topic.unreadCount + 1;
+                    }
+                    trigger = true
+                }
+            }
+            if (this.state.selectedTopic && this.state.selectedTopic.id ==
+                message.topicId || this.state.selectedUser && (this.state.selectedUser.id == message.toUser.id &&
+                _global.user.id == message.user.id || this.state.selectedUser.id == message.user.id &&
+                _global.user.id == message.toUser.id)) {
+                // TODO: Preserve message order
+                this.state.messages.push(message);
+                trigger = true;
+            }
+            if (trigger == true) {
+                this.trigger(this.state);
+            }
         }
     },
 

@@ -46,7 +46,7 @@ var MessageBar = React.createClass({
                 var newMessage = {
                     "user": _global.user,
                     "date": new Date().getTime(),
-                    "groupId": self.state.store.selectedTopic ? self.state.store.selectedTopic.group.id : self.state.store.selectedGroup.id,
+                    "group": { id: self.state.store.selectedTopic ? self.state.store.selectedTopic.group.id : self.state.store.selectedGroup.id },
                     "text": input.value
                 };
                 if (self.state.store.selectedTopic) {
@@ -61,7 +61,7 @@ var MessageBar = React.createClass({
                         // TODO: Send full object from server
                         var m = {
                             id: id,
-                            group: {id: newMessage.groupId},
+                            group: {id: newMessage.group.id},
                             text: newMessage.text,
                             date: new Date().getTime(),
                             user: _global.user
