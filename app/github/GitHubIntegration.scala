@@ -92,6 +92,8 @@ object GitHubIntegration {
 
   val sincePeriod = 1000 * 60 * 60 * 24 * 7
 
+  private val LOG = Logger.apply(this.getClass)
+
   private def getAuthorizationUrl(redirectUri: String, scope: String, state: String, clientId: String): String = {
     s"https://github.com/login/oauth/authorize?client_id=$clientId&redirect_uri=$redirectUri&scope=$scope&state=$state"
   }
@@ -99,13 +101,14 @@ object GitHubIntegration {
   case class APICallResult(successful: Boolean, response: WSResponse, pollInterval: Option[Int])
 
   def askAPI(url: String, token: String): Future[APICallResult] = {
+    LOG.trace("API request for" + token + ": " + url)
     WS.url(url)(Play.current).withQueryString("access_token" -> token).
       withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).get().map(response =>
       if (response.status == 404) {
-        Logger.warn("API request returned 404: " + url)
+        LOG.warn("API request returned 404: " + url)
         APICallResult(successful = false, response, None)
       } else if (response.status == 403 && response.header("X-RateLimit-Reset").isDefined) {
-        Logger.warn("API request returned 403: " + url)
+        LOG.warn("API request returned 403: " + url)
         val limit = response.header("X-RateLimit-Reset").get
         val pollInterval = ((new Date(limit.toLong * 1000L).getTime - new Date().getTime) / 1000).asInstanceOf[Int]
         APICallResult(successful = false, response, Some(pollInterval))
@@ -114,7 +117,10 @@ object GitHubIntegration {
       } else {
         APICallResult(successful = true, response, None)
       }
-    )
+    ).recover { case t: Throwable =>
+      LOG.error("API request failed for " + token + ": " + url, t)
+      throw t
+    }
   }
 
   class GitHubMessageHandler extends MessageHandler {
