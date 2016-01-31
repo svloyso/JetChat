@@ -43,7 +43,11 @@ var GroupPane = React.createClass({
         });
 
         var userItems = self.state.store.users.map(function (user) {
-            var userClass = (self.state.store.selectedUser && self.state.store.selectedUser.id == user.id) ? "selected" : "";
+            var userClass = classNames({
+                    ['selected']: self.state.store.selectedUser && self.state.store.selectedUser.id == user.id,
+                    ['unread']: user.unreadCount > 0
+                }
+            );
             return (
                 <li data-user={user.id} className={userClass}
                     onClick={self.onUserClick.bind(self, user)} key={user.id}>

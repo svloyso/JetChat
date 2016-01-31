@@ -6,9 +6,12 @@ import javax.inject.{Inject, Singleton}
 import play.api.db.slick.{HasDatabaseConfigProvider, DatabaseConfigProvider}
 import slick.driver.JdbcProfile
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 case class DirectMessage(id: Long = 0, fromUserId: Long, toUserId: Long, date: Timestamp, text: String) extends AbstractMessage
+
+case class DirectMessageReadStatus(directMessageId: Long) extends ReadStatus
 
 trait DirectMessagesComonent extends HasDatabaseConfigProvider[JdbcProfile] with UsersComponent {
   protected val driver: JdbcProfile
@@ -30,10 +33,20 @@ trait DirectMessagesComonent extends HasDatabaseConfigProvider[JdbcProfile] with
 
     def toUser = foreignKey("dm_to_user_fk", toUserId, users)(_.id)
 
-    def * = (id, fromUserId, toUserId, date, text) <>(DirectMessage.tupled, DirectMessage.unapply)
+      def * = (id, fromUserId, toUserId, date, text) <>(DirectMessage.tupled, DirectMessage.unapply)
   }
 
   val directMessages = TableQuery[DirectMessagesTable]
+
+  class DirectMessageReadStatusesTable(tag: Tag) extends Table[DirectMessageReadStatus](tag, "direct_message_read_statuses") {
+    def directMessageId = column[Long]("direct_message_id", O.PrimaryKey)
+
+    def directMessage = foreignKey("direct_message_read_status_direct_message_fk", directMessageId, directMessages)(_.id)
+
+    def * = (directMessageId) <>(DirectMessageReadStatus.apply, DirectMessageReadStatus.unapply)
+  }
+
+  val directMessageReadStatuses = TableQuery[DirectMessageReadStatusesTable]
 }
 
 @Singleton()
@@ -46,12 +59,16 @@ class DirectMessagesDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run((directMessages returning directMessages.map(_.id)) += directMessage)
   }
 
-  def messages(fromUserId: Long, toUserId: Long): Future[Seq[(DirectMessage, User, User)]] = {
+  def messages(fromUserId: Long, toUserId: Long): Future[Seq[(DirectMessage, Boolean, User, User)]] = {
     // TODO: Change to Seq[DirectMessage]
     db.run((for {
-      ((m, fromUser), toUser) <- directMessages.filter(m =>
+      (((m, status), fromUser), toUser) <- directMessages.filter(m =>
         (m.fromUserId === fromUserId && m.toUserId === toUserId) ||
-          (m.fromUserId === toUserId && m.toUserId === fromUserId)) join users on { case (m, fromUser) => m.fromUserId === fromUser.id } join users on { case ((m, fromUser), toUser) => m.toUserId === toUser.id }
-    } yield (m, fromUser, toUser)).sortBy(_._1.date).result)
+          (m.fromUserId === toUserId && m.toUserId === fromUserId)) joinLeft directMessageReadStatuses on { case (message, status) => message.id === status.directMessageId } join users on { case ((m, status), fromUser) => m.fromUserId === fromUser.id } join users on { case (((m, status), fromUser), toUser) => m.toUserId === toUser.id }
+    } yield (m, status.map(_.directMessageId).isDefined, fromUser, toUser)).sortBy(_._1.date).result)
+  }
+
+  def markAsRead(directMessageIds: Seq[Long]): Future[Option[Int]] = {
+    db.run(directMessageReadStatuses ++= directMessageIds.map(DirectMessageReadStatus(_)))
   }
 }

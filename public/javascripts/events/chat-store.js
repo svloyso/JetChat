@@ -1,6 +1,6 @@
 import Reflux from 'reflux';
 import ChatActions from './chat-actions';
-import { _topicsToMarkAsRead, _messagesToMarkAsRead } from './../utils';
+import { _topicsToMarkAsRead, _messagesToMarkAsRead, _directMessagesToMarkAsRead } from './../utils';
 
 /**
  * TODO: don't mutate state
@@ -21,6 +21,7 @@ var ChatStore = Reflux.createStore({
         } else {
             this.onSelectGroup(this.state.selectedGroup);
         }
+        this.trigger(this.state);
         // var self = this;
         // TODO: Re-fetch groups, topics, etc
         /*window.addEventListener('popstate', function (e) {
@@ -171,7 +172,7 @@ var ChatStore = Reflux.createStore({
                 self.state.messages = messages;
                 self.state.integrationMessages = undefined;
                 self.trigger(self.state);
-                window.history.replaceState(this.state, window.title, "?userId=" + self.state.selectedUser.id);
+                window.history.replaceState(self.state, window.title, "?userId=" + self.state.selectedUser.id);
             },
             fail: function (e) {
                 console.error(e);
@@ -300,31 +301,48 @@ var ChatStore = Reflux.createStore({
     },
 
     onNewMessage: function (message) {
+        // TODO: Check if we may apply message twice
         if (this.state.messages && !this.state.messages.find(m => m.text == message.text)) {
             var trigger = false;
             var unread = message.user.id != _global.user.id;
             message.unread = unread;
-            var group = this.state.groups.find(g => g.id == message.group.id);
-            if (group) {
-                group.count = group.count + 1;
-                if (unread) {
-                    group.unreadCount = group.unreadCount + 1;
-                }
-                trigger = true;
-            }
-            if (this.state.topics) {
-                var topic = this.state.topics.find(t => t.topic.id == message.topicId);
-                if (topic) {
-                    topic.count = topic.count + 1;
-                    topic.updateDate = message.date;
+            if (message.group) {
+                var group = this.state.groups.find(g => g.id == message.group.id);
+                if (group) {
+                    group.count = group.count + 1;
                     if (unread) {
-                        topic.unreadCount = topic.unreadCount + 1;
+                        group.unreadCount = group.unreadCount + 1;
                     }
-                    trigger = true
+                    trigger = true;
+                }
+            }
+            if (message.topicId) {
+                if (this.state.topics) {
+                    var topic = this.state.topics.find(t => t.topic.id == message.topicId);
+                    if (topic) {
+                        topic.count = topic.count + 1;
+                        topic.updateDate = message.date;
+                        if (unread) {
+                            topic.unreadCount = topic.unreadCount + 1;
+                        }
+                        trigger = true
+                    }
+                }
+            }
+            if (message.toUser) {
+                if (this.state.users) {
+                    var user = this.state.users.find(u => u.id == message.user.id);
+                    if (user) {
+                        user.count = user.count + 1;
+                        if (unread) {
+                            user.unreadCount = user.unreadCount + 1;
+                        }
+                        trigger = true
+                    }
                 }
             }
             if (this.state.selectedTopic && this.state.selectedTopic.id ==
-                message.topicId || this.state.selectedUser && (this.state.selectedUser.id == message.toUser.id &&
+                message.topicId || this.state.selectedUser && message.toUser && (this.state.selectedUser.id == message.toUser.id &&
                 _global.user.id == message.user.id || this.state.selectedUser.id == message.user.id &&
                 _global.user.id == message.toUser.id)) {
                 // TODO: Preserve message order
@@ -351,6 +369,28 @@ var ChatStore = Reflux.createStore({
             var group = this.state.groups.find(g => g.id == topic.group.id);
             if (group && group.unreadCount) {
                 group.unreadCount = group.unreadCount - 1;
+                trigger = true;
+            }
+        }
+        if (trigger) {
+            this.trigger(this.state);
+        }
+    },
+
+    onMarkDirectMessageAsRead: function(message) {
+        var trigger = false;
+        if (this.state.messages) {
+            var mm = this.state.messages.find(m => m.id == message.id);
+            if (mm && mm.unread) {
+                mm.unread = false;
+                _directMessagesToMarkAsRead.push(mm.id);
+                trigger = true;
+            }
+        }
+        if (this.state.users) {
+            var user = this.state.users.find(g => g.id == message.user.id);
+            if (user && user.unreadCount) {
+                user.unreadCount = user.unreadCount - 1;
                 trigger = true;
             }
         }

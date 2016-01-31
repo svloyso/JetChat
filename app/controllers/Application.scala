@@ -159,8 +159,21 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
+  def getUsers(userId: Long) = Action.async { implicit request =>
+    getUsersJsValue(userId).map(Ok(_))
+  }
+
   def getUsersJsValue(userId: Long): Future[JsValue] = {
-    usersDAO.all.map { case users => Json.toJson(users) }
+    usersDAO.allWithCounts(userId).map { case users =>
+      Json.toJson(JsArray(users.map { case (user, readCount, count) => JsObject(Seq("id" -> JsNumber(user.id),
+        "login" -> JsString(user.login), "name" -> JsString(user.name),
+        "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)) ++ (user.avatar match {
+        case Some(value) => Seq("avatar" -> JsString(value))
+        case None => Seq()
+      })
+      )
+      }))
+    }
   }
 
   def getGroups(userId: Long) = Action.async { implicit request =>
@@ -173,8 +186,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getGroupsJsValue(userId: Long): Future[JsValue] = {
     groupsDAO.allWithCounts(userId).map { f =>
-      Json.toJson(JsArray(f.map { case (group, unreadCount, count) => JsObject(Seq("id" -> JsNumber(group.id),
-        "name" -> JsString(group.name), "unreadCount" -> JsNumber(count - unreadCount), "count" -> JsNumber(count)))
+      Json.toJson(JsArray(f.map { case (group, readCount, count) => JsObject(Seq("id" -> JsNumber(group.id),
+        "name" -> JsString(group.name), "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)))
       }))
     }
   }
@@ -260,8 +273,9 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     val userId = (request.body \ "userId").as[Long].toLong
     val topicIds = (request.body \ "topicIds").as[Seq[Long]]
     val messageIds = (request.body \ "messageIds").as[Seq[Long]]
-    Logger.debug(s"Marking topics and messages as read: user: $userId, topics: $topicIds, messages: $messageIds")
-    topicsDAO.markAsRead(userId, topicIds).flatMap(_ => commentsDAO.markAsRead(userId, messageIds).map(_ => Ok))
+    val directMessageIds = (request.body \ "directMessageIds").as[Seq[Long]]
+    Logger.debug(s"Marking topics and messages as read: user: $userId, topics: $topicIds, messages: $messageIds, directMessageIds: $directMessageIds")
+    topicsDAO.markAsRead(userId, topicIds).flatMap(_ => commentsDAO.markAsRead(userId, messageIds).flatMap(_ => directMessagesDAO.markAsRead(directMessageIds).map(_ => Ok)))
   }
 
   def getIntegrationMessages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String) = Action.async { implicit request =>
@@ -354,8 +368,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             "toUser" -> JsObject(toUserJson),
             "date" -> JsNumber(date.getTime),
             "text" -> JsString(text)))
-          mediator ! Publish("cluster-events", ClusterEvent(user.login, message))
-          mediator ! Publish("cluster-events", ClusterEvent(toUser.login, message))
+          mediator ! Publish("cluster-events", ClusterEvent(ActorUtils.encodePath(user.login), message))
+          mediator ! Publish("cluster-events", ClusterEvent(ActorUtils.encodePath(toUser.login), message))
           Ok(Json.toJson(JsNumber(id)))
         }
     }
@@ -363,7 +377,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def getDirectMessages(fromUserId: Long, toUserId: Long) = Action.async { implicit request =>
     directMessagesDAO.messages(fromUserId, toUserId).map { case seq =>
-      Ok(Json.toJson(JsArray(seq.map { case (message, fromUser, toUser) =>
+      Ok(Json.toJson(JsArray(seq.map { case (message, readStatus, fromUser, toUser) =>
         val fromUserJson = Seq("id" -> JsNumber(fromUser.id), "name" -> JsString(fromUser.name), "login" -> JsString(fromUser.login)) ++
           (fromUser.avatar match {
             case Some(value) => Seq("avatar" -> JsString(value))
@@ -378,7 +392,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
           "user" -> JsObject(fromUserJson),
           "toUser" -> JsObject(toUserJson),
           "date" -> JsNumber(message.date.getTime),
-          "text" -> JsString(message.text))
+          "text" -> JsString(message.text),
+          "unread" -> JsBoolean(!readStatus))
         JsObject(fields)
       })))
     }

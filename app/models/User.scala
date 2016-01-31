@@ -5,6 +5,7 @@ import javax.inject.{Inject, Singleton}
 import play.api.db.slick.{HasDatabaseConfigProvider, DatabaseConfigProvider}
 import slick.driver.JdbcProfile
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 // TODO: Make User.name Option[String]
@@ -30,7 +31,7 @@ trait UsersComponent extends HasDatabaseConfigProvider[JdbcProfile] {
 
 @Singleton()
 class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
-  extends HasDatabaseConfigProvider[JdbcProfile] with UsersComponent {
+  extends HasDatabaseConfigProvider[JdbcProfile] with UsersComponent with DirectMessagesComonent {
   import driver.api._
 
   def findById(id: Long): Future[Option[User]] = {
@@ -47,5 +48,24 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   def all: Future[Seq[User]] = {
     db.run(users.result)
+  }
+
+  def allWithCounts(userId: Long): Future[Seq[(User, Int, Int)]] = {
+    db.run(users.result).flatMap { case u =>
+      val userCounts = u.map(_ ->(0, 0)).toMap
+      db.run((directMessages.filter(_.toUserId === userId)
+        join users on { case (directMessage, user) => directMessage.fromUserId === user.id }
+        joinLeft directMessageReadStatuses on { case ((directMessage, user), status) => directMessage.id === status.directMessageId })
+        .groupBy { case ((directMessage, user), status) => (user.id, user.login, user.name, user.avatar) }
+        .map { case ((uId, userLogin, userName, userAvatar), g) =>
+          (uId, userLogin, userName, userAvatar, g.map(gg => gg._2.map(_.directMessageId)).length, g.length)
+        }.result
+      ).map { d =>
+        val directMessagesCounts = d.map { case (uId, userLogin, userName, userAvatar, readCount, count) =>
+         User(uId, userLogin, userName, userAvatar) -> (readCount, count)
+        }.toMap
+        (userCounts ++ directMessagesCounts).toSeq.map { case (user, (readCount, count)) => (user, readCount, count) }
+      }
+    }
   }
 }

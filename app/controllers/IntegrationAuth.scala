@@ -3,7 +3,7 @@ package controllers
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
-import actors.{ClusterEvent, IntegrationEnabled}
+import actors.{ActorUtils, ClusterEvent, IntegrationEnabled}
 import akka.actor.ActorSystem
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
@@ -96,7 +96,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                       result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken))
                     } yield {
                       system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)
-                      mediator ! Publish("cluster-events", ClusterEvent(user.login, JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
+                      mediator ! Publish("cluster-events", ClusterEvent(ActorUtils.encodePath(user.login), JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
                       result
                     }).map { _ =>
                       Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)))
@@ -110,7 +110,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                           result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken))
                         } yield {
                           system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)
-                          mediator ! Publish("cluster-events", ClusterEvent(user.get.login, JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
+                          mediator ! Publish("cluster-events", ClusterEvent(ActorUtils.encodePath(user.get.login), JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
                           user.get.login
                         }).map { login =>
                           Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure))).withCookies(
@@ -132,7 +132,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                               result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken))
                             } yield {
                               system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)
-                              mediator ! Publish("cluster-events", ClusterEvent(user.login, JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
+                              mediator ! Publish("cluster-events", ClusterEvent(ActorUtils.encodePath(user.login), JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
                               result
                             }).map { _ =>
                               Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure))).withCookies(

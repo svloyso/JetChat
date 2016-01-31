@@ -82,26 +82,31 @@ Object.defineProperty(Array.prototype, 'group', {
 
 export var _topicsToMarkAsRead = [];
 export var _messagesToMarkAsRead = [];
+export var _directMessagesToMarkAsRead = [];
 
 window.setInterval(function () {
-    var topics = [], messages = [];
+    var topics = [], messages = [], directMessages = [];
     if (_topicsToMarkAsRead.length > 0) {
         topics = _topicsToMarkAsRead.splice(0, _topicsToMarkAsRead.length);
         topics.map(id => console.log("Marking topic as read: " + id));
     }
-
     if (_messagesToMarkAsRead.length > 0) {
         messages = _messagesToMarkAsRead.splice(0, _messagesToMarkAsRead.length);
         messages.map(id => console.log("Marking message as read: " + id));
     }
-    if (topics.length > 0 || messages.length > 0) {
+    if (_directMessagesToMarkAsRead.length > 0) {
+        directMessages = _directMessagesToMarkAsRead.splice(0, _directMessagesToMarkAsRead.length);
+        directMessages.map(id => console.log("Marking direct message as read: " + id));
+    }
+    if (topics.length > 0 || messages.length > 0 || directMessages.length > 0) {
         $.ajax({
             type: "POST",
             url: "/json/markAsRead",
             data: JSON.stringify({
                 "userId": _global.user.id,
                 "topicIds": topics,
-                "messageIds": messages
+                "messageIds": messages,
+                "directMessageIds": directMessages
             }),
             contentType: "application/json",
             fail: function (e) {
