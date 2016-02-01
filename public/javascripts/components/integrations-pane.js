@@ -33,7 +33,7 @@ window.setInterval(function () {
         .on('switchChange.bootstrapSwitch', function (event, state) {
             var integrationId = $(this).attr("data-integration-id");
             if (state) {
-                window.location.replace("/integration/" + integrationId + "/auth?id=" +
+                window.location.replace("/integration/" + integrationId + "/enable?id=" +
                     integrationId + "&redirectUrl=" + encodeURIComponent(document.location.href));
             } else {
                 $.ajax({

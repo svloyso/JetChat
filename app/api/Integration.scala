@@ -25,8 +25,8 @@ trait OAuthAuthentificator {
   def integrationId: String
   final def clientId: String = Play.current.configuration.getString(s"api.$integrationId.clientId").get
   final def clientSecret: String = Play.current.configuration.getString(s"api.$integrationId.clientSecret").get
-  def enable(redirectUrl: Option[String], state: String)(implicit request: Request[AnyContent]): Future[Result]
-  def disable(token: String): Future[Boolean]
+  def auth(redirectUrl: Option[String], state: String)(implicit request: Request[AnyContent]): Future[Result]
+  def logout(token: String): Future[Boolean]
   def token(redirectUri: String, code: String): Future[String]
 }
 

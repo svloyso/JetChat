@@ -40,7 +40,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                 integrationTokensDAO.find(user.id, integration.id).flatMap {
                   case Some(token) =>
                     integrationTokensDAO.delete(token).flatMap { _ =>
-                      integration.authentificator.disable(token.token).flatMap { _ =>
+                      integration.authentificator.logout(token.token).flatMap { _ =>
                         Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)))
                       }
                     }
@@ -64,13 +64,23 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
     integrations.toSeq.find(_.id == id) match {
       case Some(integration) =>
         val state = UUID.randomUUID().toString
-        integration.authentificator.enable(redirectUrl, state).map(_.withSession(s"${integration.id}-oauth-state" -> state))
+        integration.authentificator.auth(redirectUrl, state).map(_.withSession(s"${integration.id}-oauth-state" -> state))
+      case None => Future.successful(BadRequest("Wrong service"))
+    }
+  }
+
+  def enable(id: String, redirectUrl: Option[String]) = Action.async { implicit request =>
+    integrations.toSeq.find(_.id == id) match {
+      case Some(integration) =>
+        val state = UUID.randomUUID().toString + ":enable"
+        integration.authentificator.auth(redirectUrl, state).map(_.withSession(s"${integration.id}-oauth-state" -> state))
       case None => Future.successful(BadRequest("Wrong service"))
     }
   }
 
   def callback(integrationId: String, codeOpt: Option[String] = None, stateOpt: Option[String] = None,
                redirectUrl: Option[String] = None) = Action.async { implicit request =>
+    val enable = stateOpt.isDefined && stateOpt.get.endsWith(":enable")
     integrations.find(_.id == integrationId) match {
       case Some(integration) =>
         (for {
@@ -93,7 +103,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                       user <- usersDAO.findByLogin(login).map(_.get)
                       userId = user.id
                       _ <- integrationUsersDAO.merge(IntegrationUser(integrationId, Some(userId), integrationUserId, integrationName.getOrElse(integrationUserId), integrationAvatarUrl))
-                      result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken))
+                      result <- if (enable) integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken)) else Future { false }
                     } yield {
                       system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)
                       mediator ! Publish("cluster-events", ClusterEvent(ActorUtils.encodePath(user.login), JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
@@ -107,7 +117,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                         val userId = integrationUser.userId.get
                         (for {
                           user <- usersDAO.findById(userId)
-                          result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken))
+                          result <- if (enable) integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken)) else Future { false }
                         } yield {
                           system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)
                           mediator ! Publish("cluster-events", ClusterEvent(ActorUtils.encodePath(user.get.login), JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
@@ -129,10 +139,12 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                             val userId = user.id
                             (for {
                               _ <- integrationUsersDAO.merge(IntegrationUser(integrationId, Some(id), integrationUserId, integrationName.getOrElse(integrationUserId), integrationAvatarUrl))
-                              result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken))
+                              result <- if (enable) integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken)) else Future { false }
                             } yield {
-                              system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)
-                              mediator ! Publish("cluster-events", ClusterEvent(ActorUtils.encodePath(user.login), JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
+                              if (enable) {
+                                system.actorSelection("/user/integration-actor") ! IntegrationEnabled(userId, integrationId)
+                                mediator ! Publish("cluster-events", ClusterEvent(ActorUtils.encodePath(user.login), JsObject(Seq("enableIntegration" -> JsString(integrationId)))))
+                              }
                               result
                             }).map { _ =>
                               Redirect(redirectUrl.getOrElse(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure))).withCookies(

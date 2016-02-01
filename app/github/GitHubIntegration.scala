@@ -37,7 +37,7 @@ class GitHubIntegration extends Integration {
   override def authentificator: OAuthAuthentificator = new OAuthAuthentificator {
     override def integrationId: String = id
 
-    override def disable(token: String): Future[Boolean] = {
+    override def logout(token: String): Future[Boolean] = {
       WS.url(s"https://api.github.com/applications/$clientId/tokens/$token")(Play.current).
         withAuth(clientId, clientSecret, BASIC).delete().map { _ => true}
     }
@@ -57,7 +57,7 @@ class GitHubIntegration extends Integration {
       }
     }
 
-    override def enable(redirectUrl: Option[String], state: String)(implicit request: Request[AnyContent]): Future[Result] = {
+    override def auth(redirectUrl: Option[String], state: String)(implicit request: Request[AnyContent]): Future[Result] = {
       val callbackUrl = Utils.callbackUrl(id, redirectUrl)
       val scope = "user, repo, gist, read:org"
       Future.successful(Redirect(GitHubIntegration.getAuthorizationUrl(callbackUrl, scope, state, clientId)))
