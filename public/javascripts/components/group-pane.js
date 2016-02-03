@@ -59,7 +59,7 @@ var GroupPane = React.createClass({
         var groupsByIntegrationId = self.state.store.integrationGroups.group(g => g.integrationId);
         var integrationItems = groupsByIntegrationId.map((group) => {
             var integration = self.state.store.integrations.find(i => i.id == group.key);
-            var integrationGroupItems = group.data.map(group => {
+            var integrationGroupItems = integration.enabled ? group.data.map(group => {
                 var groupClass = classNames({
                         ['selected']: self.state.store.selectedIntegrationGroup &&
                         self.state.store.selectedIntegrationGroup.integrationGroupId == group.integrationGroupId
@@ -73,17 +73,17 @@ var GroupPane = React.createClass({
                         <span>{group.name}</span>
                     </li>
                 )
-            });
+            }) : [];
             var integrationClass = (self.state.store.selectedIntegration &&
                 !self.state.store.selectedIntegrationGroup &&
                 self.state.store.selectedIntegration.id == group.key) ? "selected" : "";
-            return (
+            return integration.enabled ? (
                 <ul className="integration-groups" key={integration.id}>
                     <li data-integration={integration.id} onClick={self.onIntegrationClick.bind(self, integration)} className={integrationClass}>
                         <span className="integration-name">{integration.name}</span></li>
                     {integrationGroupItems}
                 </ul>
-            );
+            ) : null;
         });
         var allGroupsClass = classNames({ ['selected']: !self.state.store.selectedGroup &&
         !self.state.store.selectedUser &&

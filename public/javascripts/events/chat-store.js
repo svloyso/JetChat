@@ -254,14 +254,24 @@ var ChatStore = Reflux.createStore({
         this.trigger(this.state);
     },
 
-    onEnableIntegration: function (integration) {
-        this.state.integrations[integration] = true;
-        this.trigger(this.state);
+    onEnableIntegration: function (integrationId, integration) {
+        var i = this.state.integrations.findIndex(ii => ii.id == integrationId);
+        if (i > -1) {
+            this.state.integrations[i].enabled = true;
+            this.trigger(this.state);
+        } else if (integration) {
+            integration.enabled = true;
+            this.state.integrations.push(integration);
+            this.trigger(this.state);
+        }
     },
 
-    onDisableIntegration: function (integration) {
-        delete this.state.integrations[integration];
-        this.trigger(this.state);
+    onDisableIntegration: function (integrationId) {
+        var i = this.state.integrations.findIndex(ii => ii.id == integrationId);
+        if (i > -1) {
+            this.state.integrations[i].enabled = false;
+            this.trigger(this.state);
+        }
     },
 
     onShowIntegrations: function (initial) {

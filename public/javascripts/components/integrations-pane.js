@@ -1,6 +1,7 @@
 import React from 'react';
 import Reflux from 'reflux';
 import ChatStore from '../events/chat-store';
+import ChatActions from '../events/chat-actions';
 
 var IntegrationsPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
@@ -33,6 +34,7 @@ window.setInterval(function () {
         .on('switchChange.bootstrapSwitch', function (event, state) {
             var integrationId = $(this).attr("data-integration-id");
             if (state) {
+                ChatActions.enableIntegration(integrationId);
                 window.location.replace("/integration/" + integrationId + "/enable?id=" +
                     integrationId + "&redirectUrl=" + encodeURIComponent(document.location.href));
             } else {
@@ -41,6 +43,7 @@ window.setInterval(function () {
                     type: "GET",
                     url: "/integration/" + integrationId + "/disable",
                     success: function (message) {
+                        ChatActions.disableIntegration(integrationId);
                     },
                     fail: function (e) {
                         console.error(e);
@@ -48,6 +51,6 @@ window.setInterval(function () {
                 })
             }
         });
-});
+}, 100);
 
 export default IntegrationsPane;
