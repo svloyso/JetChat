@@ -1,24 +1,23 @@
 package actors
 
 import java.net.URI
-import java.util.Calendar
 
 import akka.actor.{AddressFromURIString, Actor, ActorLogging}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.cluster.pubsub.{DistributedPubSub, DistributedPubSubMediator}
 import mousio.etcd4j.EtcdClient
-import play.api.Logger
+import mousio.etcd4j.responses.EtcdException
 import play.api.Play.current
-import play.api.libs.concurrent.Akka
 import play.twirl.api.TemplateMagic.javaCollectionToScala
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class ClusterListener extends Actor with ActorLogging {
-  lazy val discoverInterval = current.configuration.getLong("cluster.seed-nodes.discover-interval").getOrElse(System.getProperty("cluster.seed-nodes.discover-interval", "60000").toLong)
-  lazy val disconnectTimeout = current.configuration.getLong("cluster.seed-nodes.disconnect-timeout").getOrElse(System.getProperty("cluster.seed-nodes.disconnect-timeout", "300000").toLong)
+  lazy val NODES_DISCOVER_INTERVAL = current.configuration.getLong("cluster.seed-nodes.discover-interval").getOrElse(System.getProperty("cluster.seed-nodes.discover-interval", "6000").toLong)
+  lazy val NODES_TTL = current.configuration.getLong("cluster.seed-nodes.ttl").getOrElse(System.getProperty("cluster.seed-nodes.ttl", "12000").toLong)
+  lazy val MASTER_TTL = current.configuration.getLong("cluster.seed-nodes.master-ttl").getOrElse(System.getProperty("cluster.seed-nodes.master-ttl", "24000").toLong)
 
   import DistributedPubSubMediator.Subscribe
 
@@ -30,26 +29,30 @@ class ClusterListener extends Actor with ActorLogging {
 
   val client = if (etcdPeers != null) {
     val addrs = etcdPeers.split(",").toList.map(addr => URI.create(if (addr.startsWith("http://")) addr else "http://" + addr))
-    new EtcdClient(addrs:_*)
+    new EtcdClient(addrs: _*)
   } else {
     null
   }
 
-  val seeds = new collection.mutable.HashSet[String]()
+  var seeds = new collection.mutable.HashSet[String]()
+  var isMaster = false
 
   override def preStart(): Unit = {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
     mediator ! Subscribe("cluster-events", self)
+    context.system.eventStream.subscribe(self, classOf[MasterStateInquiry])
 
     if (client != null) {
-      Akka.system.scheduler.schedule(0.seconds, discoverInterval.millisecond, self, DiscoveryEvent())
+      context.system.scheduler.schedule(0.seconds, NODES_DISCOVER_INTERVAL.millisecond, self, DiscoveryEvent())
     }
   }
 
   override def postStop(): Unit = cluster.unsubscribe(self)
 
   def receive = {
+    case inquiry: MasterStateInquiry =>
+      context.system.eventStream.publish(if (isMaster) MasterEvent() else SlaveEvent() )
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
     case UnreachableMember(member) =>
@@ -58,47 +61,48 @@ class ClusterListener extends Actor with ActorLogging {
       log.info("Member is Removed: {} after {}",
         member.address, previousStatus)
     case event: ClusterEvent =>
-      Logger.debug("Received a cluster event: " + event)
-      Akka.system.actorSelection(s"/user/${event.userMask}.*") ! event.message
-    case event:DiscoveryEvent =>
+      log.info("Received a cluster event: " + event)
+      context.system.actorSelection(s"/user/${event.userMask}.*") ! event.message
+    case event: DiscoveryEvent =>
       val selfHost = cluster.selfAddress.host.get
       val selfPort = cluster.selfAddress.port.get
-      var seedsChanged = false
 
-      Logger.debug(s"Updating cluster seed information: '$selfHost:$selfPort'")
-      client.put(s"/jetchat/$selfHost:$selfPort", Calendar.getInstance.getTime.getTime.toString).send().get()
+      log.info(s"Updating cluster seed information: '$selfHost:$selfPort'")
+      client.put(s"/jetchat/seeds/$selfHost:$selfPort", "up").ttl((NODES_TTL / 1000).toInt).send().get()
 
-      val seedInfoNodes = client.get("/jetchat").send().get.node.nodes.toList
-      seedInfoNodes.map { case seedInfo =>
-        if (seedInfo.key.contains(":")) {
-          val address = seedInfo.key.substring(9)
-          if (Calendar.getInstance().getTime.getTime - seedInfo.value.toLong < disconnectTimeout) {
-            if (!seeds.contains(address)) {
-              try {
-                Logger.debug(s"A cluster seed info discovered: '$address'")
-                seeds.add(address)
-                seedsChanged = true
-              } catch {
-                case ignore: Throwable =>
-                  Logger.debug(s"Removing unparsable cluster seed info: '${seedInfo.key}'")
-                  client.delete(seedInfo.key).recursive().send()
-              }
-            }
-          } else {
-            Logger.debug(s"Removing out-dated cluster seed: '$address'")
-            client.delete(seedInfo.key).recursive().send()
-            if (seeds.contains(address)) {
-              seeds.remove(address)
-              seedsChanged = true
-            }
+      val newSeeds = new collection.mutable.HashSet[String]()
+      val seedInfoNodes = client.get("/jetchat/seeds").send().get.node.nodes.toList
+      seedInfoNodes.foreach { case i =>
+        if (i.key.contains(":")) {
+          val address = i.key.substring(15)
+          newSeeds.add(address)
+          if (!seeds.contains(address)) {
+            log.info(s"A cluster seed found: '$address'")
           }
-        } else {
-          Logger.debug(s"Removing unparsable cluster seed info: '${seedInfo.key}'")
-          client.delete(seedInfo.key).recursive().send()
         }
       }
-      if (seedsChanged)
+      if (!seeds.equals(newSeeds)) {
+        (seeds -- newSeeds).foreach(s => log.info(s"A cluster seed lost: '$s'"))
+        seeds = newSeeds
         cluster.joinSeedNodes(seeds.map(address => AddressFromURIString(s"akka.tcp://application@$address")).toList)
-  case _: MemberEvent => // ignore
+      }
+      val master = try { Some(client.get("/jetchat/master").send().get().node.value) } catch { case e:EtcdException => None}
+      if (master.isEmpty) {
+        try {
+          client.put("/jetchat/master", s"$selfHost:$selfPort").ttl((MASTER_TTL / 1000).toInt).prevExist(false).send().get()
+          log.info(s"The cluster master is self-elected: '$selfHost:$selfPort'")
+          if (!isMaster) {
+            isMaster = true
+            context.system.eventStream.publish(MasterEvent())
+          }
+        } catch { case e:EtcdException =>
+        }
+      } else if (master.get.equals(s"$selfHost:$selfPort")) {
+        client.put("/jetchat/master", s"$selfHost:$selfPort").ttl((MASTER_TTL / 1000).toInt).prevValue(s"$selfHost:$selfPort").send().get()
+      } else {
+        isMaster = false
+        context.system.eventStream.publish(SlaveEvent)
+      }
+    case _: MemberEvent => // ignore
   }
 }
