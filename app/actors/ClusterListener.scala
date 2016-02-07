@@ -35,7 +35,7 @@ class ClusterListener extends Actor with ActorLogging {
   }
 
   var seeds = new collection.mutable.HashSet[String]()
-  var isMaster = false
+  var isMaster = client == null
 
   override def preStart(): Unit = {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
