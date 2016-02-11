@@ -101,7 +101,7 @@ object GitHubIntegration {
   case class APICallResult(successful: Boolean, response: WSResponse, pollInterval: Option[Int])
 
   def askAPI(url: String, token: String): Future[APICallResult] = {
-    LOG.trace("API request for" + token + ": " + url)
+    LOG.trace("API request for " + token + ": " + url)
     WS.url(url)(Play.current).withQueryString("access_token" -> token).
       withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON).get().map(response =>
       if (response.status == 404) {
