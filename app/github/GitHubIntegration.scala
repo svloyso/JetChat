@@ -90,6 +90,7 @@ class GitHubIntegration extends Integration {
 object GitHubIntegration {
   val ID = "GitHub"
 
+  val defaultPollInterval = 60 * 60
   val sincePeriod = 1000 * 60 * 60 * 24 * 7
 
   private val LOG = Logger.apply(this.getClass)
@@ -107,10 +108,14 @@ object GitHubIntegration {
       if (response.status == 404) {
         LOG.warn("API request returned 404: " + url)
         APICallResult(successful = false, response, None)
-      } else if (response.status == 403 && response.header("X-RateLimit-Reset").isDefined) {
+      } else if (response.status == 403) {
         LOG.warn("API request returned 403: " + url)
-        val limit = response.header("X-RateLimit-Reset").get
-        val pollInterval = ((new Date(limit.toLong * 1000L).getTime - new Date().getTime) / 1000).asInstanceOf[Int]
+        val pollInterval = if (response.header("X-RateLimit-Reset").isDefined) {
+          val limit = response.header("X-RateLimit-Reset").get
+          ((new Date(limit.toLong * 1000L).getTime - new Date().getTime) / 1000).asInstanceOf[Int]
+        } else {
+          defaultPollInterval
+        }
         APICallResult(successful = false, response, Some(pollInterval))
       } else if (response.header("X-Poll-Interval").isDefined) {
         APICallResult(successful = true, response, Some(response.header("X-Poll-Interval").get.toInt))
