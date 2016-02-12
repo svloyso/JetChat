@@ -8,6 +8,7 @@
     "react-emoji": "~0.4.1",
     "react-autolink": "~0.2.1",
     "pretty-date": "~0.2.0",
+    "react-visibility-sensor": "~3.0.0",
     "jquery": "~2.2.0",
     "react-bootstrap": "~0.28.3",
     "react-bootstrap-switch": "~3.4.2",
