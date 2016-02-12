@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import ChatActions from '../events/chat-actions';
+var $ = require('jquery');
 
 var NewGroupDialog = React.createClass({
     createGroup: function () {
@@ -18,8 +19,8 @@ var NewGroupDialog = React.createClass({
                     console.error(e);
                 }
             });
-            $('#new-group').each(function () {
-                $(this).popover('hide');
+            this.props.trigger.setState({
+                isOverlayShown: false
             });
             ReactDOM.findDOMNode(this.refs.groupName).value = "";
         }
@@ -29,6 +30,10 @@ var NewGroupDialog = React.createClass({
         if (event.which == 13) {
             this.createGroup();
         }
+    },
+
+    componentDidMount: function () {
+        $(ReactDOM.findDOMNode(this.refs.groupName)).focus();
     },
 
     render: function () {

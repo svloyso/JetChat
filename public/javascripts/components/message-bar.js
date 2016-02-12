@@ -5,6 +5,7 @@ import MessageItem from './message-item';
 import IntegrationMessageItem from './integration-message-item';
 import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
+var $ = require('jquery');
 
 var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],

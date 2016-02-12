@@ -59,6 +59,14 @@ var App = React.createClass({
     },
 
     render: function () {
+        if (window.process) {
+            var app = window.require('remote').app;
+            var unreadGroupCount = this.state.store.groups.map(g => g.unreadCount).reduce((a, b) => a + b);
+            var unreadUserCount = this.state.store.users.map(u => u.unreadCount).reduce((a, b) => a + b);
+            var unreadCount = unreadGroupCount + unreadUserCount;
+            app.dock.setBadge(unreadCount ? unreadCount.toString() : "");
+        }
+
         return (
             <div>
                 <SideBar/>

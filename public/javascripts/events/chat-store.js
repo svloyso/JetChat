@@ -1,6 +1,7 @@
 import Reflux from 'reflux';
 import ChatActions from './chat-actions';
 import { _topicsToMarkAsRead, _messagesToMarkAsRead, _directMessagesToMarkAsRead } from './../utils';
+var $ = require('jquery');
 
 /**
  * TODO: don't mutate state

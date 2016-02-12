@@ -2,6 +2,7 @@ import React from 'react';
 import PrettyDate from 'pretty-date';
 import ChatActions from '../events/chat-actions';
 import VisibilitySensor from 'react-visibility-sensor';
+var $ = require('jquery');
 
 var TopicItem = React.createClass({
     onClick: function (topic) {

@@ -1,20 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import NewGroupDialog from './new-group-dialog';
+var $ = require('jquery');
+import {Popover, OverlayTrigger} from 'react-bootstrap';
+
 
 var NewGroupButton = React.createClass({
-    componentDidMount: function () {
-        $(ReactDOM.findDOMNode(this)).popover({
-            react: true,
-            content: <NewGroupDialog/>
-        }).on("shown.bs.popover", function () {
-            $(".new-group-popover .group-name").focus();
-        });
-    },
-
     render: function () {
         return (
-            <a id="new-group">New group</a>
+            <OverlayTrigger ref="trigger" placement="right" trigger="click" overlay={<Popover id="new-group"><NewGroupDialog trigger={this.refs.trigger}/></Popover>}>
+                <a id="new-group">New group</a>
+            </OverlayTrigger>
         );
     }
 });

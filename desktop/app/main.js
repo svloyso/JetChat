@@ -12,7 +12,7 @@ let mainWindow;
 
 function createWindow () {
   // Create the browser window.
-  mainWindow = new BrowserWindow({width: 1000, height: 600, "node-integration": false});
+  mainWindow = new BrowserWindow({width: 1000, height: 600});
 
   // and load the index.html of the app.
   mainWindow.loadURL('https://chat.services.jetbrains.com/');

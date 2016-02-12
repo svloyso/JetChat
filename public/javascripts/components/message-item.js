@@ -4,6 +4,7 @@ import ReactAutolink from 'react-autolink';
 import PrettyDate from 'pretty-date';
 import ChatActions from '../events/chat-actions';
 import VisibilitySensor from 'react-visibility-sensor';
+var $ = require('jquery');
 
 var MessageItem = React.createClass({
     mixins: [
