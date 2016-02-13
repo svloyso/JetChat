@@ -16,6 +16,7 @@ before_install:
   - source ~/.nvm/nvm.sh
   - nvm install $NODE_VERSION
   - nvm use --delete-prefix $NODE_VERSION
+  - brew install wine makensis
 install:
 - cd desktop
 - npm prune
