@@ -168,7 +168,8 @@ a:hover {
 }
 
 #new-topic #plus {
-    background-image: url('/assets/images/plus-gray.png');
+    background-image: url('/assets/images/plus-gray@2x.png');
+    background-size: 100% 100%;
     width: 13px;
     height: 13px;
     display: inline-block;
@@ -178,11 +179,11 @@ a:hover {
 }
 
 #new-topic.enabled #plus {
-    background-image: url('/assets/images/plus-blue.png');
+    background-image: url('/assets/images/plus-blue@2x.png');
 }
 
 #new-topic.selected #plus {
-    background-image: url('/assets/images/plus-gray.png');
+    background-image: url('/assets/images/plus-gray@2x.png');
 }
 
 #new-topic.enabled.selected {
@@ -353,4 +354,19 @@ input.search-query {
     color: #0077cc;
     font-weight: 500;
     padding-left: 6px;
+}
+
+#header #settings-dropdown {
+    margin-left: 20px;
+    margin-top: -3px;
+    float: right;
+    display: inline-block;
+}
+
+#header #settings-dropdown #gear {
+    background-image: url('/assets/images/settings@2x.png');
+    background-size: 100% 100%;
+    width: 16px;
+    height: 16px;
+    display: inline-block;
 }

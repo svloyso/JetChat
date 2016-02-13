@@ -18,6 +18,7 @@ before_install:
   - nvm use --delete-prefix $NODE_VERSION
   - brew update
   - brew install wine makensis
+  - sudo gem install fpm
 install:
 - cd desktop
 - npm prune
