@@ -24,3 +24,12 @@ install:
 - npm install
 script:
 - npm run build
+deploy:
+  provider: releases
+  api_key: $GITHUB_TOKEN
+  file:
+    - "dist/osx/JetChat.dmg"
+    - "dist/win/JetChat Setup.exe"
+  skip_cleanup: true
+  on:
+    tags: true
