@@ -16,8 +16,8 @@ before_install:
   - source ~/.nvm/nvm.sh
   - nvm install $NODE_VERSION
   - nvm use --delete-prefix $NODE_VERSION
-before_script: cd desktop
 install:
+- cd desktop
 - npm prune
 - npm install
 script:
