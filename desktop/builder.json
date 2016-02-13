@@ -12,5 +12,13 @@
   "win" : {
     "title" : "JetChat",
     "icon" : "assets/win/jetchat.ico"
+  },
+  "linux" : {
+    "arch" : 64,
+    "target" : "deb",
+    "version" : "1.0.0",
+    "comment" : "",
+    "title" : "JetChat",
+    "executable" : "JetChat"
   }
 }
