@@ -21,6 +21,7 @@ before_install:
   - brew update
   - brew install wine makensis
   - gem install fpm
+  - fpm --help
 install:
 - cd desktop
 - npm prune
