@@ -1,7 +1,9 @@
 os:
 - osx
 language:
-- c
+  - ruby
+rvm:
+  - 2.2.0
 env:
   global:
   - NODE_VERSION=5
@@ -18,7 +20,7 @@ before_install:
   - nvm use --delete-prefix $NODE_VERSION
   - brew update
   - brew install wine makensis
-  - sudo gem install fpm
+  - gem install fpm
 install:
 - cd desktop
 - npm prune
