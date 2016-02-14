@@ -35,7 +35,7 @@ deploy:
   file:
     - "dist/osx/JetChat.dmg"
     - "dist/win/JetChat Setup.exe"
-    - "dist/win/JetChat-1.0.0-amd64.deb"
+    - "dist/linux/JetChat-1.0.0-amd64.deb"
   skip_cleanup: true
   on:
     tags: true
