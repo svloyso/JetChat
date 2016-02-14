@@ -55,6 +55,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
             tokenOption <- integrationTokensDAO.find(userId, integrationId)
             if tokenOption.isDefined
             token = tokenOption.get
+            if token.enabled
             realUpdate <- integration.messageHandler.sendMessage(token, integrationGroupId, integrationTopicId, TopicComment(text), messageId)
             if realUpdate.isDefined
             result <- integrationUpdatesDAO.merge(realUpdate.get)
@@ -76,7 +77,7 @@ class MessagesActor(integration: Integration, system: ActorSystem,
         }
         try {
           Await.result(integrationTokensDAO.allTokens(integration.id).flatMap { tokens =>
-            Future.sequence(tokens.map { integrationToken =>
+            Future.sequence(tokens.filter(_.enabled).map { integrationToken =>
               val token = integrationToken.token
               integration.messageHandler.collectMessages(integrationToken).map {
                 case CollectedMessages(messages, nextCheck) =>

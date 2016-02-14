@@ -34,9 +34,10 @@ GET         /httpHeaders                                                 control
 GET         /config                                                      controllers.Application.config
 
 # Integration Auth
-GET         /integration/:id/disable                                     controllers.IntegrationAuth.disable(id: String)
+GET         /integration/:id/logout                                      controllers.IntegrationAuth.logout(id: String, discardUserCookie: Boolean ?= false)
 GET         /integration/:id/auth                                        controllers.IntegrationAuth.auth(id: String, redirectUrl: Option[String])
 GET         /integration/:id/enable                                      controllers.IntegrationAuth.enable(id: String, redirectUrl: Option[String])
+GET         /integration/:id/disable                                     controllers.IntegrationAuth.disable(id: String)
 GET         /integration/:id/callback                                    controllers.IntegrationAuth.callback(id: String, code: Option[String], state: Option[String], redirectUrl: Option[String])
 POST        /integration/:id/comment                                     controllers.Application.addIntegrationComment(id: String)
 

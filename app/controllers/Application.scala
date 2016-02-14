@@ -149,7 +149,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def logout() = Action.async { implicit request =>
     val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
-    Future.successful(Redirect(controllers.routes.IntegrationAuth.disable(integration.id).absoluteURL(RequestUtils.secure)).discardingCookies(DiscardingCookie("user")))
+    Future.successful(Redirect(controllers.routes.IntegrationAuth.logout(integration.id, true).absoluteURL(RequestUtils.secure)))
   }
 
   def getUser(login: String) = Action.async { implicit request =>
@@ -427,11 +427,11 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     Json.toJson(JsArray(integrations.map { case (i, t) => JsObject(Seq(
       "id" -> JsString(i.id),
       "name" -> JsString(i.name),
-      "enabled" -> JsBoolean(t.isDefined))) }.toSeq))
+      "enabled" -> JsBoolean(t.isDefined && t.get.enabled))) }.toSeq))
   }
 
   def getUserIntegrations(userId: Long): Future[Map[Integration, Boolean]] = {
-    integrationTokensDAO.find(userId).map { _.map { case (i, t) => i -> t.isDefined } }
+    integrationTokensDAO.find(userId).map { _.map { case (i, t) => i -> (t.isDefined && t.get.enabled) } }
   }
 
   def addIntegrationComment(integrationId: String) = Action.async(parse.json) { implicit request =>
@@ -450,6 +450,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
           tokenOption <- integrationTokensDAO.find(userId, integrationId)
           if tokenOption.isDefined
           token = tokenOption.get
+          if (token.enabled)
           integrationUserIdOption <- integrationUsersDAO.findByUserId(userId, integrationId)
           if integrationUserIdOption.isDefined
           integrationUserId = integrationUserIdOption.get

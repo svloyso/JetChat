@@ -11,7 +11,7 @@ import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class IntegrationToken(userId: Long, integrationId: String, token: String)
+case class IntegrationToken(userId: Long, integrationId: String, token: String, enabled: Boolean)
 
 trait IntegrationTokensComponent extends HasDatabaseConfigProvider[JdbcProfile] with UsersComponent {
   protected val driver: JdbcProfile
@@ -24,13 +24,15 @@ trait IntegrationTokensComponent extends HasDatabaseConfigProvider[JdbcProfile] 
     def integrationId = column[String]("integration_id")
     def token = column[String]("token")
 
+    def enabled = column[Boolean]("enabled")
+
     def user = foreignKey("integration_token_user_fk", userId, users)(_.id)
 
     def tokenIndex = index("integration_token_index", (userId, integrationId), unique = true)
 
     def tokenUserIndex = index("integration_token_user_index", userId, unique = false)
 
-    def * = (userId, integrationId, token) <>(IntegrationToken.tupled, IntegrationToken.unapply)
+    def * = (userId, integrationId, token, enabled) <>(IntegrationToken.tupled, IntegrationToken.unapply)
   }
 
   val tokens = TableQuery[IntegrationTokensTable]
@@ -70,7 +72,7 @@ class IntegrationTokensDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
       case None =>
         db.run(tokens += token).map(_ => true)
       case Some(existingToken) =>
-        db.run(tokens.filter(t => t.userId === existingToken.userId && t.integrationId === existingToken.integrationId).map(_.token).update(token.token)).map(_ => false)
+        db.run(tokens.filter(t => t.userId === existingToken.userId && t.integrationId === existingToken.integrationId).map(t => (t.token, t.enabled)).update(token.token, token.enabled)).map(_ => false)
     }
   }
 }

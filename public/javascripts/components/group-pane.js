@@ -4,7 +4,6 @@ import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
 import classNames from 'classnames';
 import NewGroupButton from './new-group-button';
-import SettingsButton from './settings-button'
 
 var GroupPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
@@ -99,7 +98,6 @@ var GroupPane = React.createClass({
                 {groupItems}
                 <NewGroupButton/>
                 {integrationItems}
-                <SettingsButton selected={self.state.store.displaySettings}/>
                 {userItems}
             </ul>
         );
