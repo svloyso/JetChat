@@ -1,5 +1,6 @@
 package models
 
+import java.sql.Timestamp
 import javax.inject.{Inject, Singleton}
 
 import play.api.db.slick.{HasDatabaseConfigProvider, DatabaseConfigProvider}
@@ -52,19 +53,19 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   def allWithCounts(userId: Long): Future[Seq[(User, Int, Int)]] = {
     db.run(users.result).flatMap { case u =>
-      val userCounts = u.map(_ ->(0, 0)).toMap
+      val userCounts = u.map(_ ->(new Timestamp(0), 0, 0)).toMap
       db.run((directMessages.filter(_.toUserId === userId)
         join users on { case (directMessage, user) => directMessage.fromUserId === user.id }
         joinLeft directMessageReadStatuses on { case ((directMessage, user), status) => directMessage.id === status.directMessageId })
         .groupBy { case ((directMessage, user), status) => (user.id, user.login, user.name, user.avatar) }
         .map { case ((uId, userLogin, userName, userAvatar), g) =>
-          (uId, userLogin, userName, userAvatar, g.map(gg => gg._2.map(_.directMessageId)).length, g.length)
+          (uId, userLogin, userName, userAvatar, g.map(gg => gg._2.map(_.directMessageId)).length, g.length, g.map(_._1._1.date).max)
         }.result
       ).map { d =>
-        val directMessagesCounts = d.map { case (uId, userLogin, userName, userAvatar, readCount, count) =>
-         User(uId, userLogin, userName, userAvatar) -> (readCount, count)
+        val directMessagesCounts = d.map { case (uId, userLogin, userName, userAvatar, readCount, count, date) =>
+         User(uId, userLogin, userName, userAvatar) -> (date.get, readCount, count)
         }.toMap
-        (userCounts ++ directMessagesCounts).toSeq.map { case (user, (readCount, count)) => (user, readCount, count) }
+        (userCounts ++ directMessagesCounts).toSeq.sortBy(-_._2._1.getTime).map { case (user, (date, readCount, count)) => (user, readCount, count) }
       }
     }
   }
