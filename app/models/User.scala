@@ -53,7 +53,7 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   def allWithCounts(userId: Long): Future[Seq[(User, Int, Int)]] = {
     db.run(users.result).flatMap { case u =>
-      val userCounts = u.map(_ ->(new Timestamp(0), 0, 0)).toMap
+      val allUsers = u.map(_ ->(new Timestamp(0), 0, 0)).toMap
       db.run((directMessages.filter(_.toUserId === userId)
         join users on { case (directMessage, user) => directMessage.fromUserId === user.id }
         joinLeft directMessageReadStatuses on { case ((directMessage, user), status) => directMessage.id === status.directMessageId })
@@ -61,11 +61,22 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         .map { case ((uId, userLogin, userName, userAvatar), g) =>
           (uId, userLogin, userName, userAvatar, g.map(gg => gg._2.map(_.directMessageId)).length, g.length, g.map(_._1._1.date).max)
         }.result
-      ).map { d =>
-        val directMessagesCounts = d.map { case (uId, userLogin, userName, userAvatar, readCount, count, date) =>
+      ).flatMap { d =>
+        val messagesSentToUser = d.map { case (uId, userLogin, userName, userAvatar, readCount, count, date) =>
          User(uId, userLogin, userName, userAvatar) -> (date.get, readCount, count)
         }.toMap
-        (userCounts ++ directMessagesCounts).toSeq.sortBy(-_._2._1.getTime).map { case (user, (date, readCount, count)) => (user, readCount, count) }
+        db.run((directMessages.filter(_.fromUserId === userId)
+          join users on { case (directMessage, user) => directMessage.toUserId === user.id })
+          .groupBy { case (directMessage, user) => (user.id, user.login, user.name, user.avatar) }
+          .map { case ((uId, userLogin, userName, userAvatar), g) =>
+            (uId, userLogin, userName, userAvatar, 0, 0, g.map(_._1.date).max)
+          }.result
+        ).map { d =>
+          val messagesSentByUser = d.map { case (uId, userLogin, userName, userAvatar, readCount, count, date) =>
+            User(uId, userLogin, userName, userAvatar) -> (date.get, readCount, count)
+          }.toMap
+          (allUsers ++ messagesSentByUser ++ messagesSentToUser).toSeq.sortBy(-_._2._1.getTime).map { case (user, (date, readCount, count)) => (user, readCount, count) }
+        }
       }
     }
   }
