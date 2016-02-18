@@ -1,5 +1,6 @@
 package models
 
+import java.sql.Timestamp
 import javax.inject.{Inject, Singleton}
 import play.api.db.slick.{HasDatabaseConfigProvider, DatabaseConfigProvider}
 import slick.driver.JdbcProfile
@@ -38,44 +39,46 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   def allWithCounts(userId: Long): Future[Seq[(Group, Int, Int)]] = {
     db.run(groups.result).flatMap { f =>
-      val groupMap = f.map { g => g.id ->(g.name, 0, 0) }.toMap
+      val groupMap = f.map { g => g.id ->(g.name, new Timestamp(0), 0, 0) }.toMap
 
-      db.run((topics
-        joinLeft topicReadStatuses on { case (topic, topicReadStatus) => topic.id === topicReadStatus.topicId && topicReadStatus.userId === userId }
-        join groups on { case ((topic, topicReadStatus), group) => topic.groupId === group.id })
-        .groupBy { case ((topic, topicReadStatus), group) => (group.id, group.name) }
-        .map { case ((groupId, groupName), g) => (groupId, groupName,
-          g.map(gg => gg._1._2.map(_.topicId)).length,
-          g.length) }.result)
-        .flatMap { f =>
-          val topicMap = f.map { case (groupId, groupName, unreadCount, count) =>
-            groupId ->(groupName, unreadCount, count)
-          }.toMap
+      db.run(
+        (topics
+          joinLeft topicReadStatuses on { case (topic, topicReadStatus) => topic.id === topicReadStatus.topicId && topicReadStatus.userId === userId }
+          join groups on { case ((topic, topicReadStatus), group) => topic.groupId === group.id }
+        ).groupBy { case ((topic, topicReadStatus), group) =>
+          (group.id, group.name)
+        }.map { case ((groupId, groupName), g) =>
+          (groupId, groupName, g.map(_._1._1.date).max, g.map(gg => gg._1._2.map(_.topicId)).length, g.length)
+        }.result
+      ).flatMap { f =>
+        val topicMap = f.map { case (groupId, groupName, date, unreadCount, count) =>
+          groupId ->(groupName, date.get, unreadCount, count)
+        }.toMap
 
-          db.run((comments
+        db.run(
+          (comments
             joinLeft commentReadStatuses on { case (comment, commentReadStatus) => comment.id === commentReadStatus.commentId && commentReadStatus.userId === userId }
-            join groups on { case ((comment, commentReadStatus), group) => comment.groupId === group.id })
-            .groupBy { case (comment, group) =>
-              (group.id, group.name)
-            }
-            .map { case ((groupId, groupName), g) => (groupId, groupName,
-              g.map(gg => gg._1._2.map(_.commentId)).length,
-              g.length) }.result)
-            .map { f =>
-              val commentMap = f.map { case (groupId, groupName, unreadCount, count) =>
-                groupId ->(groupName, unreadCount, count)
-              }.toMap
+            join groups on { case ((comment, commentReadStatus), group) => comment.groupId === group.id }
+          ).groupBy { case (comment, group) => (group.id, group.name) }
+          .map { case ((groupId, groupName), g) =>
+            (groupId, groupName, g.map(_._1._1.date).max, g.map(gg => gg._1._2.map(_.commentId)).length, g.length)
+          }.result
+        ).map { f =>
+          val commentMap = f.map { case (groupId, groupName, date, unreadCount, count) => groupId ->(groupName, date.get, unreadCount, count) }.toMap
 
-              val groupTotal = groupMap ++ topicMap.map { case (groupId, (groupName, topicReadCount, topicCount)) =>
-                val (_, commentReadCount, commentCount) = commentMap.getOrElse(groupId, (groupName, 0, 0))
-                groupId -> (groupName, topicReadCount + commentReadCount, topicCount + commentCount)
-              }
+          val groupTotal = groupMap ++ topicMap.map { case (groupId, (groupName, topicDate, topicReadCount, topicCount)) =>
+            val (_, commentDate, commentReadCount, commentCount) = commentMap.getOrElse(groupId, (groupName, new Timestamp(0), 0, 0))
+            groupId -> (groupName,
+              new Timestamp(Math.max(topicDate.getTime(), commentDate.getTime)),
+              topicReadCount + commentReadCount,
+              topicCount + commentCount)
+          }
 
-              groupTotal.toSeq.sortBy(g => g._2._3).map { case (groupId, (groupName, readCount, count)) =>
-                (Group(groupId, groupName), readCount, count)
-              }
-            }
+          groupTotal.toSeq.sortBy(g => - g._2._2.getTime).map { case (groupId, (groupName, date, readCount, count)) =>
+            (Group(groupId, groupName), readCount, count)
+          }
         }
+      }
     }
   }
 }
