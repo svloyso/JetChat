@@ -43,28 +43,30 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
       db.run(
         (topics
-          joinLeft topicReadStatuses on { case (topic, topicReadStatus) => topic.id === topicReadStatus.topicId && topicReadStatus.userId === userId }
-          join groups on { case ((topic, topicReadStatus), group) => topic.groupId === group.id }
-        ).groupBy { case ((topic, topicReadStatus), group) =>
+          joinLeft topics on { case (topic, myTopic) => topic.id === myTopic.id && myTopic.userId === userId }
+          joinLeft topicReadStatuses on { case ((topic, myTopic), topicReadStatus) => topic.id === topicReadStatus.topicId && topicReadStatus.userId === userId }
+          join groups on { case (((topic, myTopic), topicReadStatus), group) => topic.groupId === group.id }
+        ).groupBy { case (((topic, myTopic), topicReadStatus), group) =>
           (group.id, group.name)
         }.map { case ((groupId, groupName), g) =>
-          (groupId, groupName, g.map(_._1._1.date).max, g.map(gg => gg._1._2.map(_.topicId)).length, g.length)
+          (groupId, groupName, g.map(_._1._1._2.map(_.date)).max, g.map(gg => gg._1._2.map(_.topicId)).length, g.length)
         }.result
       ).flatMap { f =>
-        val topicMap = f.map { case (groupId, groupName, date, unreadCount, count) =>
-          groupId ->(groupName, date.get, unreadCount, count)
+        val topicMap = f.map { case (groupId, groupName, myDate, unreadCount, count) =>
+          groupId ->(groupName, myDate.getOrElse(new Timestamp(0)), unreadCount, count)
         }.toMap
 
         db.run(
           (comments
-            joinLeft commentReadStatuses on { case (comment, commentReadStatus) => comment.id === commentReadStatus.commentId && commentReadStatus.userId === userId }
-            join groups on { case ((comment, commentReadStatus), group) => comment.groupId === group.id }
-          ).groupBy { case (comment, group) => (group.id, group.name) }
+            joinLeft comments on { case (comment, myComment) => comment.id === myComment.id && myComment.userId === userId }
+            joinLeft commentReadStatuses on { case ((comment, myComment), commentReadStatus) => comment.id === commentReadStatus.commentId && commentReadStatus.userId === userId }
+            join groups on { case (((comment, myComment), commentReadStatus), group) => comment.groupId === group.id }
+          ).groupBy { case (((comment, myComment), commentReadStatus), group) => (group.id, group.name) }
           .map { case ((groupId, groupName), g) =>
-            (groupId, groupName, g.map(_._1._1.date).max, g.map(gg => gg._1._2.map(_.commentId)).length, g.length)
+            (groupId, groupName, g.map(_._1._1._2.map(_.date)).max, g.map(gg => gg._1._2.map(_.commentId)).length, g.length)
           }.result
         ).map { f =>
-          val commentMap = f.map { case (groupId, groupName, date, unreadCount, count) => groupId ->(groupName, date.get, unreadCount, count) }.toMap
+          val commentMap = f.map { case (groupId, groupName, myDate, unreadCount, count) => groupId ->(groupName, myDate.getOrElse(new Timestamp(0)), unreadCount, count) }.toMap
 
           val groupTotal = groupMap ++ topicMap.map { case (groupId, (groupName, topicDate, topicReadCount, topicCount)) =>
             val (_, commentDate, commentReadCount, commentCount) = commentMap.getOrElse(groupId, (groupName, new Timestamp(0), 0, 0))
@@ -74,7 +76,7 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
               topicCount + commentCount)
           }
 
-          groupTotal.toSeq.sortBy(g => - g._2._2.getTime).map { case (groupId, (groupName, date, readCount, count)) =>
+          groupTotal.toSeq.sortBy(g => - g._2._2.getTime).map { case (groupId, (groupName, myDate, readCount, count)) =>
             (Group(groupId, groupName), readCount, count)
           }
         }
