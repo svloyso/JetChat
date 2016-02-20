@@ -93,7 +93,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   var actorCounter = 0
 
   // TODO: Get rid out of "integrationGroupId" and "integrationTopicId"
-  def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userId: Option[Long] = None,
+  def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userTopicId: Option[Long] = None, userId: Option[Long] = None,
             integrationId: Option[String] = None, integrationGroupId: Option[String] = None,
             integrationTopicGroupId: Option[String] = None, integrationTopicId: Option[String] = None,
             displaySettings: Option[Boolean] = None) = Action.async { implicit request =>
@@ -117,16 +117,16 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
               }
             } yield (integrations, users, groups, integrationGroups, topic, integrationTopic)) map { case (userIntegrations, users, groups, integrationGroups, topic, integrationTopic) =>
               Ok(views.html.index(user, userIntegrations, users, groups, integrationGroups, webSocketUrl, groupId,
-                topic match { case Some(value) => Some(Json.toJson(value)) case None => None },
+                topic match { case Some(value) => Some(Json.toJson(value)) case None => None }, userTopicId,
                 integrationTopic match { case Some(value) => Some(Json.toJson(value)) case None => None },
                 userId, integrationId, integrationGroupId, displaySettings))
             }
           case None =>
-            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)).discardingCookies(DiscardingCookie("user")))
+            Future.successful(Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)).discardingCookies(DiscardingCookie("user")))
         }
       case _ =>
         val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
-        val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)
+        val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)
         Future.successful(Redirect(controllers.routes.IntegrationAuth.auth(integration.id, Option(redirectUrl))))
     }
   }
@@ -164,14 +164,18 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def getUsersJsValue(userId: Long): Future[JsValue] = {
-    usersDAO.allWithCounts(userId).map { case users =>
-      Json.toJson(JsArray(users.map { case (user, readCount, count) => JsObject(Seq("id" -> JsNumber(user.id),
-        "login" -> JsString(user.login), "name" -> JsString(user.name),
-        "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)) ++ (user.avatar match {
-        case Some(value) => Seq("avatar" -> JsString(value))
-        case None => Seq()
-      })
-      )
+    usersDAO.allWithCounts(userId).map { case userChats =>
+      Json.toJson(JsArray(userChats.map { case UserChat(user, text, updateDate, unreadCount) =>
+        JsObject(
+          Seq("id" -> JsNumber(user.id),
+            "login" -> JsString(user.login),
+            "name" -> JsString(user.name),
+            "unreadCount" -> JsNumber(unreadCount)
+          ) ++ (user.avatar match {
+            case Some(value) => Seq("avatar" -> JsString(value))
+            case None => Seq()
+          })
+        )
       }))
     }
   }
@@ -202,27 +206,33 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def getAllTopics(userId: Long) = Action.async { implicit request =>
-    topicsDAO.allWithCounts(userId, None).map { f =>
-      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate, readStatus, readCount, count) =>
-        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
-        (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
-          "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))),
-          "updateDate" -> JsNumber(updateDate.getTime),
-          "unread" -> JsBoolean(!readStatus),
-          "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)))
-      }))
+    topicsDAO.allWithCounts(userId, None).flatMap { topicChats =>
+      usersDAO.allWithCounts(userId, nonEmptyOnly = true).map { userTopics =>
+        Json.toJson(JsArray((topicChats ++ userTopics).sortBy( - _.updateDate.getTime).map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
+          JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
+          (Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
+            "text" -> JsString(topic.text), "user" -> JsObject(Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name))))),
+            "updateDate" -> JsNumber(updateDate.getTime),
+            "unread" -> JsBoolean(unread),
+            "unreadCount" -> JsNumber(unreadCount)))
+        case UserChat(user, text, updateDate, unreadCount) =>
+          JsObject(Seq("userTopic" -> JsObject(Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "text" -> JsString(text))),
+            "updateDate" -> JsNumber(updateDate.getTime),
+            "unreadCount" -> JsNumber(unreadCount)))
+        }))
+      }
     }.map(Ok(_))
   }
 
   def getGroupTopics(userId: Long, groupId: Long) = Action.async { implicit rs =>
-    topicsDAO.allWithCounts(userId, Some(groupId)).map { f =>
-      Json.toJson(JsArray(f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate, readStatus, readCount, count) =>
-        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topicId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
-        (Seq("id" -> JsNumber(gId), "name" -> JsString(groupName))),
-          "text" -> JsString(topicText), "user" -> JsObject(Seq("id" -> JsNumber(uId), "name" -> JsString(userName))))),
+    topicsDAO.allWithCounts(userId, Some(groupId)).map { topicChats =>
+      Json.toJson(JsArray(topicChats.map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
+        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
+        (Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
+          "text" -> JsString(topic.text), "user" -> JsObject(Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name))))),
           "updateDate" -> JsNumber(updateDate.getTime),
-          "unread" -> JsBoolean(!readStatus),
-          "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)))
+          "unread" -> JsBoolean(unread),
+          "unreadCount" -> JsNumber(unreadCount)))
       }))
     }.map(Ok(_))
   }

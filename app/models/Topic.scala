@@ -14,6 +14,17 @@ case class Topic(id: Long = 0, groupId: Long, userId: Long, date: Timestamp, tex
 
 case class TopicReadStatus(topicId: Long, userId: Long) extends ReadStatus
 
+trait AbstractChat {
+  def user: User
+  def text: String
+  def updateDate: Timestamp
+  def unreadCount: Int
+}
+
+case class TopicChat(topic: Topic, group: Group, user: User, updateDate: Timestamp, unread: Boolean, unreadCount: Int) extends AbstractChat {
+  override def text: String = topic.text
+}
+
 trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with GroupsComponent with UsersComponent {
   protected val driver: JdbcProfile
 
@@ -80,7 +91,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run(topicReadStatuses ++= topicIds.map(TopicReadStatus(_, userId)))
   }
 
-  def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[(Long, Timestamp, String, Long, String, Long, String, Timestamp, Boolean, Int, Int)]] = {
+  def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[TopicChat]] = {
     db.run(
       (topics
         joinLeft topicReadStatuses on { case (topic, status) => topic.id === status.topicId && status.userId === userId }
@@ -124,8 +135,8 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
         val total = (userTopics ++ commentedTopics).toSeq.sortBy(-_._2._1.getTime)
 
-        total.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (updateDate, readStatus, readCount, c)) =>
-          (topicId, topicDate, topicText, gId, groupName, uId, userName, updateDate, readStatus, readCount, c)
+        total.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (updateDate, readStatus, readCount, totalCount)) =>
+          TopicChat(Topic(topicId, gId, userId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName,  null), updateDate, !readStatus, totalCount - readCount)
         }
       }
     }

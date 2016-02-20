@@ -28,7 +28,7 @@ GET         /auth/callback                                               control
 
 GET         /assets/*file                                                controllers.Assets.at(path="/public", file)
 
-GET         /                                                            controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userId: Option[Long], integrationId: Option[String], integrationGroupId: Option[String], integrationTopicGroupId: Option[String], integrationTopicId: Option[String], settings: Option[Boolean])
+GET         /                                                            controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userTopicId: Option[Long], userId: Option[Long], integrationId: Option[String], integrationGroupId: Option[String], integrationTopicGroupId: Option[String], integrationTopicId: Option[String], settings: Option[Boolean])
 
 GET         /httpHeaders                                                 controllers.Application.httpHeaders
 GET         /config                                                      controllers.Application.config

@@ -1,6 +1,7 @@
 import React from 'react';
 import Reflux from 'reflux';
 import TopicItem from './topic-item';
+import UserTopicItem from './user-topic-item';
 import IntegrationTopicItem from './integration-topic-item';
 import ChatStore from '../events/chat-store';
 
@@ -25,17 +26,21 @@ var TopicPane = React.createClass({
                 )
             });
         } else if (self.state.store.topics) {
-            topicItems = self.state.store.topics.map(function (t) {
-                var key = t.topic.id;
-                return (
-                    <TopicItem topic={t.topic} updateDate={t.updateDate}
+            topicItems = self.state.store.topics.map(t =>
+                t.topic ? (<TopicItem topic={t.topic} updateDate={t.updateDate}
                                unread={t.unread} unreadCount={t.unreadCount} count={t.count}
                                selected={self.state.store.selectedTopic &&
                            self.state.store.selectedTopic.id == t.topic.id}
                                showGroup={!self.state.store.selectedGroup}
-                               key={key}/>
+                               key={t.topic.id}/>
+                ) : (<UserTopicItem userTopic={t.userTopic} updateDate={t.updateDate}
+                               unread={t.unread} unreadCount={t.unreadCount} count={t.count}
+                               selected={self.state.store.selectedUserTopic &&
+                           self.state.store.selectedUserTopic.id == t.userTopic.id}
+                               showGroup={!self.state.store.selectedGroup}
+                               key={'u' + t.userTopic.id}/>
                 )
-            });
+            )
         }
         return (
             <ul id="topic-pane">

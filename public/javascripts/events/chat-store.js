@@ -45,13 +45,12 @@ var ChatStore = Reflux.createStore({
                 return g.id == _global.selectedGroupId
             })[0] : undefined,
             selectedTopic: _global.selectedTopic,
+            selectedUserTopic: _global.selectedUserTopicId ? _global.users.find(u => u.id == _global.selectedUserTopicId) : undefined,
             selectedIntegrationTopic: _global.selectedIntegrationTopic,
             selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(i => i.id == _global.selectedIntegrationId) : undefined,
             selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
                 g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
-            selectedUser: _global.selectedUserId ? _global.users.filter(function (u) {
-                return u.id == _global.selectedUserId
-            })[0] : undefined
+            selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined
         }
     },
 
@@ -70,11 +69,15 @@ var ChatStore = Reflux.createStore({
             success: function (topics) {
                 self.state.topics = topics;
                 self.state.integrationTopics = undefined;
-                if (topics.length > 0) {
-                    var selectedTopic = self.state.selectedTopic ? topics.find(t => t.topic.id == self.state.selectedTopic.id) : undefined;
-                    self.onSelectTopic(selectedTopic ? selectedTopic.topic : topics[0].topic);
+                if (self.state.selectedUserTopic && !self.state.selectedGroup) {
+                    self.onSelectUserTopic(self.state.selectedUserTopic);
                 } else {
-                    self.onSelectTopic();
+                    if (topics.length > 0) {
+                    var selectedTopic = self.state.selectedTopic ? topics.find(t => t.topic && t.topic.id == self.state.selectedTopic.id) : undefined;
+                        self.onSelectTopic(selectedTopic ? selectedTopic.topic : topics[0].topic);
+                    } else {
+                        self.onSelectTopic();
+                    }
                 }
             },
             fail: function (e) {
@@ -87,6 +90,7 @@ var ChatStore = Reflux.createStore({
         var self = this;
         this.state.selectedTopic = topic;
         this.state.selectedUser = undefined;
+        this.state.selectedUserTopic = undefined;
         this.state.selectedIntegration = undefined;
         this.state.selectedIntegrationGroup = undefined;
         this.state.displaySettings = undefined;
@@ -117,6 +121,31 @@ var ChatStore = Reflux.createStore({
         }
     },
 
+    onSelectUserTopic: function (userTopic) {
+        var self = this;
+        this.state.selectedUser = undefined;
+        this.state.selectedGroup = undefined;
+        this.state.selectedTopic = undefined;
+        this.state.selectedUserTopic = userTopic;
+        this.state.selectedIntegration = undefined;
+        this.state.selectedIntegrationGroup = undefined;
+        this.state.displaySettings = undefined;
+        $.ajax({
+            context: this,
+            type: "GET",
+            url: "/json/user/" + _global.user.id + "/direct/" + userTopic.id,
+            success: function (messages) {
+                self.state.messages = messages;
+                self.state.integrationMessages = undefined;
+                self.trigger(self.state);
+                window.history.replaceState(self.state, window.title, "?userTopicId=" + self.state.selectedUserTopic.id);
+            },
+            fail: function (e) {
+                console.error(e);
+            }
+        });
+    },
+
     onSelectIntegrationTopic: function (integration, group, topic) {
         var self = this;
         this.state.selectedIntegration = integration;
@@ -124,6 +153,7 @@ var ChatStore = Reflux.createStore({
         this.state.selectedIntegrationTopic = topic;
         this.state.selectedTopic = undefined;
         this.state.selectedUser = undefined;
+        this.state.selectedUserTopic = undefined;
         this.state.displaySettings = undefined;
         if (topic) {
             // TODO: Refactor it
@@ -186,6 +216,7 @@ var ChatStore = Reflux.createStore({
         this.state.selectedIntegration = integration;
         this.state.selectedGroup = undefined;
         this.state.selectedUser = undefined;
+        this.state.selectedUserTopic = undefined;
         this.state.selectedIntegrationGroup = undefined;
         this.state.displaySettings = undefined;
         $.ajax({
@@ -213,6 +244,7 @@ var ChatStore = Reflux.createStore({
         this.state.selectedIntegrationGroup = group;
         this.state.selectedGroup = undefined;
         this.state.selectedUser = undefined;
+        this.state.selectedUserTopic = undefined;
         this.state.displaySettings = undefined;
         $.ajax({
             context: this,
@@ -278,6 +310,7 @@ var ChatStore = Reflux.createStore({
     onShowIntegrations: function (initial) {
         this.state.displaySettings = true;
         this.state.selectedUser = undefined;
+        this.state.selectedUserTopic = undefined;
         this.state.selectedGroup = undefined;
         this.state.selectedTopic = undefined;
 
@@ -312,9 +345,9 @@ var ChatStore = Reflux.createStore({
     },
 
     onNewMessage: function (message) {
+        var trigger = false;
         // TODO: Check if we may apply message twice
         if (this.state.messages && !this.state.messages.find(m => m.text == message.text)) {
-            var trigger = false;
             var unread = message.user.id != _global.user.id;
             message.unread = unread;
             if (message.group) {
@@ -329,7 +362,7 @@ var ChatStore = Reflux.createStore({
             }
             if (message.topicId) {
                 if (this.state.topics) {
-                    var topic = this.state.topics.find(t => t.topic.id == message.topicId);
+                    var topic = this.state.topics.find(t => t.topic && t.topic.id == message.topicId);
                     if (topic) {
                         topic.count = topic.count + 1;
                         topic.updateDate = message.date;
@@ -352,24 +385,44 @@ var ChatStore = Reflux.createStore({
                     }
                 }
             }
-            if (this.state.selectedTopic && this.state.selectedTopic.id ==
-                message.topicId || this.state.selectedUser && message.toUser && (this.state.selectedUser.id == message.toUser.id &&
-                _global.user.id == message.user.id || this.state.selectedUser.id == message.user.id &&
-                _global.user.id == message.toUser.id)) {
+            if (this.state.selectedTopic && this.state.selectedTopic.id == message.topicId ||
+                this.state.selectedUser && message.toUser && (this.state.selectedUser.id == message.toUser.id && _global.user.id == message.user.id ||
+                    this.state.selectedUser.id == message.user.id && _global.user.id == message.toUser.id) ||
+                this.state.selectedUserTopic && message.toUser && (this.state.selectedUserTopic.id == message.toUser.id && _global.user.id == message.user.id ||
+                    this.state.selectedUserTopic.id == message.user.id && _global.user.id == message.toUser.id)) {
                 // TODO: Preserve message order
                 this.state.messages.push(message);
                 trigger = true;
             }
-            if (trigger == true) {
-                this.trigger(this.state);
+        }
+        if (!this.state.selectedGroup && this.state.topics && message.toUser && (_global.user.id == message.toUser.id || _global.user.id == message.user.id)) {
+            var index = this.state.topics.findIndex(t => t.userTopic && (t.userTopic.id == message.toUser.id || t.userTopic.id == message.user.id));
+            var oldUserTopic;
+            if (index >= 0) {
+                oldUserTopic = this.state.topics[index];
+                this.state.topics.splice(index, 1)
             }
+            var newUserTopic = {
+                userTopic: {
+                    id: _global.user.id == message.toUser.id ? message.user.id : message.toUser.id,
+                    name: _global.user.id == message.toUser.id ? message.user.name : message.toUser.name,
+                    text: message.text
+                },
+                updateDate: message.date,
+                unreadCount: (_global.user.id == message.toUser.id ? 1 : 0) + (oldUserTopic ? oldUserTopic.unreadCount : 0)
+            };
+            this.state.topics.splice(0, 0, newUserTopic);
+
+        }
+        if (trigger == true) {
+            this.trigger(this.state);
         }
     },
 
     onMarkTopicAsRead: function(topic) {
         var trigger = false;
         if (this.state.topics) {
-            var tt = this.state.topics.find(t => t.topic.id == topic.id);
+            var tt = this.state.topics.find(t => t.topic && t.topic.id == topic.id);
             if (tt && tt.unread) {
                 tt.unread = false;
                 _topicsToMarkAsRead.push(tt.topic.id);
@@ -390,6 +443,13 @@ var ChatStore = Reflux.createStore({
 
     onMarkDirectMessageAsRead: function(message) {
         var trigger = false;
+        if (this.state.topics) {
+            var tt = this.state.topics.find(t => t.userTopic && t.userTopic.id == message.user.id);
+            if (tt && tt.unreadCount) {
+                tt.unreadCount = tt.unreadCount - 1;
+                trigger = true;
+            }
+        }
         if (this.state.messages) {
             var mm = this.state.messages.find(m => m.id == message.id);
             if (mm && mm.unread) {
@@ -428,7 +488,7 @@ var ChatStore = Reflux.createStore({
             }
         }
         if (this.state.topics) {
-            var topic = this.state.topics.find(t => t.topic.id == message.topicId);
+            var topic = this.state.topics.find(t => t.topic && t.topic.id == message.topicId);
             if (topic && topic.unreadCount) {
                 topic.unreadCount = topic.unreadCount - 1;
                 trigger = true;

@@ -1,7 +1,7 @@
 @import play.api.libs.json.JsValue
 
 @(user: User, integrations: JsValue, users: JsValue, groups: JsValue, integrationGroups: JsValue, webSocketUrl: String,
-        selectedGroupId: Option[Long], selectedTopic: Option[JsValue], selectedIntegrationTopic: Option[JsValue],
+        selectedGroupId: Option[Long], selectedTopic: Option[JsValue], selectedUserTopicId: Option[Long], selectedIntegrationTopic: Option[JsValue],
         selectedUserId: Option[Long], selectedIntegrationId: Option[String], selectedIntegrationGroupId: Option[String],
         displaySettings: Option[Boolean])
 
@@ -30,6 +30,10 @@
 			}},
 			selectedTopic: @{selectedTopic match {
 				case Some(value) => Html(value.toString())
+				case None => Html("undefined")
+			}},
+			selectedUserTopicId: @{selectedUserTopicId match {
+				case Some(id) => id
 				case None => Html("undefined")
 			}},
 			selectedUserId: @{selectedUserId match {
