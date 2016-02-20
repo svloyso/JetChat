@@ -59,10 +59,10 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       db.run(
         (directMessages.filter(_.toUserId === userId)
           join directMessages on { case (directMessage, lastMessage) =>
-            lastMessage.date in directMessages.filter(l =>
+            lastMessage.date === directMessages.filter(l =>
               (l.toUserId === userId && l.fromUserId === directMessage.fromUserId)
                 || (l.fromUserId === userId && l.toUserId === directMessage.toUserId)
-            ).groupBy(_.toUserId).map { case (d, g) => g.map(_.date).max }
+            ).map(_.date).max
           } join users on { case ((directMessage, lastMessage), user) => directMessage.fromUserId === user.id }
           joinLeft directMessageReadStatuses on { case (((directMessage, lastMessage), user), status) => directMessage.id === status.directMessageId }
         ).groupBy { case (((directMessage, lastMessage), user), status) =>
@@ -77,10 +77,10 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         db.run(
           (directMessages.filter(_.fromUserId === userId)
             join directMessages on { case (directMessage, lastMessage) =>
-              lastMessage.date in directMessages.filter(l =>
+              lastMessage.date === directMessages.filter(l =>
                 (l.toUserId === userId && l.fromUserId === directMessage.fromUserId)
                   || (l.fromUserId === userId && l.toUserId === directMessage.toUserId)
-              ).groupBy(_.toUserId).map { case (d, g) => g.map(_.date).max }
+              ).map(_.date).max
             } join users on { case ((directMessage, lastMessage), user) => directMessage.toUserId === user.id }
           ).groupBy { case ((directMessage, lastMessage), user) =>
             (user.id, user.login, user.name, user.avatar, lastMessage.text)
