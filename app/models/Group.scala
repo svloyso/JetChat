@@ -9,7 +9,9 @@ import scala.concurrent.Future
 
 case class Group(id: Long = 0, name: String)
 
-trait GroupsComponent extends HasDatabaseConfigProvider[JdbcProfile] {
+case class GroupFollowStatus(groupId: Long, userId: Long)
+
+trait GroupsComponent extends HasDatabaseConfigProvider[JdbcProfile] with UsersComponent {
   protected val driver: JdbcProfile
 
   import driver.api._
@@ -25,6 +27,22 @@ trait GroupsComponent extends HasDatabaseConfigProvider[JdbcProfile] {
   }
 
   val groups = TableQuery[GroupsTable]
+
+  class GroupFollowStatusesTable(tag: Tag) extends Table[GroupFollowStatus](tag, "topic_follow_statuses") {
+    def groupId = column[Long]("group_id")
+
+    def userId = column[Long]("user_id")
+
+    def pk = primaryKey("group_follow_status_pk", (groupId, userId))
+
+    def topic = foreignKey("group_follow_status_group_fk", groupId, groups)(_.id)
+
+    def user = foreignKey("group_follow_status_user_fk", userId, users)(_.id)
+
+    def * = (groupId, userId) <>(GroupFollowStatus.tupled, GroupFollowStatus.unapply)
+  }
+
+  val groupFollowStatuses = TableQuery[GroupFollowStatusesTable]
 }
 
 @Singleton()
@@ -49,7 +67,7 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         ).groupBy { case (((topic, myTopic), topicReadStatus), group) =>
           (group.id, group.name)
         }.map { case ((groupId, groupName), g) =>
-          (groupId, groupName, g.map(_._1._1._2.map(_.date)).max, g.map(gg => gg._1._2.map(_.topicId)).length, g.length)
+          (groupId, groupName, g.map(_._1._1._2.map(_.date)).max, g.map(gg => gg._1._2.map(_.topicId)).countDefined, g.length)
         }.result
       ).flatMap { f =>
         val topicMap = f.map { case (groupId, groupName, myDate, unreadCount, count) =>
@@ -63,7 +81,7 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
             join groups on { case (((comment, myComment), commentReadStatus), group) => comment.groupId === group.id }
           ).groupBy { case (((comment, myComment), commentReadStatus), group) => (group.id, group.name) }
           .map { case ((groupId, groupName), g) =>
-            (groupId, groupName, g.map(_._1._1._2.map(_.date)).max, g.map(gg => gg._1._2.map(_.commentId)).length, g.length)
+            (groupId, groupName, g.map(_._1._1._2.map(_.date)).max, g.map(gg => gg._1._2.map(_.commentId)).countDefined, g.length)
           }.result
         ).map { f =>
           val commentMap = f.map { case (groupId, groupName, myDate, unreadCount, count) => groupId ->(groupName, myDate.getOrElse(new Timestamp(0)), unreadCount, count) }.toMap

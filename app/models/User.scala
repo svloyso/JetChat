@@ -68,7 +68,7 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         ).groupBy { case (((directMessage, lastMessage), user), status) =>
           (user.id, user.login, user.name, user.avatar, lastMessage.text)
         }.map { case ((uId, userLogin, userName, userAvatar, text), g) =>
-          (uId, userLogin, userName, userAvatar, text, g.map(gg => gg._2.map(_.directMessageId)).length, g.length, g.map(_._1._1._1.date).max)
+          (uId, userLogin, userName, userAvatar, text, g.map(gg => gg._2.map(_.directMessageId)).countDefined, g.length, g.map(_._1._1._1.date).max)
         }.result
       ).flatMap { d =>
         val messagesSentToUser = d.map { case (uId, userLogin, userName, userAvatar, text, readCount, count, date) =>
