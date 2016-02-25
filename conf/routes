@@ -11,7 +11,7 @@ GET         /json/user/:userId/messages/:topicId                         control
 GET         /json/user/:userId/integration/groups                        controllers.Application.getIntegrationGroups(userId: Long)
 GET         /json/user/:userId/integration/topics                        controllers.Application.getAllIntegrationTopics(userId: Long)
 GET         /json/user/:userId/integration/:integrationId/topics         controllers.Application.getIntegrationGroupTopics(userId: Long, integrationId:String, groupId: Option[String])
-GET         /json/user/:userId/integration/:integrationId/messages        controllers.Application.getIntegrationMessages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String)
+GET         /json/user/:userId/integration/:integrationId/messages       controllers.Application.getIntegrationMessages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String)
 
 GET         /json/user/:fromUserId/direct/:toUserId                      controllers.Application.getDirectMessages(fromUserId: Long, toUserId: Long)
 
@@ -43,3 +43,6 @@ POST        /integration/:id/comment                                     control
 
 # Integration Hook
 POST        /integration/:id/hook                                        controllers.IntegrationHook.hook(id: String)
+
+# Search
+GET         /search/:userId                                              controllers.Application.searchGroups(userId: Long, query: Option[String])

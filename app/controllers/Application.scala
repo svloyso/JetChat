@@ -485,4 +485,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   def config() = Action.async { implicit request =>
     Future.successful(Ok(Play.current.configuration.underlying.root.render(ConfigRenderOptions.concise())).as("application/json"))
   }
+
+  def searchGroups(userId: Long, query: Option[String]) = Action.async { implicit request =>
+    getGroupsJsValue(userId).map(Ok(_))
+  }
 }
