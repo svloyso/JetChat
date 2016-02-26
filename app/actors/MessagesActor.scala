@@ -11,6 +11,7 @@ import play.api.libs.json.JsObject
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits._
+import scala.concurrent.Future
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.{Success, Failure}
 
@@ -69,18 +70,30 @@ class MessagesActor(integration: Integration,
       case ReceiveMessages(userId) =>
         implicit val timeout = 5.minutes
 
+        log.info(s"Receiving messages: { userId: $userId, integrationId: ${integration.id} }")
+
         (for (integrationTokenOption <- integrationTokensDAO.find(userId, integration.id)) yield {
           integrationTokenOption match {
             case Some(integrationToken) if integrationToken.enabled =>
               val token = integrationToken.token
+
+              val names: mutable.HashMap[String, Future[Option[String]]] = mutable.HashMap.empty
+              val avatars: mutable.HashMap[String, Future[Option[String]]] = mutable.HashMap.empty
+              def name(topicLogin: String): Future[Option[String]] = {
+                names.getOrElseUpdate(topicLogin, integration.userHandler.name(token, Some(topicLogin)))
+              }
+              def avatar(topicLogin: String): Future[Option[String]] = {
+                avatars.getOrElseUpdate(topicLogin, integration.userHandler.avatarUrl(token, Some(topicLogin)))
+              }
+
               integration.messageHandler.collectMessages(integrationToken).map {
                 case CollectedMessages(messages, nextCheck) =>
                   log.info(s"${integration.id} messages was collected. Topic updates: ${messages.size}.")
                   for ((topic, updates) <- messages) {
                     val topicLogin = topic.integrationUserId
                     (for {
-                      name <- integration.userHandler.name(token, Some(topicLogin))
-                      avatar <- integration.userHandler.avatarUrl(token, Some(topicLogin))
+                      name <- name(topicLogin)
+                      avatar <- avatar(topicLogin)
                       result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, topicLogin, name.getOrElse(topicLogin), avatar))
                     } yield result).onSuccess { case success =>
                       if (success)
@@ -100,8 +113,8 @@ class MessagesActor(integration: Integration,
                           updates.foreach { update =>
                             val updateLogin = update.integrationUserId
                             (for {
-                              name <- integration.userHandler.name(token, Some(updateLogin))
-                              avatar <- integration.userHandler.avatarUrl(token, Some(updateLogin))
+                              name <- name(updateLogin)
+                              avatar <- avatar(updateLogin)
                               result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, updateLogin, name.getOrElse(updateLogin), avatar))
                             } yield result).onSuccess { case success =>
                               if (success)
