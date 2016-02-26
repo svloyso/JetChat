@@ -468,7 +468,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
           result <- integrationUpdatesDAO.insert(integrationUpdate)
         } yield {
           mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-          MessagesActor.actorSelection(integration, system) ! SendMessageEvent(userId, integrationGroupId, integrationTopicId, text, result)
+          MessagesActor.actorSelection(integration, system) ! SendMessage(userId, integrationGroupId, integrationTopicId, text, result)
           Created("Good!")
         }).recover {
           case t: Throwable =>
