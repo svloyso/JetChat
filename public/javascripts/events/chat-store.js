@@ -73,8 +73,16 @@ var ChatStore = Reflux.createStore({
                     self.onSelectUserTopic(self.state.selectedUserTopic);
                 } else {
                     if (topics.length > 0) {
-                    var selectedTopic = self.state.selectedTopic ? topics.find(t => t.topic && t.topic.id == self.state.selectedTopic.id) : undefined;
-                        self.onSelectTopic(selectedTopic ? selectedTopic.topic : topics[0].topic);
+                        var selectedTopic = self.state.selectedTopic ? topics.find(t => t.topic && t.topic.id == self.state.selectedTopic.id) : undefined;
+                        if (selectedTopic) {
+                            self.onSelectTopic(selectedTopic.topic);
+                        } else if (topics[0].topic) {
+                            self.onSelectTopic(topics[0].topic);
+                        } else if (topics[0].userTopic) {
+                            self.onSelectUserTopic(topics[0].userTopic);
+                        } else {
+                            self.onSelectTopic();
+                        }
                     } else {
                         self.onSelectTopic();
                     }
