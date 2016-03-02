@@ -1,3 +1,5 @@
+import React from 'react';
+
 const INITIAL_TICKS = 100;
 
 function Particle(x, y, radius, color) {
@@ -31,15 +33,15 @@ function Particle(x, y, radius, color) {
     return this;
 }
 
-function Loader(containerNode, props) {
+function LoaderCore(containerNode, props) {
     this.isRunning = false;
 
-    this.props = Object.assign({}, Loader.defaultProps, props);
+    this.props = Object.assign({}, LoaderCore.defaultProps, props);
 
     var self = this;
 
     this.setCanvasSize = function () {
-        const pixelRatio = Loader.getPixelRatio();
+        const pixelRatio = LoaderCore.getPixelRatio();
         const canvasSize = self.props.size * pixelRatio;
 
         self.canvas.width = canvasSize;
@@ -125,7 +127,7 @@ function Loader(containerNode, props) {
         const currentColor = colors[self.colorIndex];
         const nextColor = colors[self.colorIndex + 1] || colors[0];
 
-        return Loader.calculateGradient(currentColor, nextColor, self.tick / self.colorChangeTick);
+        return LoaderCore.calculateGradient(currentColor, nextColor, self.tick / self.colorChangeTick);
     };
 
     this.nextTick = function () {
@@ -198,11 +200,11 @@ function Loader(containerNode, props) {
     return this;
 }
 
-Loader.getPixelRatio = function () {
+LoaderCore.getPixelRatio = function () {
     return 'devicePixelRatio' in window ? window.devicePixelRatio : 1;
 };
 
-Loader.defaultProps = {
+LoaderCore.defaultProps = {
     size: 64,
     colors: [
         {r: 215, g: 60, b: 234},  //#D73CEA
@@ -215,7 +217,7 @@ Loader.defaultProps = {
     ]
 };
 
-Loader.calculateGradient = function (startColor, stopColor, position) {
+LoaderCore.calculateGradient = function (startColor, stopColor, position) {
     const calculateChannelValue = function (a, b) {
         return a + Math.round((b - a) * position)
     };
@@ -227,6 +229,24 @@ Loader.calculateGradient = function (startColor, stopColor, position) {
     };
 };
 
-// var loader = new Loader(document.getElementById('loader'), { message: 'Loading...' });
+// var loader = new LoaderCore(document.getElementById('loader'), { message: 'Loading...' });
+
+var Loader = React.createClass({
+    componentDidUpdate: function() {
+        this.loader = new LoaderCore(this.refs.loaderContainer, this.props);
+    },
+
+    componentWillUnmount: function() {
+        this.loader.destroy();
+    },
+
+
+    render: function() {
+        return (
+            <div ref="loaderContainer">
+            </div>
+        );
+    }
+});
 
 export default Loader;
