@@ -59,7 +59,7 @@ var App = React.createClass({
     },
 
     render: function () {
-        if (window.process && process.platform === 'darwin') {
+        if (window.process && window.process.platform === 'darwin') {
             var app = window.require('remote').app;
             var unreadGroupCount = this.state.store.groups.length > 0 ? this.state.store.groups.map(g => g.unreadCount).reduce((a, b) => a + b) : 0;
             var unreadUserCount = this.state.store.users.length > 0 ? this.state.store.users.map(u => u.unreadCount).reduce((a, b) => a + b) : 0;

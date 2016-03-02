@@ -1,0 +1,14 @@
+.loader__canvas {
+    display: block;
+    margin: 16px auto;
+    pointer-events: none;
+    -webkit-animation: rotation-keyframes 36s linear infinite;
+    animation: rotation-keyframes 36s linear infinite;
+}
+
+.loader__text {
+    text-align: center;
+    color: #444;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 13.20px;
+}

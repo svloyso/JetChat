@@ -14,10 +14,11 @@ let mainWindow;
 
 function createWindow () {
   // Create the browser window.
-  mainWindow = new BrowserWindow({width: 1000, height: 600});
+  mainWindow = new BrowserWindow({width: 1000, height: 600, show: false, title: "JetChat", autoHideMenuBar: true});
 
   // and load the index.html of the app.
   mainWindow.loadURL('https://chat.services.jetbrains.com/');
+  mainWindow.show();
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools();
