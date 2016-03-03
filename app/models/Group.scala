@@ -59,12 +59,14 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
           groupId ->(groupName, myDate.getOrElse(new Timestamp(0)), unreadCount, count)
         }.toMap
 
+        val comments = filterComments(query)
+
         db.run(
           (comments
             joinLeft comments on { case (comment, myComment) => comment.id === myComment.id && myComment.userId === userId }
             joinLeft commentReadStatuses on { case ((comment, myComment), commentReadStatus) => comment.id === commentReadStatus.commentId && commentReadStatus.userId === userId }
-            join groups on { case (((comment, myComment), commentReadStatus), group) => comment.groupId === group.id }
-          ).groupBy { case (((comment, myComment), commentReadStatus), group) => (group.id, group.name) }
+            join groups on { case (((comment, _), _), group) => comment.groupId === group.id }
+          ).groupBy { case (((_, _), _), group) => (group.id, group.name) }
           .map { case ((groupId, groupName), g) =>
             (groupId, groupName, g.map(_._1._1._2.map(_.date)).max, g.map(gg => gg._1._2.map(_.commentId)).length, g.length)
           }.result

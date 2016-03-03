@@ -127,7 +127,13 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     }
   }
 
-  def messages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String): Future[Seq[(AbstractIntegrationMessage, IntegrationUser, IntegrationGroup)]] = {
+  def messages(
+      userId: Long,
+      integrationId: String,
+      integrationGroupId: String,
+      integrationTopicId: String,
+      query: Option[String]): Future[Seq[(AbstractIntegrationMessage, IntegrationUser, IntegrationGroup)]]
+  = {
     db.run((integrationTopics.filter(t => t.userId === userId && t.integrationId === integrationId &&
         t.integrationGroupId === integrationGroupId && t.integrationTopicId === integrationTopicId)
       join integrationUsers on { case (topic, user) => user.integrationId === integrationId &&

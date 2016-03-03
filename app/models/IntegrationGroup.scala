@@ -26,7 +26,7 @@ trait IntegrationGroupsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
     def user = foreignKey("integration_group_user_fk", userId, users)(_.id)
 
-    def * = (integrationId, integrationGroupId, userId, name) <>(IntegrationGroup.tupled, IntegrationGroup.unapply)
+    def * = (integrationId, integrationGroupId, userId, name) <> (IntegrationGroup.tupled, IntegrationGroup.unapply)
   }
 
   val integrationGroups = TableQuery[IntegrationGroupsTable]
@@ -55,7 +55,7 @@ class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     }
   }
 
-  def allWithCounts(userId: Long): Future[Seq[(IntegrationGroup, Int)]] = {
+  def allWithCounts(userId: Long, query: Option[String]): Future[Seq[(IntegrationGroup, Int)]] = {
     db.run(integrationGroups.filter(_.userId === userId).result).flatMap { f =>
       val groupMap = f.map { g => (g.integrationId, g.integrationGroupId) ->(g.name, 0) }.toMap
 

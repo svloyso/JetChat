@@ -30,11 +30,19 @@ trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Grou
     def topic = foreignKey("comment_topic_fk", topicId, topics)(_.id)
     def user = foreignKey("comment_user_fk", userId, users)(_.id)
 
-    def * = (id, groupId, topicId, userId, date, text) <>(Comment.tupled, Comment.unapply)
+    def * = (id, groupId, topicId, userId, date, text) <> (Comment.tupled, Comment.unapply)
   }
 
-  val comments = TableQuery[CommentsTable]
+  private val allComments = TableQuery[CommentsTable]
 
+  def filterComments(query: Option[String]) = {
+    query match {
+      case Some(words) => allComments filter {
+        comment => comment.text.indexOf(words) >= 0
+      }
+      case None => allComments.to[Seq]
+    }
+  }
 
   class CommentReadStatusesTable(tag: Tag) extends Table[CommentReadStatus](tag, "comment_read_statuses") {
     def commentId = column[Long]("comment_id")
@@ -43,11 +51,11 @@ trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Grou
 
     def pk = primaryKey("comment_read_status_pk", (commentId, userId))
 
-    def comment = foreignKey("comment_read_status_comment_fk", commentId, comments)(_.id)
+    def comment = foreignKey("comment_read_status_comment_fk", commentId, allComments)(_.id)
 
     def user = foreignKey("comment_read_status_user_fk", userId, users)(_.id)
 
-    def * = (commentId, userId) <>(CommentReadStatus.tupled, CommentReadStatus.unapply)
+    def * = (commentId, userId) <> (CommentReadStatus.tupled, CommentReadStatus.unapply)
   }
 
   val commentReadStatuses = TableQuery[CommentReadStatusesTable]
@@ -60,7 +68,8 @@ class CommentsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     import driver.api._
 
     def insert(comment: Comment): Future[Long] = {
-      db.run((comments returning comments.map(_.id)) += comment).flatMap( id =>
+      val comments = filterComments(None)
+      db.run((comments returning comments.map(_.id)) += comment).flatMap(id =>
         db.run(commentReadStatuses += CommentReadStatus(id, comment.userId)).map(_ => id)
       )
     }

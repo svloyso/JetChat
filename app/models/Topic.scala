@@ -123,6 +123,8 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         (topicId, topicDate, topicText, gId, groupName, uId, userName) ->(topicDate, readStatus, 0, 0)
       }.toMap
 
+      val comments = filterComments(query)
+
       db.run(
         (comments
           join topics on { case (comment, topic) => comment.topicId === topic.id }
@@ -158,7 +160,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     result
   }
 
-  def messages(userId: Long, topicId: Long): Future[Seq[(AbstractMessage, User, Group, Boolean)]] = {
+  def messages(userId: Long, topicId: Long, query: Option[String]): Future[Seq[(AbstractMessage, User, Group, Boolean)]] = {
     db.run(
       (topics.filter(_.id === topicId)
       join users on { case (topic, user) => topic.userId === user.id }
@@ -168,6 +170,8 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         (topic, user, group, status.map(_.topicId).isDefined)
       }.result.head
     ).flatMap { case t =>
+      val comments = filterComments(query)
+
       db.run((comments.filter(comment => comment.topicId === topicId)
         join users on { case (comment, user) => comment.userId === user.id }
         join groups on { case ((comment, user), group) => comment.groupId === group.id }
