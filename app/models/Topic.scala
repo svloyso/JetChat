@@ -12,7 +12,7 @@ import scala.concurrent.Future
 
 case class Topic(id: Long = 0, groupId: Long, userId: Long, date: Timestamp, text: String) extends AbstractGroupMessage
 
-case class TopicReadStatus(topicId: Long, userId: Long) extends ReadStatus
+case class TopicReadStatus(topicId: Long, userId: Long)
 
 case class TopicFollowStatus(topicId: Long, userId: Long)
 
@@ -110,37 +110,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run(topicReadStatuses ++= topicIds.map(TopicReadStatus(_, userId)))
   }
 
-  /**
-    * @CriticalPerformanceProblems
-    * Query 1
-    * Execution: 9 seconds:
-    * SQL: SELECT
-    *   x2.`name`,
-    *   x3.`text`,
-    *   count(1),
-    *   x2.`id`,
-    *   count(x4.`direct_message_id`),
-    *   x2.`login`,
-    *   x2.`avatar`,
-    *   max(x5.x6)
-    * FROM (SELECT
-    *         `to_user_id`   AS x7,
-    *         `date`         AS x6,
-    *         `text`         AS x8,
-    *         `id`           AS x9,
-    *         `from_user_id` AS x10
-    *       FROM `direct_messages`
-    *       WHERE `to_user_id` = 10) x5 INNER JOIN `direct_messages` x3 ON x3.`date` = (SELECT max(`date`)
-    *                                                                                   FROM `direct_messages`
-    *                                                                                   WHERE ((`to_user_id` = 10) AND
-    *                                                                                          (`from_user_id` = x5.x10)) OR
-    *                                                                                         ((`from_user_id` = 10) AND
-    *                                                                                          (`to_user_id` = x5.x7)))
-    *   INNER JOIN `users` x2 ON x5.x10 = x2.`id`
-    *   LEFT OUTER JOIN `direct_message_read_statuses` x4 ON x5.x9 = x4.`direct_message_id`
-    * GROUP BY x2.`id`, x2.`login`, x2.`name`, x2.`avatar`, x3.`text`
-    */
-  def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[TopicChat]] = {
+def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[TopicChat]] = {
     db.run(
       (topics
         joinLeft topicReadStatuses on { case (topic, status) => topic.id === status.topicId && status.userId === userId }
