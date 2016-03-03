@@ -53,6 +53,60 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run(users.result)
   }
 
+  /**
+    * @CriticalPerformanceProblems
+    * Query 1
+    * Execution: 6 seconds
+    * SQL: SELECT
+    *   count(x2.`direct_message_id`),
+    *   max(x3.x4),
+    *   x5.`login`,
+    *   x5.`id`,
+    *   x6.`text`,
+    *   count(1),
+    *   x5.`name`,
+    *   x5.`avatar`
+    * FROM (SELECT
+    *         `to_user_id`   AS x7,
+    *         `date`         AS x4,
+    *         `text`         AS x8,
+    *         `id`           AS x9,
+    *         `from_user_id` AS x10
+    *       FROM `direct_messages`
+    *       WHERE `to_user_id` = 9) x3 INNER JOIN `direct_messages` x6 ON x6.`date` = (SELECT max(`date`)
+    *                                                                                  FROM `direct_messages`
+    *                                                                                  WHERE ((`to_user_id` = 9) AND
+    *                                                                                         (`from_user_id` = x3.x10)) OR
+    *                                                                                        ((`from_user_id` = 9) AND
+    *                                                                                         (`to_user_id` = x3.x7)))
+    *   INNER JOIN `users` x5 ON x3.x10 = x5.`id`
+    *   LEFT OUTER JOIN `direct_message_read_statuses` x2 ON x3.x9 = x2.`direct_message_id`
+    * GROUP BY x5.`id`, x5.`login`, x5.`name`, x5.`avatar`, x6.`text`;
+    *
+    * Query 2
+    * Execution: 4 seconds
+    * SQL: SELECT
+    *   0,
+    *   x2.`name`,
+    *   max(x3.x4),
+    *   x2.`id`,
+    *   x2.`avatar`,
+    *   x5.`text`,
+    *   x2.`login`
+    * FROM (SELECT
+    *         `from_user_id` AS x6,
+    *         `date`         AS x4,
+    *         `to_user_id`   AS x7,
+    *         `text`         AS x8,
+    *         `id`           AS x9
+    *       FROM `direct_messages`
+    *       WHERE `from_user_id` = 9) x3, `direct_messages` x5, `users` x2
+    * WHERE (x5.`date` = (SELECT max(`date`)
+    *                     FROM `direct_messages`
+    *                     WHERE ((`to_user_id` = 9) AND (`from_user_id` = x3.x6)) OR
+    *                           ((`from_user_id` = 9) AND (`to_user_id` = x3.x7)))) AND (x3.x7 = x2.`id`)
+    * GROUP BY x2.`id`, x2.`login`, x2.`name`, x2.`avatar`, x5.`text`;
+    */
   def allWithCounts(userId: Long, nonEmptyOnly: Boolean = false): Future[Seq[UserChat]] = {
     db.run(users.result).flatMap { case u =>
       val allUsers = if (!nonEmptyOnly) u.map(_ ->("", new Timestamp(0), 0, 0)).toMap else Seq().toMap
