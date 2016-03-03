@@ -37,7 +37,10 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run((groups returning groups.map(_.id)) += group)
   }
 
-  def allWithCounts(userId: Long): Future[Seq[(Group, Int, Int)]] = {
+  def allWithCounts(userId: Long, query: Option[String]): Future[Seq[(Group, Int, Int)]] = {
+
+    System.out.println("Here we go userId=" + userId + ", query=" + query)
+
     db.run(groups.result).flatMap { f =>
       val groupMap = f.map { g => g.id ->(g.name, new Timestamp(0), 0, 0) }.toMap
 

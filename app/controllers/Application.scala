@@ -104,7 +104,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL(RequestUtils.secure).replaceAll("http", "ws")
             (for {
               users <- getUsersJsValue(user.id)
-              groups <- getGroupsJsValue(user.id)
+              groups <- getGroupsJsValue(user.id, None)
               integrationGroups <- getIntegrationGroupsJsValue(user.id)
               integrations <- getUserIntegrationsJson(user.id)
               topic <- topicId match {
@@ -180,16 +180,16 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  def getGroups(userId: Long) = Action.async { implicit request =>
-    getGroupsJsValue(userId).map(Ok(_))
+  def getGroups(userId: Long, query: Option[String]) = Action.async { implicit request =>
+    getGroupsJsValue(userId, query).map(Ok(_))
   }
 
   def getIntegrationGroups(userId: Long) = Action.async { implicit request =>
     getIntegrationGroupsJsValue(userId).map(Ok(_))
   }
 
-  def getGroupsJsValue(userId: Long): Future[JsValue] = {
-    groupsDAO.allWithCounts(userId).map { f =>
+  def getGroupsJsValue(userId: Long, query: Option[String]): Future[JsValue] = {
+    groupsDAO.allWithCounts(userId, query).map { f =>
       Json.toJson(JsArray(f.map { case (group, readCount, count) => JsObject(Seq("id" -> JsNumber(group.id),
         "name" -> JsString(group.name), "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)))
       }))
@@ -205,8 +205,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  def getAllTopics(userId: Long) = Action.async { implicit request =>
-    topicsDAO.allWithCounts(userId, None).flatMap { topicChats =>
+  def getAllTopics(userId: Long, query: Option[String]) = Action.async { implicit request =>
+    topicsDAO.allWithCounts(userId, None, query).flatMap { topicChats =>
       usersDAO.allWithCounts(userId, nonEmptyOnly = true).map { userTopics =>
         Json.toJson(JsArray((topicChats ++ userTopics).sortBy( - _.updateDate.getTime).map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
           JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
@@ -225,7 +225,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def getGroupTopics(userId: Long, groupId: Long) = Action.async { implicit rs =>
-    topicsDAO.allWithCounts(userId, Some(groupId)).map { topicChats =>
+    topicsDAO.allWithCounts(userId, Some(groupId), None).map { topicChats =>
       Json.toJson(JsArray(topicChats.map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
         JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
         (Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
@@ -484,9 +484,5 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   def config() = Action.async { implicit request =>
     Future.successful(Ok(Play.current.configuration.underlying.root.render(ConfigRenderOptions.concise())).as("application/json"))
-  }
-
-  def searchGroups(userId: Long, query: Option[String]) = Action.async { implicit request =>
-    getGroupsJsValue(userId).map(Ok(_))
   }
 }

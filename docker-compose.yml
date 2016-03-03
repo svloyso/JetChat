@@ -26,14 +26,14 @@ etcd:
 
 web:
   build: target/docker/stage/
-  expose:
-   - 9000
+  ports:
+   - 9000:9000
   links:
    - mysql
    - etcd
   command:
-   - -Dapi.GitHub.clientId=875908da66afd5c86463
-   - -Dapi.GitHub.clientSecret=38a287506600b0c6b59f2777e6ce04b487636549
+   - -Dapi.GitHub.clientId=74d1dadc710087464a77
+   - -Dapi.GitHub.clientSecret=9068aedb718bf45e483de2924c0a9116a8f087d0
    - -Dslick.dbs.default.db.url=jdbc:mysql://mysql:3306/jetchat
    - -Dslick.dbs.default.db.user=root
    - -Dslick.dbs.default.db.password=

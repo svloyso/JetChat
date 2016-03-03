@@ -3,6 +3,7 @@ package models
 import java.sql.Timestamp
 import javax.inject.{Inject, Singleton}
 
+import play.api.Logger
 import play.api.db.slick.{HasDatabaseConfigProvider, DatabaseConfigProvider}
 import play.api.libs.json.Json
 import slick.driver.JdbcProfile
@@ -49,7 +50,7 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Groups
 
     def userGroupIndex = index("topic_user_group_index", (groupId, userId), unique = false)
 
-    def * = (id, groupId, userId, date, text) <>(Topic.tupled, Topic.unapply)
+    def * = (id, groupId, userId, date, text) <> (Topic.tupled, Topic.unapply)
   }
 
   val topics = TableQuery[TopicsTable]
@@ -65,7 +66,7 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Groups
 
     def user = foreignKey("topic_read_status_user_fk", userId, users)(_.id)
 
-    def * = (topicId, userId) <>(TopicReadStatus.tupled, TopicReadStatus.unapply)
+    def * = (topicId, userId) <> (TopicReadStatus.tupled, TopicReadStatus.unapply)
   }
 
   val topicReadStatuses = TableQuery[TopicReadStatusesTable]
@@ -91,17 +92,28 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run(topicReadStatuses ++= topicIds.map(TopicReadStatus(_, userId)))
   }
 
-  def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[TopicChat]] = {
+  def allWithCounts(userId: Long, groupId: Option[Long], query: Option[String]): Future[Seq[TopicChat]] = {
+    System.out.println("query=" + query)
+
+    def predicate(topic: TopicsTable, localUserId: Rep[Long]) = {
+       (groupId match {
+        case Some(id) => topic.groupId === id
+        case None => localUserId === userId
+      }) && (query match {
+        case Some(words) => topic.text.indexOf(words) >= 0
+        case None => true
+      })
+    }
+
+    val result =
     db.run(
       (topics
         joinLeft topicReadStatuses on { case (topic, status) => topic.id === status.topicId && status.userId === userId }
         join users on { case ((topic, status), user) => topic.userId === user.id }
         join groups on { case (((topic, status), user), group) => topic.groupId === group.id }
-      ).filter { case (((topic, status), user), group) =>
-        groupId match {
-          case Some(id) => topic.groupId === id
-          case None => topic.userId === userId
-        }
+      )
+      .filter { case (((topic, _), _), _) =>
+        predicate(topic, topic.userId)
       }.sortBy(_._1._1._1.date desc).map {
         case (((topic, status), user), group) =>
           (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> status.map(_.topicId).isDefined
@@ -118,12 +130,9 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
           joinLeft commentReadStatuses on { case (((comment, topic), topicStatus), commentStatus) => comment.id === commentStatus.commentId && commentStatus.userId === userId }
           join users on { case ((((comment, topic), topicStatus), commentStatus), user) => topic.userId === user.id }
           join groups on { case (((((comment, topic), topicStatus), commentStatus), user), group) => topic.groupId === group.id }
-        ).filter { case (((((comment, topic), topicStatus), commentStatus), user), group) =>
-          groupId match {
-            case Some(id) => topic.groupId === id
-            case None => comment.userId === userId
-          }
-        }.groupBy { case (((((comment, topic), topicStatus), commentStatus), user), group) =>
+        ).filter { case (((((comment, topic), _), _), _), _) =>
+          predicate(topic, comment.userId)
+        }.groupBy { case (((((comment, topic), topicStatus), _), user), group) =>
           (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name, topicStatus)
         }.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus), g) =>
           (topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus.map(_.topicId).isDefined, g.map(_._1._1._2.map(_.commentId)).length, g.map(_._1._1._1._1._1.id).countDistinct, g.map(_._1._1._1._1._1.date).max)
@@ -140,6 +149,13 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         }
       }
     }
+
+    result onSuccess { case seq =>
+      for (s <- seq)
+        System.out.println("element = " + s)
+    }
+
+    result
   }
 
   def messages(userId: Long, topicId: Long): Future[Seq[(AbstractMessage, User, Group, Boolean)]] = {
