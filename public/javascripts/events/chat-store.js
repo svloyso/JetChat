@@ -50,7 +50,12 @@ var ChatStore = Reflux.createStore({
             selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(i => i.id == _global.selectedIntegrationId) : undefined,
             selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
                 g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
-            selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined
+            selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined,
+            query: "message",
+            queryRequest: function(prefix) {
+                if (!prefix) { prefix = "?" }
+                return this.query == "" ? "" : prefix + "query=" + this.query
+            }
         }
     },
 
@@ -65,7 +70,7 @@ var ChatStore = Reflux.createStore({
             context: this,
             type: "GET",
             url: "/json/user/" + _global.user.id + "/topics" +
-            (group ? "/" + group.id : ""),
+            (group ? "/" + group.id : "") + this.state.queryRequest("?"),
             success: function (topics) {
                 self.state.topics = topics;
                 self.state.integrationTopics = undefined;
@@ -98,16 +103,18 @@ var ChatStore = Reflux.createStore({
             $.ajax({
                 context: this,
                 type: "GET",
-                url: "/json/user/" + _global.user.id + "/messages/" + topic.id,
+                url: "/json/user/" + _global.user.id + "/messages/" + topic.id + this.state.queryRequest('?'),
                 success: function (messages) {
                     self.state.messages = messages;
                     self.state.integrationMessages = undefined;
                     self.trigger(self.state);
                     // TODO: pushState
                     window.history.replaceState(self.state, window.title,
-                        self.state.selectedGroup ? ("?groupId=" + self.state.selectedGroup.id +
-                            "&topicId=" + self.state.selectedTopic.id
-                        ) : "?topicId=" + self.state.selectedTopic.id);
+                        (self.state.selectedGroup
+                            ? "?groupId=" + self.state.selectedGroup.id
+                                + "&topicId=" + self.state.selectedTopic.id
+                            : "?topicId=" + self.state.selectedTopic.id)
+                        + self.state.queryRequest('&'));
                 },
                 fail: function (e) {
                     console.error(e);
@@ -133,7 +140,7 @@ var ChatStore = Reflux.createStore({
         $.ajax({
             context: this,
             type: "GET",
-            url: "/json/user/" + _global.user.id + "/direct/" + userTopic.id,
+            url: "/json/user/" + _global.user.id + "/direct/" + userTopic.id + this.state.queryRequest('?'),
             success: function (messages) {
                 self.state.messages = messages;
                 self.state.integrationMessages = undefined;
@@ -163,7 +170,8 @@ var ChatStore = Reflux.createStore({
                 context: this,
                 type: "GET",
                 url: "/json/user/" + _global.user.id + "/integration/" + integration.id +
-                    "/messages?integrationGroupId=" + integrationTopicGroupId + "&integrationTopicId=" + integrationTopicId,
+                    "/messages?integrationGroupId=" + integrationTopicGroupId
+                + "&integrationTopicId=" + integrationTopicId + this.state.queryRequest('&'),
                 success: function (messages) {
                     self.state.messages = undefined;
                     self.state.integrationMessages = messages;
@@ -222,7 +230,7 @@ var ChatStore = Reflux.createStore({
         $.ajax({
             context: this,
             type: "GET",
-            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics",
+            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics" + this.state.queryRequest('?'),
             success: function (topics) {
                 self.state.topics = undefined;
                 self.state.integrationTopics = topics;

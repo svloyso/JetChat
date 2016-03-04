@@ -41,6 +41,7 @@ trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile]
     query: Option[String],
     comments: Query[CommentsTable, Comment, Seq] = allComments.to[Seq])
   = {
+    System.out.println("1:query=" + query)
     query match {
       case Some(words) => comments.filter(_.text.indexOf(words) >= 0)
       case None => comments
@@ -53,7 +54,10 @@ trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile]
   = comments.filter(_.topicId === topicId)
 
   def commentsByQueryAndTopicId(query: Option[String], topicId: Rep[Long]): Query[CommentsTable, Comment, Seq]
-  = commentsByQuery(query, commentsByTopicId(topicId))
+  = {
+    System.out.println("2:query=" + query)
+    commentsByQuery(query, commentsByTopicId(topicId))
+  }
 
   def commentsByGroupId(
     groupId: Rep[Long],
@@ -61,7 +65,10 @@ trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile]
   = comments.filter(_.groupId === groupId)
 
   def commentsByQueryAndGroupId(query: Option[String], groupId: Rep[Long]): Query[CommentsTable, Comment, Seq]
-  = commentsByQuery(query, commentsByGroupId(groupId))
+  = {
+    System.out.println("3:query=" + query)
+    commentsByQuery(query, commentsByGroupId(groupId))
+  }
 
   class CommentReadStatusesTable(tag: Tag) extends Table[CommentReadStatus](tag, "comment_read_statuses") {
     def commentId = column[Long]("comment_id")

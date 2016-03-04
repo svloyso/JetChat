@@ -23,32 +23,19 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
   class IntegrationTopicsTable(tag: Tag) extends Table[IntegrationTopic](tag, "integration_topics") {
     def userId = column[Long]("user_id")
-
     def integrationId = column[String]("integration_id")
-
     def integrationTopicId = column[String]("integration_topic_id")
-
     def integrationGroupId = column[String]("integration_group_id")
-
     def integrationUserId = column[String]("integration_user_id")
-
     def date = column[Timestamp]("date")
-
     def text = column[String]("text", O.SqlType("text"))
-
     def title = column[String]("title")
-
     def pk = primaryKey("integration_topic_index", (integrationId, integrationTopicId, integrationGroupId, userId))
-
     def user = foreignKey("integration_token_user_fk", userId, users)(_.id)
-
     def integrationGroup = foreignKey("integration_topic_integration_group_fk", (integrationId, integrationGroupId, userId), integrationGroups)(g => (g.integrationId, g.integrationGroupId, userId))
-
     def integrationUser = foreignKey("integration_topic_integration_user_fk", (integrationId, integrationUserId), integrationUsers)(u => (u.integrationId, u.integrationUserId))
-
     def integrationGroupIndex = index("integration_topic_integration_group_index", (integrationId, integrationGroupId, userId), unique = false)
-
-    def * = (integrationId, integrationTopicId, integrationGroupId, userId, integrationUserId, date, text, title) <>(IntegrationTopic.tupled, IntegrationTopic.unapply)
+    def * = (integrationId, integrationTopicId, integrationGroupId, userId, integrationUserId, date, text, title) <> (IntegrationTopic.tupled, IntegrationTopic.unapply)
   }
 
   val integrationTopics = TableQuery[IntegrationTopicsTable]

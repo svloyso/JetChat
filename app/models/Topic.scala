@@ -109,8 +109,6 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
   }
 
   def allWithCounts(userId: Long, groupId: Option[Long], query: Option[String]): Future[Seq[TopicChat]] = {
-    System.out.println("query=" + query)
-
     def predicate(topic: TopicsTable, localUserId: Rep[Long]) = {
        groupId match {
         case Some(id) => topic.groupId === id

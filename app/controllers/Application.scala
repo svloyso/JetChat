@@ -97,6 +97,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             integrationId: Option[String] = None, integrationGroupId: Option[String] = None,
             integrationTopicGroupId: Option[String] = None, integrationTopicId: Option[String] = None,
             displaySettings: Option[Boolean] = None) = Action.async { implicit request =>
+    val query = request.queryString.get("query").map(_(0))
     request.cookies.get("user") match {
       case Some(cookie) =>
         usersDAO.findByLogin(cookie.value).flatMap {
@@ -104,7 +105,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL(RequestUtils.secure).replaceAll("http", "ws")
             (for {
               users <- getUsersJsValue(user.id)
-              groups <- getGroupsJsValue(user.id, None)
+
+              groups <- getGroupsJsValue(user.id, query)
               integrationGroups <- getIntegrationGroupsJsValue(user.id, None)
               integrations <- getUserIntegrationsJson(user.id)
               topic <- topicId match {
@@ -237,7 +239,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def getGroupTopics(userId: Long, groupId: Long, query: Option[String]) = Action.async { implicit rs =>
-    topicsDAO.allWithCounts(userId, Some(groupId), None).map { topicChats =>
+    topicsDAO.allWithCounts(userId, Some(groupId), query).map { topicChats =>
       Json.toJson(JsArray(topicChats.map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
         JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
         (Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
