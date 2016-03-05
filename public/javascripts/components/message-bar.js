@@ -11,9 +11,13 @@ var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     componentDidUpdate: function () {
-        var messageRoll = $(ReactDOM.findDOMNode(this.refs.messageRoll));
+        var self = this;
+        var messageRoll = $(ReactDOM.findDOMNode(self.refs.messageRoll));
         messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        ReactDOM.findDOMNode(this.refs.input).focus();
+        ReactDOM.findDOMNode(self.refs.input).focus();
+        window.setTimeout(function () {
+            messageRoll.scrollTop(messageRoll[0].scrollHeight);
+        }, 0);
     },
 
     onInputKeyPress: function (event) {
