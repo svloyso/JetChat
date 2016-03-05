@@ -51,7 +51,7 @@ var ChatStore = Reflux.createStore({
             selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
                 g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
             selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined,
-            query: "message",
+            query: "",
             queryRequest: function(prefix) {
                 if (!prefix) { prefix = "?" }
                 return this.query == "" ? "" : prefix + "query=" + this.query
