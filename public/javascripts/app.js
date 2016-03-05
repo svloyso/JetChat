@@ -6,7 +6,6 @@ import SideBar from './components/side-bar';
 import IntegrationsPane from './components/integrations-pane';
 import TopicBar from './components/topic-bar';
 import MessageBar from './components/message-bar';
-import Loader from './components/loader';
 import utils from './utils';
 
 var App = React.createClass({
@@ -69,7 +68,6 @@ var App = React.createClass({
         }
 
         return (
-            /*<Loader message="Loading JetChat..."/>*/
             <div>
                 <SideBar/>
                 <IntegrationsPane/>

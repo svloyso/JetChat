@@ -149,13 +149,14 @@ var MessageBar = React.createClass({
         var inputPlaceHolder = self.state.store.selectedIntegrationTopic || self.state.store.selectedTopic ?
             "Message..." : "Topic...";
         var userHeader;
-        if (self.state.store.selectedUser) {
+        var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;
+        if (selectedUser) {
             userHeader = <div id="message-roll-header">
                 <li className="clearfix topic">
-                    <img className="img avatar pull-left" src={self.state.store.selectedUser.avatar}/>
+                    <img className="img avatar pull-left" src={selectedUser.avatar}/>
                     <div className="details">
                         <div className="info">
-                            <span className="user">{self.state.store.selectedUser.name}</span>
+                            <span className="user">{selectedUser.name}</span>
                         </div>
                     </div>
                 </li>

@@ -232,7 +232,7 @@ LoaderCore.calculateGradient = function (startColor, stopColor, position) {
 // var loader = new LoaderCore(document.getElementById('loader'), { message: 'Loading...' });
 
 var Loader = React.createClass({
-    componentDidUpdate: function() {
+    componentDidMount: function() {
         this.loader = new LoaderCore(this.refs.loaderContainer, this.props);
     },
 
@@ -243,7 +243,7 @@ var Loader = React.createClass({
 
     render: function() {
         return (
-            <div ref="loaderContainer">
+            <div id="loader" ref="loaderContainer">
             </div>
         );
     }
