@@ -13,7 +13,9 @@ import scala.concurrent.Future
 
 case class Topic(id: Long = 0, groupId: Long, userId: Long, date: Timestamp, text: String) extends AbstractGroupMessage
 
-case class TopicReadStatus(topicId: Long, userId: Long) extends ReadStatus
+case class TopicReadStatus(topicId: Long, userId: Long)
+
+case class TopicFollowStatus(topicId: Long, userId: Long)
 
 trait AbstractChat {
   def user: User
@@ -81,7 +83,19 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile]
     def * = (topicId, userId) <> (TopicReadStatus.tupled, TopicReadStatus.unapply)
   }
 
+
   val allTopicStatuses = TableQuery[TopicReadStatusesTable]
+
+  class TopicFollowStatusesTable(tag: Tag) extends Table[TopicFollowStatus](tag, "topic_follow_statuses") {
+    def topicId = column[Long]("topic_id")
+    def userId = column[Long]("user_id")
+    def pk = primaryKey("topic_follow_status_pk", (topicId, userId))
+    def topic = foreignKey("topic_follow_status_topic_fk", topicId, allTopics)(_.id)
+    def user = foreignKey("topic_follow_status_user_fk", userId, users)(_.id)
+    def * = (topicId, userId) <> (TopicFollowStatus.tupled, TopicFollowStatus.unapply)
+  }
+
+  val topicFollowStatuses = TableQuery[TopicFollowStatusesTable]
 }
 
 @Singleton()
@@ -149,7 +163,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         }.groupBy { case (((((comment, topic), topicStatus), _), user), group) =>
           (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name, topicStatus)
         }.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus), g) =>
-          (topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus.map(_.topicId).isDefined, g.map(_._1._1._2.map(_.commentId)).length, g.map(_._1._1._1._1._1.id).countDistinct, g.map(_._1._1._1._1._1.date).max)
+          (topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus.map(_.topicId).isDefined, g.map(_._1._1._2.map(_.commentId)).countDefined, g.map(_._1._1._1._1._1.id).countDistinct, g.map(_._1._1._1._1._1.date).max)
         }.sortBy(_._10 desc).result
       ).map { case f =>
         val commentedTopics = f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, topicReadStatus, readCount, c, d) =>

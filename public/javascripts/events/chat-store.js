@@ -31,30 +31,34 @@ var ChatStore = Reflux.createStore({
     },
 
     getInitialState: function () {
-        return {
-            users: _global.users.filter(function (u) {
-                return u.id !== _global.user.id
-            }),
-            integrations: _global.integrations,
-            displaySettings: _global.displaySettings,
-            groups: _global.groups,
-            integrationGroups: _global.integrationGroups,
-            topics: [],
-            messages: [],
-            selectedGroup: _global.selectedGroupId ? _global.groups.filter(function (g) {
-                return g.id == _global.selectedGroupId
-            })[0] : undefined,
-            selectedTopic: _global.selectedTopic,
-            selectedUserTopic: _global.selectedUserTopicId ? _global.users.find(u => u.id == _global.selectedUserTopicId) : undefined,
-            selectedIntegrationTopic: _global.selectedIntegrationTopic,
-            selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(i => i.id == _global.selectedIntegrationId) : undefined,
-            selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
-                g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
-            selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined,
-            query: "",
-            queryRequest: function(prefix) {
-                if (!prefix) { prefix = "?" }
-                return this.query == "" ? "" : prefix + "query=" + this.query
+        if (this.state) {
+            return this.state;
+        } else {
+            return {
+                users: _global.users.filter(function (u) {
+                    return u.id !== _global.user.id
+                }),
+                integrations: _global.integrations,
+                displaySettings: _global.displaySettings,
+                groups: _global.groups,
+                integrationGroups: _global.integrationGroups,
+                topics: _global.topics,
+                messages: [],
+                selectedGroup: _global.selectedGroupId ? _global.groups.filter(function (g) {
+                    return g.id == _global.selectedGroupId
+                })[0] : undefined,
+                selectedTopic: _global.selectedTopic,
+                selectedUserTopic: _global.selectedUserTopicId ? _global.users.find(u => u.id == _global.selectedUserTopicId) : undefined,
+                selectedIntegrationTopic: _global.selectedIntegrationTopic,
+                selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(i => i.id == _global.selectedIntegrationId) : undefined,
+                selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
+                    g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
+                selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined,
+                query: "",
+                queryRequest: function(prefix) {
+                    if (!prefix) { prefix = "?" }
+                    return this.query == "" ? "" : prefix + "query=" + this.query
+                }
             }
         }
     },
@@ -66,29 +70,48 @@ var ChatStore = Reflux.createStore({
         this.state.selectedIntegration = undefined;
         this.state.selectedIntegrationGroup = undefined;
         this.state.displaySettings = undefined;
-        $.ajax({
-            context: this,
-            type: "GET",
-            url: "/json/user/" + _global.user.id + "/topics" +
-            (group ? "/" + group.id : "") + this.state.queryRequest("?"),
-            success: function (topics) {
-                self.state.topics = topics;
-                self.state.integrationTopics = undefined;
-                if (self.state.selectedUserTopic && !self.state.selectedGroup) {
-                    self.onSelectUserTopic(self.state.selectedUserTopic);
-                } else {
-                    if (topics.length > 0) {
+
+        function selectTopics(topics) {
+            self.state.topics = topics;
+            self.state.integrationTopics = undefined;
+            if (self.state.selectedUserTopic && !self.state.selectedGroup) {
+                self.onSelectUserTopic(self.state.selectedUserTopic);
+            } else {
+                if (topics.length > 0) {
                     var selectedTopic = self.state.selectedTopic ? topics.find(t => t.topic && t.topic.id == self.state.selectedTopic.id) : undefined;
-                        self.onSelectTopic(selectedTopic ? selectedTopic.topic : topics[0].topic);
+                    if (selectedTopic) {
+                        self.onSelectTopic(selectedTopic.topic);
+                    } else if (topics[0].topic) {
+                        self.onSelectTopic(topics[0].topic);
+                    } else if (topics[0].userTopic) {
+                        self.onSelectUserTopic(topics[0].userTopic);
                     } else {
                         self.onSelectTopic();
                     }
+                } else {
+                    self.onSelectTopic();
                 }
-            },
-            fail: function (e) {
-                console.error(e);
             }
-        });
+        }
+
+        if (_global.topics) {
+            var topics = _global.topics;
+            _global.topics = undefined;
+            selectTopics(topics);
+        } else {
+            $.ajax({
+                context: this,
+                type: "GET",
+                url: "/json/user/" + _global.user.id + "/topics" +
+                (group ? "/" + group.id : "") + this.state.queryRequest("?"),
+                success: function (topics) {
+                    selectTopics(topics);
+                },
+                fail: function (e) {
+                    console.error(e);
+                }
+            });
+        }
     },
 
     onSelectTopic: function (topic) {

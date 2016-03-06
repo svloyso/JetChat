@@ -1,3 +1,0 @@
-package models
-
-trait ReadStatus

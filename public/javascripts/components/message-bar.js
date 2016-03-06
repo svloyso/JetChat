@@ -11,9 +11,13 @@ var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     componentDidUpdate: function () {
-        var messageRoll = $(ReactDOM.findDOMNode(this.refs.messageRoll));
+        var self = this;
+        var messageRoll = $(ReactDOM.findDOMNode(self.refs.messageRoll));
         messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        ReactDOM.findDOMNode(this.refs.input).focus();
+        ReactDOM.findDOMNode(self.refs.input).focus();
+        window.setTimeout(function () {
+            messageRoll.scrollTop(messageRoll[0].scrollHeight);
+        }, 0);
     },
 
     onInputKeyPress: function (event) {
@@ -149,13 +153,14 @@ var MessageBar = React.createClass({
         var inputPlaceHolder = self.state.store.selectedIntegrationTopic || self.state.store.selectedTopic ?
             "Message..." : "Topic...";
         var userHeader;
-        if (self.state.store.selectedUser) {
+        var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;
+        if (selectedUser) {
             userHeader = <div id="message-roll-header">
                 <li className="clearfix topic">
-                    <img className="img avatar pull-left" src={self.state.store.selectedUser.avatar}/>
+                    <img className="img avatar pull-left" src={selectedUser.avatar}/>
                     <div className="details">
                         <div className="info">
-                            <span className="user">{self.state.store.selectedUser.name}</span>
+                            <span className="user">{selectedUser.name}</span>
                         </div>
                     </div>
                 </li>

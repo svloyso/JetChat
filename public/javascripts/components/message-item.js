@@ -42,7 +42,7 @@ var MessageItem = React.createClass({
                 {avatar}
                 <div className="details">
                     {info}
-                    <div className="text">{this.autolink(self.props.message.text, { className: "imagify"}).map(function (el) {
+                    <div className="text">{this.autolink(self.props.message.text, { target: "_blank", className: "imagify"}).map(function (el) {
                         if (typeof el === "string")
                             return self.emojify(el);
                         else

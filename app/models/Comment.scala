@@ -12,7 +12,7 @@ import scala.concurrent.Future
 case class Comment(id: Long = 0, groupId: Long, topicId: Long, userId: Long, date: Timestamp, text: String) extends
   AbstractGroupMessage
 
-case class CommentReadStatus(commentId: Long, userId: Long) extends ReadStatus
+case class CommentReadStatus(commentId: Long, userId: Long)
 
 trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile]
   with GroupsComponent

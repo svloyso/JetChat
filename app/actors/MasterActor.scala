@@ -2,40 +2,35 @@ package actors
 
 import akka.actor.{ActorLogging, Actor}
 
-abstract class MasterActor extends Actor with ActorLogging {
-  var master = false
-
+trait MasterActor extends Actor with ActorLogging {
   override def preStart(): Unit = {
-    context.system.eventStream.subscribe(self, classOf[MasterEvent])
-    context.system.eventStream.subscribe(self, classOf[SlaveEvent])
-
+    context.system.eventStream.subscribe(self, MasterEvent.getClass)
+    context.system.eventStream.subscribe(self, SlaveEvent.getClass)
     context.system.eventStream.publish(MasterStateInquiry())
   }
 
-  final override def receive: Receive = {
-    case masterEvent: MasterEvent =>
-      if (!master) {
-        master = true
-        log.info("Turning master")
-        turningMaster()
-      }
-    case slaveEvent: SlaveEvent =>
-      if (master) {
-        master = true
-        log.info("Turning slave")
-        turningSlave()
-      }
-    case _ =>
-      if (master) {
-        receiveAsMaster()
-      }
+  final override def receive: Receive = receiveMaster
+
+  private def receiveMaster: Receive = {
+    case SlaveEvent =>
+    case MasterEvent =>
+      log.info("Turning master")
+      context.become(receiveSlave orElse receiveAsMaster)
+      turningMaster()
   }
 
-  def turningMaster() = {
+  private def receiveSlave: Receive = {
+    case MasterEvent =>
+    case SlaveEvent =>
+      log.info("Turning slave")
+      context.unbecome()
+      turningSlave()
   }
 
-  def turningSlave() = {
-  }
-
+  def turningMaster(): Unit = {}
+  def turningSlave(): Unit = {}
   def receiveAsMaster: Receive
 }
+
+case object MasterEvent
+case object SlaveEvent

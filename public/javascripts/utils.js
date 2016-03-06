@@ -10,11 +10,18 @@ var __urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&
 window.setInterval(function () {
     $(".imagify").each(function (i, a) {
         var _a = a;
+        $(_a).removeClass("imagify");
         var img = $("<img>");
         img.load(function () {
             $(_a).replaceWith($("<a target='_blank'>").append($(img)).attr("href", _a.href));
         }).error(function () {
-            $(_a).removeClass("imagify");
+            if (window.process) {
+                var shell = window.require('remote').shell;
+                $(_a).click((e) => {
+                    shell.openExternal(_a.href);
+                    return false;
+                });
+            }
         }).attr("src", _a.href).addClass("").
             attr("class", "preview");
     });
