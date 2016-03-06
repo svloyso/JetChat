@@ -16,13 +16,20 @@ var SearchPane = React.createClass({
         }
     },
 
+    onClearSearch: function() {
+        this.state.store.query = "";
+        ReactDOM.findDOMNode(this.refs.searchQuery).value = "";
+    },
+
     render: function () {
         return (
             <div id="search-pane" className="form-inline">
                 <div className="btn-group">
                     <input ref="searchQuery" id="search" type="text" className="search-query"
                            placeholder="Search people, groups, topics, and messages"
-                           autoComplete="off" onKeyPress={this.onKeyPress}/></div>
+                           autoComplete="off" onKeyPress={this.onKeyPress}/>
+                    <span id="clear-search" onClick={this.onClearSearch}></span>
+                </div>
             </div>
         );
     }

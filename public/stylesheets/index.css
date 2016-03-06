@@ -230,6 +230,15 @@ input.search-query {
     z-index: 1000;
 }
 
+#search-pane #clear-search {
+    background-image: url('/assets/images/new-topic-close.png');
+    background-size: 100% 100%;
+    width: 10px;
+    height: 10px;
+    display: inline-block;
+    cursor: pointer;
+}
+
 #message-pane {
     width: 100%;
     padding: 15px 12px 15px 25px;
