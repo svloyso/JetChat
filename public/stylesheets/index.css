@@ -237,6 +237,7 @@ input.search-query {
     height: 10px;
     display: inline-block;
     cursor: pointer;
+    visibility: hidden;
 }
 
 #message-pane {
