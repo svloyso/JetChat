@@ -2,32 +2,46 @@ import React from 'react';
 import Reflux from 'reflux';
 import ReactDOM from 'react-dom';
 import ChatStore from '../events/chat-store';
+import ChatActions from '../events/chat-actions';
 
 var SearchPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
-    onChange: function () {
-        this.state.store.query = ReactDOM.findDOMNode(this.refs.searchQuery).value.trim();
-        ReactDOM.findDOMNode(this.refs.searchQueryCleaner).style.visibility =
-            this.state.store.query !== ""
-                ? "visible"
-                : "hidden";
+    getInitialState: function() {
+        if (this.state) {
+            return this.state;
+        } else {
+            return {
+                value: '',
+                timeoutRef: null
+            };
+        }
     },
 
-    onClearSearch: function() {
-        this.state.store.query = "";
-        ReactDOM.findDOMNode(this.refs.searchQuery).value = "";
-        ReactDOM.findDOMNode(this.refs.searchQueryCleaner).style.visibility="hidden";
+    onChange: function (event) {
+        var self = this;
+        this.setState({value: event.target.value});
+        if (this.state.timeoutRef) clearTimeout(this.state.timeoutRef);
+        this.state.timeoutRef = setTimeout(
+            function () { ChatActions.alertQuery(self.state.value) },
+            1000
+        );
+    },
+
+    onClearSearch: function () {
+        this.state.value = '';
+        ChatActions.alertQuery('');
     },
 
     render: function () {
         return (
             <div id="search-pane" className="form-inline">
                 <div className="btn-group">
-                    <input ref="searchQuery" id="search" type="text" className="search-query"
+                    <input id="search" type="text" className="search-query"
                            placeholder="Search people, groups, topics, and messages"
-                           autoComplete="off" onChange={this.onChange}/>
-                    <span ref="searchQueryCleaner" id="clear-search" onClick={this.onClearSearch}></span>
+                           autoComplete="off" value={this.state.value} onChange={this.onChange} />
+                    <span style={{visibility: this.state.store.query !== "" ? "visible" : "hidden"}}
+                          id="clear-search" onClick={this.onClearSearch}></span>
                 </div>
             </div>
         );
