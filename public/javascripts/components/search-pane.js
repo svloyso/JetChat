@@ -8,10 +8,10 @@ var SearchPane = React.createClass({
 
     onChange: function () {
         this.state.store.query = ReactDOM.findDOMNode(this.refs.searchQuery).value.trim();
-        if (this.state.store.query !== "") {
-            ReactDOM.findDOMNode(this.refs.searchQueryCleaner).style.visibility="visible";
-            alert(this.state.store.query);
-        }
+        ReactDOM.findDOMNode(this.refs.searchQueryCleaner).style.visibility =
+            this.state.store.query !== ""
+                ? "visible"
+                : "hidden";
     },
 
     onClearSearch: function() {
