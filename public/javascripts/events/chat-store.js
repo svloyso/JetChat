@@ -55,7 +55,7 @@ var ChatStore = Reflux.createStore({
                     g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
                 selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined,
                 query: ""
-            }
+            };
         }
     },
 
