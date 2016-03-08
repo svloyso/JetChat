@@ -3,11 +3,10 @@ package models
 import java.sql.Timestamp
 import javax.inject.{Inject, Singleton}
 
-import play.api.Logger
 import play.api.db.slick.{HasDatabaseConfigProvider, DatabaseConfigProvider}
 import play.api.libs.json.Json
-import slick.driver.JdbcProfile
 
+import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -43,13 +42,13 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile]
     def date = column[Timestamp]("date")
     def text = column[String]("text", O.SqlType("text"))
     def group = foreignKey("topic_group_fk", groupId, allGroups)(_.id)
-    def user = foreignKey("topic_user_fk", userId, users)(_.id)
+    def user = foreignKey("topic_user_fk", userId, allUsers)(_.id)
     def groupIndex = index("topic_group_index", groupId, unique = false)
     def userGroupIndex = index("topic_user_group_index", (groupId, userId), unique = false)
     def * = (id, groupId, userId, date, text) <> (Topic.tupled, Topic.unapply)
   }
 
-  protected val allTopics = TableQuery[TopicsTable]
+  val allTopics = TableQuery[TopicsTable]
 
   def topicsByGroupId(
     groupId: Rep[Long],
@@ -79,23 +78,22 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile]
     def userId = column[Long]("user_id")
     def pk = primaryKey("topic_read_status_pk", (topicId, userId))
     def topic = foreignKey("topic_read_status_topic_fk", topicId, allTopics)(_.id)
-    def user = foreignKey("topic_read_status_user_fk", userId, users)(_.id)
+    def user = foreignKey("topic_read_status_user_fk", userId, allUsers)(_.id)
     def * = (topicId, userId) <> (TopicReadStatus.tupled, TopicReadStatus.unapply)
   }
 
-
-  val allTopicStatuses = TableQuery[TopicReadStatusesTable]
+  val allTopicReadStatuses = TableQuery[TopicReadStatusesTable]
 
   class TopicFollowStatusesTable(tag: Tag) extends Table[TopicFollowStatus](tag, "topic_follow_statuses") {
     def topicId = column[Long]("topic_id")
     def userId = column[Long]("user_id")
     def pk = primaryKey("topic_follow_status_pk", (topicId, userId))
     def topic = foreignKey("topic_follow_status_topic_fk", topicId, allTopics)(_.id)
-    def user = foreignKey("topic_follow_status_user_fk", userId, users)(_.id)
+    def user = foreignKey("topic_follow_status_user_fk", userId, allUsers)(_.id)
     def * = (topicId, userId) <> (TopicFollowStatus.tupled, TopicFollowStatus.unapply)
   }
 
-  val topicFollowStatuses = TableQuery[TopicFollowStatusesTable]
+  val allTopicFollowStatuses = TableQuery[TopicFollowStatusesTable]
 }
 
 @Singleton()
@@ -114,12 +112,12 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   def insert(topic: Topic): Future[Long] = {
     db.run((allTopics returning allTopics.map(_.id)) += topic).flatMap( id =>
-      db.run(allTopicStatuses += TopicReadStatus(id, topic.userId)).map(_ => id)
+      db.run(allTopicReadStatuses += TopicReadStatus(id, topic.userId)).map(_ => id)
     )
   }
 
   def markAsRead(userId: Long, topicIds: Seq[Long]): Future[Option[Int]] = {
-    db.run(allTopicStatuses ++= topicIds.map(TopicReadStatus(_, userId)))
+    db.run(allTopicReadStatuses ++= topicIds.map(TopicReadStatus(_, userId)))
   }
 
   def allWithCounts(userId: Long, groupId: Option[Long], query: Option[String]): Future[Seq[TopicChat]] = {
@@ -136,8 +134,8 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     val result =
     db.run(
       (topics
-        joinLeft allTopicStatuses on { case (topic, status) => topic.id === status.topicId && status.userId === userId }
-        join users on { case ((topic, status), user) => topic.userId === user.id }
+        joinLeft allTopicReadStatuses on { case (topic, status) => topic.id === status.topicId && status.userId === userId }
+        join allUsers on { case ((topic, status), user) => topic.userId === user.id }
         join allGroups on { case (((topic, status), user), group) => topic.groupId === group.id }
       )
       .filter { case (((topic, _), _), _) =>
@@ -154,9 +152,9 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       db.run(
         (comments
           join topics on { case (comment, topic) => comment.topicId === topic.id }
-          joinLeft allTopicStatuses on { case ((comment, topic), topicStatus) => topic.id === topicStatus.topicId && topicStatus.userId === userId }
-          joinLeft allCommentsStatuses on { case (((comment, topic), topicStatus), commentStatus) => comment.id === commentStatus.commentId && commentStatus.userId === userId }
-          join users on { case ((((comment, topic), topicStatus), commentStatus), user) => topic.userId === user.id }
+          joinLeft allTopicReadStatuses on { case ((comment, topic), topicStatus) => topic.id === topicStatus.topicId && topicStatus.userId === userId }
+          joinLeft allCommentReadStatuses on { case (((comment, topic), topicStatus), commentStatus) => comment.id === commentStatus.commentId && commentStatus.userId === userId }
+          join allUsers on { case ((((comment, topic), topicStatus), commentStatus), user) => topic.userId === user.id }
           join allGroups on { case (((((comment, topic), topicStatus), commentStatus), user), group) => topic.groupId === group.id }
         ).filter { case (((((comment, topic), _), _), _), _) =>
           predicate(topic, comment.userId)
@@ -192,18 +190,17 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
     db.run(
       (topics.filter(_.id === topicId)
-      join users on { case (topic, user) => topic.userId === user.id }
+      join allUsers on { case (topic, user) => topic.userId === user.id }
       join allGroups on { case ((topic, user), group) => topic.groupId === group.id }
-      joinLeft allTopicStatuses on { case (((topic, user), group), status) => topic.id === status.topicId && status.userId === userId })
+      joinLeft allTopicReadStatuses on { case (((topic, user), group), status) => topic.id === status.topicId && status.userId === userId })
       .map { case (((topic, user), group), status) =>
         (topic, user, group, status.map(_.topicId).isDefined)
       }.result.head
     ).flatMap { case t =>
-
       db.run((comments.filter(comment => comment.topicId === topicId)
-        join users on { case (comment, user) => comment.userId === user.id }
+        join allUsers on { case (comment, user) => comment.userId === user.id }
         join allGroups on { case ((comment, user), group) => comment.groupId === group.id }
-        joinLeft allCommentsStatuses on { case (((comment, user), group), status) => comment.id === status.commentId && status.userId === userId }
+        joinLeft allCommentReadStatuses on { case (((comment, user), group), status) => comment.id === status.commentId && status.userId === userId }
         )
         .map { case (((comment, user), group), status) =>
           (comment, user, group, status.map(_.commentId).isDefined)

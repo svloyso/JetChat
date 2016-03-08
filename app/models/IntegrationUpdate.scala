@@ -22,38 +22,24 @@ trait IntegrationUpdatesComponent extends HasDatabaseConfigProvider[JdbcProfile]
 
   class IntegrationUpdatesTable(tag: Tag) extends driver.api.Table[IntegrationUpdate](tag, "integration_updates") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
-
     def userId = column[Long]("user_id")
-
     def integrationId = column[String]("integration_id")
-
     def integrationUpdateId = column[Option[String]]("integration_update_id")
-
     def integrationGroupId = column[String]("integration_group_id")
-
     def integrationTopicId = column[String]("integration_topic_id")
-
     def integrationUserId = column[String]("integration_user_id")
-
     def date = column[Timestamp]("date")
-
     def text = column[String]("text", O.SqlType("text"))
-
     // Note, this is supposed to be a unique index. It's not because integrationUpdateId is nullable
     def integrationUpdateIndex = index("integration_update_index", (integrationId, integrationUpdateId, userId), unique = false)
-
-    def integrationGroup = foreignKey("integration_update_integration_group_fk", (integrationId, integrationGroupId, userId), integrationGroups)(g => (g.integrationId, g.integrationGroupId, g.userId))
-
-    def integrationUser = foreignKey("integration_update_integration_user_fk", (integrationId, integrationUserId), integrationUsers)(u => (u.integrationId, u.integrationUserId))
-
-    def integrationTopic = foreignKey("integration_update_integration_topic_fk", (integrationId, integrationTopicId, integrationGroupId, userId), integrationTopics)(u => (u.integrationId, u.integrationTopicId, u.integrationGroupId, u.userId))
-
+    def integrationGroup = foreignKey("integration_update_integration_group_fk", (integrationId, integrationGroupId, userId), allIntegrationGroups)(g => (g.integrationId, g.integrationGroupId, g.userId))
+    def integrationUser = foreignKey("integration_update_integration_user_fk", (integrationId, integrationUserId), allIntegrationUsers)(u => (u.integrationId, u.integrationUserId))
+    def integrationTopic = foreignKey("integration_update_integration_topic_fk", (integrationId, integrationTopicId, integrationGroupId, userId), allIntegrationTopics)(u => (u.integrationId, u.integrationTopicId, u.integrationGroupId, u.userId))
     def integrationGroupIndex = index("integration_update_integration_group_index", (integrationId, integrationGroupId, userId), unique = false)
-
-    def * = (id, integrationId, integrationUpdateId, integrationGroupId, integrationTopicId, userId, integrationUserId, date, text) <>(IntegrationUpdate.tupled, IntegrationUpdate.unapply)
+    def * = (id, integrationId, integrationUpdateId, integrationGroupId, integrationTopicId, userId, integrationUserId, date, text) <> (IntegrationUpdate.tupled, IntegrationUpdate.unapply)
   }
 
-  val integrationUpdates = TableQuery[IntegrationUpdatesTable]
+  val allIntegrationUpdates = TableQuery[IntegrationUpdatesTable]
 }
 
 @Singleton()
@@ -63,33 +49,33 @@ class IntegrationUpdatesDAO @Inject()(val dbConfigProvider: DatabaseConfigProvid
   import driver.api._
 
   def find(integrationId: String, integrationGroupId: String, integrationUpdateId: String, userId: Long): Future[Option[IntegrationUpdate]] = {
-    db.run(integrationUpdates.filter(u => u.integrationUpdateId === integrationUpdateId &&
+    db.run(allIntegrationUpdates.filter(u => u.integrationUpdateId === integrationUpdateId &&
       u.integrationId === integrationId && u.integrationGroupId === integrationGroupId && u.userId === userId).result.headOption)
   }
 
   def find(id: Long): Future[Option[IntegrationUpdate]] = {
-    db.run(integrationUpdates.filter(t => t.id === id).result.headOption)
+    db.run(allIntegrationUpdates.filter(t => t.id === id).result.headOption)
   }
 
   def insert(update: IntegrationUpdate): Future[Long] = {
-    db.run((integrationUpdates returning integrationUpdates.map(_.id)) += update)
+    db.run((allIntegrationUpdates returning allIntegrationUpdates.map(_.id)) += update)
   }
 
   def merge(update: IntegrationUpdate): Future[Boolean] = {
     if (update.id > 0) {
       find(update.id).flatMap {
         case None =>
-          db.run(integrationUpdates += update).map(_ => true)
+          db.run(allIntegrationUpdates += update).map(_ => true)
         case Some(existing) =>
-          db.run(integrationUpdates.filter(u => u.id === update.id)
+          db.run(allIntegrationUpdates.filter(u => u.id === update.id)
             .map(_.integrationUpdateId).update(update.integrationUpdateId)).map(_ => false)
       }
     } else if (update.integrationUpdateId.isDefined) {
       find(update.integrationId, update.integrationGroupId, update.integrationUpdateId.get, update.userId).flatMap {
         case None =>
-          db.run(integrationUpdates += update).map(_ => true)
+          db.run(allIntegrationUpdates += update).map(_ => true)
         case Some(existing) =>
-          db.run(integrationUpdates.filter(u => u.integrationUpdateId === update.integrationUpdateId.get &&
+          db.run(allIntegrationUpdates.filter(u => u.integrationUpdateId === update.integrationUpdateId.get &&
             u.integrationId === update.integrationId && u.integrationGroupId === update.integrationGroupId && u.userId === update.userId)
             .map(_.integrationUpdateId).update(update.integrationUpdateId)).map(_ => false)
       }

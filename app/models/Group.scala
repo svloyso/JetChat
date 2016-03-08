@@ -43,11 +43,11 @@ trait GroupsComponent extends HasDatabaseConfigProvider[JdbcProfile] with UsersC
     def userId = column[Long]("user_id")
     def pk = primaryKey("group_follow_status_pk", (groupId, userId))
     def topic = foreignKey("group_follow_status_group_fk", groupId, allGroups)(_.id)
-    def user = foreignKey("group_follow_status_user_fk", userId, users)(_.id)
+    def user = foreignKey("group_follow_status_user_fk", userId, allUsers)(_.id)
     def * = (groupId, userId) <> (GroupFollowStatus.tupled, GroupFollowStatus.unapply)
   }
 
-  val groupFollowStatuses = TableQuery[GroupFollowStatusesTable]
+  val allGroupFollowStatuses = TableQuery[GroupFollowStatusesTable]
 }
 
 @Singleton()
@@ -76,8 +76,8 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       db.run(
         (topics
           joinLeft topics on { case (topic, myTopic) => topic.id === myTopic.id }
-          joinLeft allTopicStatuses on { case ((topic, myTopic), topicReadStatus) => topic.id === topicReadStatus.topicId && topicReadStatus.userId === userId }
-          join allGroups on { case (((topic, myTopic), topicReadStatus), group) => topic.groupId === group.id }
+          joinLeft allTopicReadStatuses on { case ((topic, myTopic), topicReadStatus) => topic.id === topicReadStatus.topicId && topicReadStatus.userId === userId }
+          join groups on { case (((topic, myTopic), topicReadStatus), group) => topic.groupId === group.id }
         ).groupBy { case (((topic, myTopic), topicReadStatus), group) =>
           (group.id, group.name)
         }.map { case ((groupId, groupName), g) =>
@@ -91,7 +91,7 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         db.run(
           (comments
             joinLeft comments on { case (comment, myComment) => comment.id === myComment.id && myComment.userId === userId }
-            joinLeft allCommentsStatuses on { case ((comment, myComment), commentReadStatus) => comment.id === commentReadStatus.commentId && commentReadStatus.userId === userId }
+            joinLeft allCommentReadStatuses on { case ((comment, myComment), commentReadStatus) => comment.id === commentReadStatus.commentId && commentReadStatus.userId === userId }
             join allGroups on { case (((comment, _), _), group) => comment.groupId === group.id }
           ).groupBy { case (((_, _), _), group) => (group.id, group.name) }
           .map { case ((groupId, groupName), g) =>

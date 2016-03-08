@@ -31,7 +31,7 @@ trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile]
     def text = column[String]("text", O.SqlType("text"))
     def group = foreignKey("comment_group_fk", groupId, allGroups)(_.id)
     def topic = foreignKey("comment_topic_fk", topicId, allTopics)(_.id)
-    def user = foreignKey("comment_user_fk", userId, users)(_.id)
+    def user = foreignKey("comment_user_fk", userId, allUsers)(_.id)
     def * = (id, groupId, topicId, userId, date, text) <> (Comment.tupled, Comment.unapply)
   }
 
@@ -75,11 +75,11 @@ trait CommentsComponent extends HasDatabaseConfigProvider[JdbcProfile]
     def userId = column[Long]("user_id")
     def pk = primaryKey("comment_read_status_pk", (commentId, userId))
     def comment = foreignKey("comment_read_status_comment_fk", commentId, allComments)(_.id)
-    def user = foreignKey("comment_read_status_user_fk", userId, users)(_.id)
+    def user = foreignKey("comment_read_status_user_fk", userId, allUsers)(_.id)
     def * = (commentId, userId) <> (CommentReadStatus.tupled, CommentReadStatus.unapply)
   }
 
-  val allCommentsStatuses = TableQuery[CommentReadStatusesTable]
+  val allCommentReadStatuses = TableQuery[CommentReadStatusesTable]
 }
 
 @Singleton()
@@ -90,11 +90,11 @@ class CommentsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   def insert(comment: Comment): Future[Long] = {
     db.run((allComments returning allComments.map(_.id)) += comment).flatMap(id =>
-      db.run(allCommentsStatuses += CommentReadStatus(id, comment.userId)).map(_ => id)
+      db.run(allCommentReadStatuses += CommentReadStatus(id, comment.userId)).map(_ => id)
     )
   }
 
   def markAsRead(userId: Long, commentIds: Seq[Long]): Future[Option[Int]] = {
-    db.run(allCommentsStatuses ++= commentIds.map(CommentReadStatus(_, userId)))
+    db.run(allCommentReadStatuses ++= commentIds.map(CommentReadStatus(_, userId)))
   }
 }

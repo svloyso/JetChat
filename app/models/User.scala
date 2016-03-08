@@ -23,13 +23,11 @@ trait UsersComponent extends HasDatabaseConfigProvider[JdbcProfile] {
     def login = column[String]("login")
     def name = column[String]("name")
     def avatar = column[Option[String]]("avatar")
-
     def loginIndex = index("user_login_index", login, unique = true)
-
-    def * = (id, login, name, avatar) <>(User.tupled, User.unapply)
+    def * = (id, login, name, avatar) <> (User.tupled, User.unapply)
   }
 
-  val users = TableQuery[UsersTable]
+  val allUsers = TableQuery[UsersTable]
 }
 
 @Singleton()
@@ -38,23 +36,23 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
   import driver.api._
 
   def findById(id: Long): Future[Option[User]] = {
-    db.run(users.filter(_.id === id).result.headOption)
+    db.run(allUsers.filter(_.id === id).result.headOption)
   }
 
   def findByLogin(login: String): Future[Option[User]] = {
-    db.run(users.filter(_.login === login).result.headOption)
+    db.run(allUsers.filter(_.login === login).result.headOption)
   }
 
   def insert(user: User): Future[Long] = {
-    db.run((users returning users.map(_.id)) += user)
+    db.run((allUsers returning allUsers.map(_.id)) += user)
   }
 
   def all: Future[Seq[User]] = {
-    db.run(users.result)
+    db.run(allUsers.result)
   }
 
   def allWithCounts(userId: Long, nonEmptyOnly: Boolean = false): Future[Seq[UserChat]] = {
-    db.run(users.result).flatMap { case u =>
+    db.run(allUsers.result).flatMap { case u =>
       val allUsers = if (!nonEmptyOnly) u.map(_ ->("", new Timestamp(0), 0, 0)).toMap else Seq().toMap
       db.run(
         sql"""SELECT u.id, u.login, u.name, u.avatar, ld.date, ld.text,

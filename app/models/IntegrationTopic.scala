@@ -31,14 +31,14 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
     def text = column[String]("text", O.SqlType("text"))
     def title = column[String]("title")
     def pk = primaryKey("integration_topic_index", (integrationId, integrationTopicId, integrationGroupId, userId))
-    def user = foreignKey("integration_token_user_fk", userId, users)(_.id)
-    def integrationGroup = foreignKey("integration_topic_integration_group_fk", (integrationId, integrationGroupId, userId), integrationGroups)(g => (g.integrationId, g.integrationGroupId, userId))
-    def integrationUser = foreignKey("integration_topic_integration_user_fk", (integrationId, integrationUserId), integrationUsers)(u => (u.integrationId, u.integrationUserId))
+    def user = foreignKey("integration_token_user_fk", userId, allUsers)(_.id)
+    def integrationGroup = foreignKey("integration_topic_integration_group_fk", (integrationId, integrationGroupId, userId), allIntegrationGroups)(g => (g.integrationId, g.integrationGroupId, userId))
+    def integrationUser = foreignKey("integration_topic_integration_user_fk", (integrationId, integrationUserId), allIntegrationUsers)(u => (u.integrationId, u.integrationUserId))
     def integrationGroupIndex = index("integration_topic_integration_group_index", (integrationId, integrationGroupId, userId), unique = false)
     def * = (integrationId, integrationTopicId, integrationGroupId, userId, integrationUserId, date, text, title) <> (IntegrationTopic.tupled, IntegrationTopic.unapply)
   }
 
-  val integrationTopics = TableQuery[IntegrationTopicsTable]
+  val allIntegrationTopics = TableQuery[IntegrationTopicsTable]
 }
 
 @Singleton()
@@ -48,7 +48,7 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
   import driver.api._
 
   def find(integrationId: String, integrationGroupId: String, integrationTopicId: String, userId: Long): Future[Option[IntegrationTopic]] = {
-    db.run(integrationTopics.filter(t => t.integrationTopicId === integrationTopicId
+    db.run(allIntegrationTopics.filter(t => t.integrationTopicId === integrationTopicId
       && t.integrationGroupId === integrationGroupId
       && t.integrationId === integrationId
       && t.userId === userId).result.headOption)
@@ -57,7 +57,7 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
   def merge(topic: IntegrationTopic): Future[Boolean] = {
     find(topic.integrationId, topic.integrationGroupId, topic.integrationTopicId, topic.userId).flatMap {
       case None =>
-        db.run(integrationTopics += topic).map(_ => true)
+        db.run(allIntegrationTopics += topic).map(_ => true)
       case Some(existing) =>
         Future {
           false
@@ -66,10 +66,10 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
   }
 
   def allWithCounts(userId: Long, integrationId: Option[String], integrationGroupId: Option[String]): Future[Seq[(String, String, Timestamp, String, String, String, String, String, Option[Long], Option[String], Int)]] = {
-    db.run((integrationTopics
-      join integrationUsers on { case (topic, integrationUser) => topic.integrationUserId === integrationUser.integrationUserId }
-      joinLeft users on { case ((topic, integrationUser), user) => integrationUser.userId === user.id }
-      join integrationGroups on { case (((topic, integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
+    db.run((allIntegrationTopics
+      join allIntegrationUsers on { case (topic, integrationUser) => topic.integrationUserId === integrationUser.integrationUserId }
+      joinLeft allUsers on { case ((topic, integrationUser), user) => integrationUser.userId === user.id }
+      join allIntegrationGroups on { case (((topic, integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
       .filter { case (((topic, integrationUser), user), group) =>
         (integrationId, integrationGroupId) match {
           case (Some(integrationId), Some(integrationGroupId)) => topic.userId === userId &&
@@ -84,10 +84,10 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     }.result).flatMap { case f =>
       val userTopics = f.toMap
 
-      db.run((integrationTopics joinLeft integrationUpdates on { case (topic, update) => update.integrationTopicId === topic.integrationTopicId }
-        join integrationUsers on { case ((topic, update), integrationUser) => topic.integrationUserId === integrationUser.integrationUserId }
-        joinLeft users on { case ((topic, integrationUser), user) => integrationUser.userId === user.id }
-        join integrationGroups on { case ((((topic, update), integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
+      db.run((allIntegrationTopics joinLeft allIntegrationUpdates on { case (topic, update) => update.integrationTopicId === topic.integrationTopicId }
+        join allIntegrationUsers on { case ((topic, update), integrationUser) => topic.integrationUserId === integrationUser.integrationUserId }
+        joinLeft allUsers on { case ((topic, integrationUser), user) => integrationUser.userId === user.id }
+        join allIntegrationGroups on { case ((((topic, update), integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
         .filter { case ((((topic, update), integrationUser), user), group) =>
           (integrationId, integrationGroupId) match {
             case (Some(integrationId), Some(integrationGroupId)) => topic.userId === userId &&
@@ -121,19 +121,19 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
       integrationTopicId: String,
       query: Option[String]): Future[Seq[(AbstractIntegrationMessage, IntegrationUser, IntegrationGroup)]]
   = {
-    db.run((integrationTopics.filter(t => t.userId === userId && t.integrationId === integrationId &&
+    db.run((allIntegrationTopics.filter(t => t.userId === userId && t.integrationId === integrationId &&
         t.integrationGroupId === integrationGroupId && t.integrationTopicId === integrationTopicId)
-      join integrationUsers on { case (topic, user) => user.integrationId === integrationId &&
+      join allIntegrationUsers on { case (topic, user) => user.integrationId === integrationId &&
         user.integrationUserId === topic.integrationUserId }
-      join integrationGroups on { case ((topic, user), group) => group.userId === userId &&
+      join allIntegrationGroups on { case ((topic, user), group) => group.userId === userId &&
         group.integrationId === integrationId && group.integrationGroupId === topic.integrationGroupId})
       .map { case ((topic, user), group) => (topic, user, group) }.result
     ).flatMap { case t =>
-      db.run((integrationUpdates.filter(u => u.userId === userId && u.integrationId === integrationId
+      db.run((allIntegrationUpdates.filter(u => u.userId === userId && u.integrationId === integrationId
         && u.integrationGroupId === integrationGroupId && u.integrationTopicId === integrationTopicId)
-        join integrationUsers on { case (update, user) => user.integrationId === integrationId &&
+        join allIntegrationUsers on { case (update, user) => user.integrationId === integrationId &&
           user.integrationUserId === update.integrationUserId }
-        join integrationGroups on { case ((update, user), group) => group.userId === userId &&
+        join allIntegrationGroups on { case ((update, user), group) => group.userId === userId &&
         group.integrationId === integrationId && group.integrationGroupId === update.integrationGroupId})
         .map { case ((update, user), group) =>
           (update, user, group)
