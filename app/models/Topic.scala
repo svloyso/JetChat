@@ -33,60 +33,40 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Groups
 
   class TopicsTable(tag: Tag) extends Table[Topic](tag, "topics") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
-
     def groupId = column[Long]("group_id")
-
     def userId = column[Long]("user_id")
-
     def date = column[Timestamp]("date")
-
     def text = column[String]("text", O.SqlType("text"))
-
-    def group = foreignKey("topic_group_fk", groupId, groups)(_.id)
-
-    def user = foreignKey("topic_user_fk", userId, users)(_.id)
-
+    def group = foreignKey("topic_group_fk", groupId, allGroups)(_.id)
+    def user = foreignKey("topic_user_fk", userId, allUsers)(_.id)
     def groupIndex = index("topic_group_index", groupId, unique = false)
-
     def userGroupIndex = index("topic_user_group_index", (groupId, userId), unique = false)
-
-    def * = (id, groupId, userId, date, text) <>(Topic.tupled, Topic.unapply)
+    def * = (id, groupId, userId, date, text) <> (Topic.tupled, Topic.unapply)
   }
 
-  val topics = TableQuery[TopicsTable]
+  val allTopics = TableQuery[TopicsTable]
 
   class TopicReadStatusesTable(tag: Tag) extends Table[TopicReadStatus](tag, "topic_read_statuses") {
     def topicId = column[Long]("topic_id")
-
     def userId = column[Long]("user_id")
-
     def pk = primaryKey("topic_read_status_pk", (topicId, userId))
-
-    def topic = foreignKey("topic_read_status_topic_fk", topicId, topics)(_.id)
-
-    def user = foreignKey("topic_read_status_user_fk", userId, users)(_.id)
-
-    def * = (topicId, userId) <>(TopicReadStatus.tupled, TopicReadStatus.unapply)
+    def topic = foreignKey("topic_read_status_topic_fk", topicId, allTopics)(_.id)
+    def user = foreignKey("topic_read_status_user_fk", userId, allUsers)(_.id)
+    def * = (topicId, userId) <> (TopicReadStatus.tupled, TopicReadStatus.unapply)
   }
 
-  val topicReadStatuses = TableQuery[TopicReadStatusesTable]
-
+  val allTopicReadStatuses = TableQuery[TopicReadStatusesTable]
 
   class TopicFollowStatusesTable(tag: Tag) extends Table[TopicFollowStatus](tag, "topic_follow_statuses") {
     def topicId = column[Long]("topic_id")
-
     def userId = column[Long]("user_id")
-
     def pk = primaryKey("topic_follow_status_pk", (topicId, userId))
-
-    def topic = foreignKey("topic_follow_status_topic_fk", topicId, topics)(_.id)
-
-    def user = foreignKey("topic_follow_status_user_fk", userId, users)(_.id)
-
-    def * = (topicId, userId) <>(TopicFollowStatus.tupled, TopicFollowStatus.unapply)
+    def topic = foreignKey("topic_follow_status_topic_fk", topicId, allTopics)(_.id)
+    def user = foreignKey("topic_follow_status_user_fk", userId, allUsers)(_.id)
+    def * = (topicId, userId) <> (TopicFollowStatus.tupled, TopicFollowStatus.unapply)
   }
 
-  val topicFollowStatuses = TableQuery[TopicFollowStatusesTable]
+  val allTopicFollowStatuses = TableQuery[TopicFollowStatusesTable]
 }
 
 @Singleton()
@@ -96,17 +76,17 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
   import driver.api._
 
   def findById(id: Long): Future[Option[Topic]] = {
-    db.run(topics.filter(_.id === id).result.headOption)
+    db.run(allTopics.filter(_.id === id).result.headOption)
   }
 
   def insert(topic: Topic): Future[Long] = {
-    db.run((topics returning topics.map(_.id)) += topic).flatMap( id =>
-      db.run(topicReadStatuses += TopicReadStatus(id, topic.userId)).map(_ => id)
+    db.run((allTopics returning allTopics.map(_.id)) += topic).flatMap(id =>
+      db.run(allTopicReadStatuses += TopicReadStatus(id, topic.userId)).map(_ => id)
     )
   }
 
   def markAsRead(userId: Long, topicIds: Seq[Long]): Future[Option[Int]] = {
-    db.run(topicReadStatuses ++= topicIds.map(TopicReadStatus(_, userId)))
+    db.run(allTopicReadStatuses ++= topicIds.map(TopicReadStatus(_, userId)))
   }
 
   def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[TopicChat]] = {
@@ -141,18 +121,18 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   def messages(userId: Long, topicId: Long): Future[Seq[(AbstractMessage, User, Group, Boolean)]] = {
     db.run(
-      (topics.filter(_.id === topicId)
-      join users on { case (topic, user) => topic.userId === user.id }
-      join groups on { case ((topic, user), group) => topic.groupId === group.id }
-      joinLeft topicReadStatuses on { case (((topic, user), group), status) => topic.id === status.topicId && status.userId === userId })
+      (allTopics.filter(_.id === topicId)
+      join allUsers on { case (topic, user) => topic.userId === user.id }
+      join allGroups on { case ((topic, user), group) => topic.groupId === group.id }
+      joinLeft allTopicReadStatuses on { case (((topic, user), group), status) => topic.id === status.topicId && status.userId === userId })
       .map { case (((topic, user), group), status) =>
         (topic, user, group, status.map(_.topicId).isDefined)
       }.result.head
     ).flatMap { case t =>
-      db.run((comments.filter(comment => comment.topicId === topicId)
-        join users on { case (comment, user) => comment.userId === user.id }
-        join groups on { case ((comment, user), group) => comment.groupId === group.id }
-        joinLeft commentReadStatuses on { case (((comment, user), group), status) => comment.id === status.commentId && status.userId === userId }
+      db.run((allComments.filter(comment => comment.topicId === topicId)
+        join allUsers on { case (comment, user) => comment.userId === user.id }
+        join allGroups on { case ((comment, user), group) => comment.groupId === group.id }
+        joinLeft allCommentReadStatuses on { case (((comment, user), group), status) => comment.id === status.commentId && status.userId === userId }
         )
         .map { case (((comment, user), group), status) =>
           (comment, user, group, status.map(_.commentId).isDefined)
