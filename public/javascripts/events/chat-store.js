@@ -30,11 +30,28 @@ var ChatStore = Reflux.createStore({
          }, false);*/
     },
 
+    nullifyExcept: function () {
+        var keys = new Set([
+            "displaySettings",
+            "selectedGroup",
+            "selectedIntegration",
+            "selectedIntegrationGroup",
+            "selectedIntegrationTopic",
+            "selectedTopic",
+            "selectedUser",
+            "selectedUserTopic"]);
+
+        for (var id = 0; id < arguments.length; ++id)
+            keys.delete(arguments[id]);
+
+        for (let key of keys)
+            this.state[key] = undefined;
+    },
+
     getInitialState: function () {
-        if (this.state) {
-            return this.state;
-        } else {
-            return {
+        return (this.state)
+            ? this.state
+            : {
                 users: _global.users.filter(function (u) {
                     return u.id !== _global.user.id
                 }),
@@ -54,17 +71,14 @@ var ChatStore = Reflux.createStore({
                 selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
                     g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
                 selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined
-            }
-        }
+            };
     },
 
     onSelectGroup: function (group) {
         var self = this;
+
+        this.nullifyExcept('selectedUserTopic');
         this.state.selectedGroup = group;
-        this.state.selectedUser = undefined;
-        this.state.selectedIntegration = undefined;
-        this.state.selectedIntegrationGroup = undefined;
-        this.state.displaySettings = undefined;
 
         function selectTopics(topics) {
             self.state.topics = topics;
@@ -111,12 +125,8 @@ var ChatStore = Reflux.createStore({
 
     onSelectTopic: function (topic) {
         var self = this;
+        this.nullifyExcept("selectedGroup");
         this.state.selectedTopic = topic;
-        this.state.selectedUser = undefined;
-        this.state.selectedUserTopic = undefined;
-        this.state.selectedIntegration = undefined;
-        this.state.selectedIntegrationGroup = undefined;
-        this.state.displaySettings = undefined;
         if (topic) {
             $.ajax({
                 context: this,
@@ -146,13 +156,8 @@ var ChatStore = Reflux.createStore({
 
     onSelectUserTopic: function (userTopic) {
         var self = this;
-        this.state.selectedUser = undefined;
-        this.state.selectedGroup = undefined;
-        this.state.selectedTopic = undefined;
+        this.nullifyExcept();
         this.state.selectedUserTopic = userTopic;
-        this.state.selectedIntegration = undefined;
-        this.state.selectedIntegrationGroup = undefined;
-        this.state.displaySettings = undefined;
         $.ajax({
             context: this,
             type: "GET",
@@ -171,13 +176,10 @@ var ChatStore = Reflux.createStore({
 
     onSelectIntegrationTopic: function (integration, group, topic) {
         var self = this;
+        this.nullifyExcept();
         this.state.selectedIntegration = integration;
         this.state.selectedIntegrationGroup = group;
         this.state.selectedIntegrationTopic = topic;
-        this.state.selectedTopic = undefined;
-        this.state.selectedUser = undefined;
-        this.state.selectedUserTopic = undefined;
-        this.state.displaySettings = undefined;
         if (topic) {
             // TODO: Refactor it
             var integrationTopicId = topic.integrationTopicId ? topic.integrationTopicId : topic.id;
@@ -212,12 +214,8 @@ var ChatStore = Reflux.createStore({
 
     onSelectUser: function (user) {
         var self = this;
+        this.nullifyExcept();
         this.state.selectedUser = user;
-        this.state.selectedGroup = undefined;
-        this.state.selectedTopic = undefined;
-        this.state.selectedIntegration = undefined;
-        this.state.selectedIntegrationGroup = undefined;
-        this.state.displaySettings = undefined;
         $.ajax({
             context: this,
             type: "GET",
@@ -236,12 +234,8 @@ var ChatStore = Reflux.createStore({
 
     onSelectIntegration: function (integration) {
         var self = this;
+        this.nullifyExcept();
         this.state.selectedIntegration = integration;
-        this.state.selectedGroup = undefined;
-        this.state.selectedUser = undefined;
-        this.state.selectedUserTopic = undefined;
-        this.state.selectedIntegrationGroup = undefined;
-        this.state.displaySettings = undefined;
         $.ajax({
             context: this,
             type: "GET",
@@ -263,12 +257,9 @@ var ChatStore = Reflux.createStore({
 
     onSelectIntegrationGroup: function (integration, group) {
         var self = this;
+        this.nullifyExcept();
         this.state.selectedIntegration = integration;
         this.state.selectedIntegrationGroup = group;
-        this.state.selectedGroup = undefined;
-        this.state.selectedUser = undefined;
-        this.state.selectedUserTopic = undefined;
-        this.state.displaySettings = undefined;
         $.ajax({
             context: this,
             type: "GET",
@@ -331,12 +322,8 @@ var ChatStore = Reflux.createStore({
     },
 
     onShowIntegrations: function (initial) {
+        this.nullifyExcept();
         this.state.displaySettings = true;
-        this.state.selectedUser = undefined;
-        this.state.selectedUserTopic = undefined;
-        this.state.selectedGroup = undefined;
-        this.state.selectedTopic = undefined;
-
         if (!initial) {
             this.trigger(this.state);
             window.history.replaceState(this.state, window.title, "?settings=true");
