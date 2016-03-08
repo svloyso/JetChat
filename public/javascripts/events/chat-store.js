@@ -127,7 +127,7 @@ var ChatStore = Reflux.createStore({
             $.ajax({
                 context: this,
                 type: "GET",
-                url: "/json/user/" + _global.user.id + "/messages/" + topic.id + this.formQueryRequest('?'),
+                url: "/json/user/" + _global.user.id + "/messages/" + topic.id + this.formQueryRequest("?"),
                 success: function (messages) {
                     self.state.messages = messages;
                     self.state.integrationMessages = undefined;
@@ -138,7 +138,7 @@ var ChatStore = Reflux.createStore({
                             ? "?groupId=" + self.state.selectedGroup.id
                                 + "&topicId=" + self.state.selectedTopic.id
                             : "?topicId=" + self.state.selectedTopic.id)
-                        + self.formQueryRequest('&'));
+                        + self.formQueryRequest("&"));
                 },
                 fail: function (e) {
                     console.error(e);
@@ -164,7 +164,7 @@ var ChatStore = Reflux.createStore({
         $.ajax({
             context: this,
             type: "GET",
-            url: "/json/user/" + _global.user.id + "/direct/" + userTopic.id + this.formQueryRequest('?'),
+            url: "/json/user/" + _global.user.id + "/direct/" + userTopic.id + this.formQueryRequest("?"),
             success: function (messages) {
                 self.state.messages = messages;
                 self.state.integrationMessages = undefined;
@@ -195,7 +195,7 @@ var ChatStore = Reflux.createStore({
                 type: "GET",
                 url: "/json/user/" + _global.user.id + "/integration/" + integration.id +
                     "/messages?integrationGroupId=" + integrationTopicGroupId
-                + "&integrationTopicId=" + integrationTopicId + this.formQueryRequest('&'),
+                + "&integrationTopicId=" + integrationTopicId + this.formQueryRequest("&"),
                 success: function (messages) {
                     self.state.messages = undefined;
                     self.state.integrationMessages = messages;
@@ -254,7 +254,7 @@ var ChatStore = Reflux.createStore({
         $.ajax({
             context: this,
             type: "GET",
-            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics" + this.formQueryRequest('?'),
+            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics" + this.formQueryRequest("?"),
             success: function (topics) {
                 self.state.topics = undefined;
                 self.state.integrationTopics = topics;
@@ -281,7 +281,8 @@ var ChatStore = Reflux.createStore({
         $.ajax({
             context: this,
             type: "GET",
-            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics" + (group ? "?groupId=" + group.integrationGroupId : ""),
+            url: "/json/user/" + _global.user.id + "/integration/" + integration.id + "/topics"
+            + (group ? "?groupId=" + group.integrationGroupId : "") + this.formQueryRequest("&"),
             success: function (topics) {
                 self.state.topics = undefined;
                 self.state.integrationTopics = topics;

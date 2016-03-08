@@ -39,11 +39,29 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
   }
 
   val allIntegrationTopics = TableQuery[IntegrationTopicsTable]
+
+  def integrationTopicsByQuery(
+    query: Option[String],
+    updatesChecker: Function2[Option[String], Rep[String], Rep[Boolean]],
+    topics: Query[IntegrationTopicsTable, IntegrationTopic, Seq] = allIntegrationTopics.to[Seq])
+  = {
+    query match {
+      case Some(words) => topics filter {
+        topic => topic.text.indexOf(words) >=0 || topic.integrationTopicId.indexOf(words) >=0 || topic.integrationUserId.indexOf(words) >= 0 || updatesChecker(query, topic.integrationTopicId)
+      }
+      case None => topics
+    }
+  }
+
 }
 
 @Singleton()
 class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
-  extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationTopicsComponent with IntegrationUpdatesComponent with IntegrationUsersComponent  with UsersComponent {
+  extends HasDatabaseConfigProvider[JdbcProfile]
+    with IntegrationTopicsComponent
+    with IntegrationUpdatesComponent
+    with IntegrationUsersComponent
+    with UsersComponent {
 
   import driver.api._
 
@@ -65,8 +83,17 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     }
   }
 
-  def allWithCounts(userId: Long, integrationId: Option[String], integrationGroupId: Option[String]): Future[Seq[(String, String, Timestamp, String, String, String, String, String, Option[Long], Option[String], Int)]] = {
-    db.run((allIntegrationTopics
+  def allWithCounts(
+    userId: Long,
+    integrationId: Option[String],
+    integrationGroupId: Option[String],
+    query: Option[String]): Future[Seq[(String, String, Timestamp, String, String, String, String, String, Option[Long], Option[String], Int)]]
+  = {
+
+    val integrationTopics = integrationTopicsByQuery(query, updatesByQueryAndTopicId(_, _).exists)
+    val updates = updatesByQuery(query)
+
+    db.run((integrationTopics
       join allIntegrationUsers on { case (topic, integrationUser) => topic.integrationUserId === integrationUser.integrationUserId }
       joinLeft allUsers on { case ((topic, integrationUser), user) => integrationUser.userId === user.id }
       join allIntegrationGroups on { case (((topic, integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })
@@ -84,7 +111,7 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     }.result).flatMap { case f =>
       val userTopics = f.toMap
 
-      db.run((allIntegrationTopics joinLeft allIntegrationUpdates on { case (topic, update) => update.integrationTopicId === topic.integrationTopicId }
+      db.run((integrationTopics joinLeft allIntegrationUpdates on { case (topic, update) => update.integrationTopicId === topic.integrationTopicId }
         join allIntegrationUsers on { case ((topic, update), integrationUser) => topic.integrationUserId === integrationUser.integrationUserId }
         joinLeft allUsers on { case ((topic, integrationUser), user) => integrationUser.userId === user.id }
         join allIntegrationGroups on { case ((((topic, update), integrationUser), user), group) => topic.integrationGroupId === group.integrationGroupId })

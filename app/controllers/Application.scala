@@ -275,7 +275,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
       groupId: Option[String],
       query: Option[String])
   = Action.async { implicit rs =>
-    integrationTopicsDAO.allWithCounts(userId, integrationId, groupId).map { f =>
+    System.out.println("Here we go userId=" + userId + ", query=" + query)
+    integrationTopicsDAO.allWithCounts(userId, integrationId, groupId, query).map { f =>
       Json.toJson(JsArray(f.map { case (topicIntegrationId, topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c) =>
         var topic = JsObject(Seq("id" -> JsString(topicId), "integrationId" -> JsString(topicIntegrationId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsString(gId), "name" -> JsString(groupName))),

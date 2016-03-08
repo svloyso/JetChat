@@ -40,6 +40,25 @@ trait IntegrationUpdatesComponent extends HasDatabaseConfigProvider[JdbcProfile]
   }
 
   val allIntegrationUpdates = TableQuery[IntegrationUpdatesTable]
+
+  def updatesByQuery(
+    query: Option[String],
+    comments: Query[IntegrationUpdatesTable, IntegrationUpdate, Seq] = allIntegrationUpdates.to[Seq])
+  = {
+    System.out.println("1:query=" + query)
+    query match {
+      case Some(words) => comments.filter(_.text.indexOf(words) >= 0)
+      case None => comments
+    }
+  }
+
+  def updatesByTopicId(
+    topicId: Rep[String],
+    updates: Query[IntegrationUpdatesTable, IntegrationUpdate, Seq] = allIntegrationUpdates.to[Seq])
+  = updates.filter(_.integrationTopicId === topicId)
+
+  def updatesByQueryAndTopicId(query: Option[String], topicId: Rep[String]): Query[IntegrationUpdatesTable, IntegrationUpdate, Seq]
+  = updatesByQuery(query, updatesByTopicId(topicId))
 }
 
 @Singleton()

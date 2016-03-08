@@ -64,8 +64,6 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
   }
 
   def allWithCounts(userId: Long, query: Option[String]): Future[Seq[(Group, Int, Int)]] = {
-    System.out.println("Here we go userId=" + userId + ", query=" + query)
-
     val groups = groupsByQuery(query, commentsByQueryAndGroupId(_, _).exists)
     val topics = topicsByQuery(query, commentsByQueryAndTopicId(_, _).exists, topicsByUserId(userId))
     val comments = commentsByQuery(query)
