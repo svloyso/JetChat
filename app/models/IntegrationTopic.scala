@@ -148,6 +148,8 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
       integrationTopicId: String,
       query: Option[String]): Future[Seq[(AbstractIntegrationMessage, IntegrationUser, IntegrationGroup)]]
   = {
+    val integrationUpdates = updatesByQuery(query)
+
     db.run((allIntegrationTopics.filter(t => t.userId === userId && t.integrationId === integrationId &&
         t.integrationGroupId === integrationGroupId && t.integrationTopicId === integrationTopicId)
       join allIntegrationUsers on { case (topic, user) => user.integrationId === integrationId &&
@@ -156,7 +158,7 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
         group.integrationId === integrationId && group.integrationGroupId === topic.integrationGroupId})
       .map { case ((topic, user), group) => (topic, user, group) }.result
     ).flatMap { case t =>
-      db.run((allIntegrationUpdates.filter(u => u.userId === userId && u.integrationId === integrationId
+      db.run((integrationUpdates.filter(u => u.userId === userId && u.integrationId === integrationId
         && u.integrationGroupId === integrationGroupId && u.integrationTopicId === integrationTopicId)
         join allIntegrationUsers on { case (update, user) => user.integrationId === integrationId &&
           user.integrationUserId === update.integrationUserId }

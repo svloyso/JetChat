@@ -44,13 +44,11 @@ trait IntegrationUpdatesComponent extends HasDatabaseConfigProvider[JdbcProfile]
   def updatesByQuery(
     query: Option[String],
     comments: Query[IntegrationUpdatesTable, IntegrationUpdate, Seq] = allIntegrationUpdates.to[Seq])
-  = {
-    System.out.println("1:query=" + query)
-    query match {
+  = query match {
       case Some(words) => comments.filter(_.text.indexOf(words) >= 0)
       case None => comments
     }
-  }
+
 
   def updatesByTopicId(
     topicId: Rep[String],

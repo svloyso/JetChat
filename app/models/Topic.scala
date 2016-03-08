@@ -131,7 +131,6 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     val topics = topicsByQuery(query, commentsByQueryAndTopicId(_, _).exists)
     val comments = commentsByQuery(query)
 
-    val result =
     db.run(
       (topics
         joinLeft allTopicReadStatuses on { case (topic, status) => topic.id === status.topicId && status.userId === userId }
@@ -175,13 +174,6 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         }
       }
     }
-
-    result onSuccess { case seq =>
-      for (s <- seq)
-        System.out.println("element = " + s)
-    }
-
-    result
   }
 
   def messages(userId: Long, topicId: Long, query: Option[String]): Future[Seq[(AbstractMessage, User, Group, Boolean)]] = {
