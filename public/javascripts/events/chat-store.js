@@ -71,6 +71,22 @@ var ChatStore = Reflux.createStore({
         if (this.state.selectedUserTopic)
             keyValues.set("userTopicId", this.state.selectedUserTopic.id);
 
+        if (this.state.selectedIntegration)
+            keyValues.set("integrationId", this.state.selectedIntegration.id);
+
+        if (this.state.selectedIntegrationGroup)
+            keyValues.set("integrationGroupId", this.state.selectedIntegrationGroup.integrationGroupId);
+
+        if (this.state.selectedIntegrationTopic)
+            keyValues.set("integrationTopicId", this.state.selectedIntegrationTopic.integrationTopicId
+                ? this.state.selectedIntegrationTopic.integrationTopicId
+                : this.state.selectedIntegrationTopic.id);
+
+        if (this.state.selectedIntegrationTopic)
+            keyValues.set("integrationTopicGroupId", this.state.selectedIntegrationTopic.integrationGroupId
+                ? this.state.selectedIntegrationTopic.integrationGroupId
+                : this.state.selectedIntegrationTopic.group.id);
+
         var query = "?", separator = "";
 
         for (var [key, value] of keyValues) {
@@ -101,6 +117,20 @@ var ChatStore = Reflux.createStore({
 
     userTopicURL: function () {
         return "/json/user/" + _global.user.id + "/direct/" + this.selectedUserTopic.id + this.formQueryRequest("?")
+    },
+
+    integrationTopicURL: function () {
+        var integrationTopicId = this.state.selectedIntegrationTopic.integrationTopicId
+            ? this.state.selectedIntegrationTopic.integrationTopicId
+            : this.state.selectedIntegrationTopic.id;
+
+        var integrationTopicGroupId = this.state.selectedIntegrationTopic.integrationGroupId
+            ? this.state.selectedIntegrationTopic.integrationGroupId
+            : this.state.selectedIntegrationTopic.group.id;
+
+        return "/json/user/" + _global.user.id + "/integration/" + this.state.selectedIntegration.id +
+        "/messages?integrationGroupId=" + integrationTopicGroupId
+        + "&integrationTopicId=" + integrationTopicId + this.formQueryRequest("&")
     },
 
     updateGroups: function () {
@@ -245,22 +275,16 @@ var ChatStore = Reflux.createStore({
         this.state.displaySettings = undefined;
         if (topic) {
             // TODO: Refactor it
-            var integrationTopicId = topic.integrationTopicId ? topic.integrationTopicId : topic.id;
-            var integrationTopicGroupId = topic.integrationGroupId ? topic.integrationGroupId : topic.group.id;
             $.ajax({
                 context: this,
                 type: "GET",
-                url: "/json/user/" + _global.user.id + "/integration/" + integration.id +
-                "/messages?integrationGroupId=" + integrationTopicGroupId
-                + "&integrationTopicId=" + integrationTopicId + this.formQueryRequest("&"),
+                url: this.integrationTopicURL(),
                 success: function (messages) {
                     self.state.messages = undefined;
                     self.state.integrationMessages = messages;
                     self.trigger(self.state);
                     // TODO: pushState
-                    window.history.replaceState(self.state, window.title,
-                        "?integrationId=" + integration.id + (group ? "&integrationGroupId=" + group.integrationGroupId : "") +
-                        "&integrationTopicGroupId=" + integrationTopicGroupId + "&integrationTopicId=" + integrationTopicId);
+                    window.history.replaceState(self.state, window.title, self.visibleQuery());
                 },
                 fail: function (e) {
                     console.error(e);
@@ -271,8 +295,7 @@ var ChatStore = Reflux.createStore({
             this.state.integrationMessages = []; // TODO
             this.trigger(this.state);
             // TODO: pushState
-            window.history.replaceState(this.state, window.title,
-                "?integrationId=" + this.state.selectedIntegration.id + (group ? "&integrationGroupId=" + group.integrationGroupId : ""));
+            window.history.replaceState(this.state, window.title, this.visibleQuery());
         }
     },
 
