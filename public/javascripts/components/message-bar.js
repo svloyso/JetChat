@@ -24,7 +24,7 @@ var MessageBar = React.createClass({
     onInputKeyPress: function (event) {
         var self = this;
         var input = ReactDOM.findDOMNode(self.refs.input);
-        if (event.which == 13 && input.value.trim()) {
+        if (event.which == 13 && input.value.trim() && !event.shiftKey) {
             var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;
             if (selectedUser) {
                 var toUser = self.state.store.users.filter(function (u) {
