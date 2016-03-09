@@ -5,6 +5,7 @@ import MessageItem from './message-item';
 import IntegrationMessageItem from './integration-message-item';
 import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
+import classNames from 'classnames';
 var $ = require('jquery');
 
 var MessageBar = React.createClass({
@@ -166,9 +167,14 @@ var MessageBar = React.createClass({
                 </li>
             </div>
         }
+        var className = classNames({
+                ['wide']: this.state.store.selectedUser,
+                ['narrow']: !this.state.store.selectedUser,
+                ['hidden']: this.state.store.displaySettings
+            }
+        );
         return (
-            // TODO: Replace logic with className
-            <div id="message-bar" style={{left: this.state.store.selectedUser ? "200px" : "550px", display: this.state.store.displaySettings ? "none" : ""}}>
+            <div id="message-bar" className={className}>
                 <div id="message-pane">
                     <div id="message-roll" ref="messageRoll">
                         {messageItems}

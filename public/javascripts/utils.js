@@ -34,7 +34,8 @@ window.setInterval(function () {
 }, 1000 * 60);
 
 window.setInterval(function() {
-    $("#message-bar").width($(window).width() - 200 - 350);
+    $("#message-bar.narrow").width($(window).width() - 200 - 350);
+    $("#message-bar.wide").width($(window).width() - 200);
     $("#message-bar").height($(window).height());
     $("#side-bar").height($(window).height());
     $("#group-pane").height($(window).height() - 80);
