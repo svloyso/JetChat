@@ -77,7 +77,7 @@ var ChatStore = Reflux.createStore({
     onSelectGroup: function (group) {
         var self = this;
 
-        this.nullifyExcept('selectedUserTopic');
+        this.nullifyExcept('selectedTopic', 'selectedUserTopic');
         this.state.selectedGroup = group;
 
         function selectTopics(topics) {
