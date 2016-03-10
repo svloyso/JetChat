@@ -234,7 +234,7 @@ var ChatStore = Reflux.createStore({
 
     onSelectIntegration: function (integration) {
         var self = this;
-        this.nullifyExcept();
+        this.nullifyExcept("selectedIntegrationTopic");
         this.state.selectedIntegration = integration;
         $.ajax({
             context: this,
@@ -257,7 +257,7 @@ var ChatStore = Reflux.createStore({
 
     onSelectIntegrationGroup: function (integration, group) {
         var self = this;
-        this.nullifyExcept();
+        this.nullifyExcept("selectedIntegrationTopic");
         this.state.selectedIntegration = integration;
         this.state.selectedIntegrationGroup = group;
         $.ajax({
