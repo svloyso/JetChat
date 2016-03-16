@@ -72,67 +72,69 @@ class MessagesActor(integration: Integration,
 
         log.info(s"Receiving messages: { userId: $userId, integrationId: ${integration.id} }")
 
-        (for (integrationTokenOption <- integrationTokensDAO.find(userId, integration.id)) yield {
-          integrationTokenOption match {
-            case Some(integrationToken) if integrationToken.enabled =>
-              val token = integrationToken.token
+        integrationTokensDAO.find(userId, integration.id).flatMap {
+          case integrationTokenOption =>
+            integrationTokenOption match {
+              case Some(integrationToken) if integrationToken.enabled =>
+                val token = integrationToken.token
 
-              val names: mutable.HashMap[String, Future[Option[String]]] = mutable.HashMap.empty
-              val avatars: mutable.HashMap[String, Future[Option[String]]] = mutable.HashMap.empty
-              def name(topicLogin: String): Future[Option[String]] = {
-                names.getOrElseUpdate(topicLogin, integration.userHandler.name(token, Some(topicLogin)))
-              }
-              def avatar(topicLogin: String): Future[Option[String]] = {
-                avatars.getOrElseUpdate(topicLogin, integration.userHandler.avatarUrl(token, Some(topicLogin)))
-              }
+                val names: mutable.HashMap[String, Future[Option[String]]] = mutable.HashMap.empty
+                val avatars: mutable.HashMap[String, Future[Option[String]]] = mutable.HashMap.empty
+                def name(topicLogin: String): Future[Option[String]] = {
+                  names.getOrElseUpdate(topicLogin, integration.userHandler.name(token, Some(topicLogin)))
+                }
+                def avatar(topicLogin: String): Future[Option[String]] = {
+                  avatars.getOrElseUpdate(topicLogin, integration.userHandler.avatarUrl(token, Some(topicLogin)))
+                }
 
-              integration.messageHandler.collectMessages(integrationToken).map {
-                case CollectedMessages(messages, nextCheck) =>
-                  log.info(s"${integration.id} messages was collected. Topic updates: ${messages.size}.")
-                  for ((topic, updates) <- messages) {
-                    val topicLogin = topic.integrationUserId
-                    (for {
-                      name <- name(topicLogin)
-                      avatar <- avatar(topicLogin)
-                      result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, topicLogin, name.getOrElse(topicLogin), avatar))
-                    } yield result).onSuccess { case success =>
-                      if (success)
-                        mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-
+                integration.messageHandler.collectMessages(integrationToken).map {
+                  case CollectedMessages(messages, nextCheck) =>
+                    log.info(s"${integration.id} messages was collected. Topic updates: ${messages.size}.")
+                    for ((topic, updates) <- messages) {
+                      val topicLogin = topic.integrationUserId
                       (for {
-                        groupName <- integration.userHandler.groupName(token, topic.integrationGroupId)
-                        result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, topic.integrationGroupId, integrationToken.userId, groupName))
+                        name <- name(topicLogin)
+                        avatar <- avatar(topicLogin)
+                        result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, topicLogin, name.getOrElse(topicLogin), avatar))
                       } yield result).onSuccess { case success =>
                         if (success)
                           mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
 
-                        integrationTopicsDAO.merge(topic).onSuccess { case success =>
+                        (for {
+                          groupName <- integration.userHandler.groupName(token, topic.integrationGroupId)
+                          result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, topic.integrationGroupId, integrationToken.userId, groupName))
+                        } yield result).onSuccess { case success =>
                           if (success)
                             mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
 
-                          updates.foreach { update =>
-                            val updateLogin = update.integrationUserId
-                            (for {
-                              name <- name(updateLogin)
-                              avatar <- avatar(updateLogin)
-                              result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, updateLogin, name.getOrElse(updateLogin), avatar))
-                            } yield result).onSuccess { case success =>
-                              if (success)
-                                mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
+                          integrationTopicsDAO.merge(topic).onSuccess { case success =>
+                            if (success)
+                              mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
 
+                            updates.foreach { update =>
+                              val updateLogin = update.integrationUserId
                               (for {
-                                groupName <- integration.userHandler.groupName(token, update.integrationGroupId)
-                                result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, update.integrationGroupId, integrationToken.userId, groupName))
+                                name <- name(updateLogin)
+                                avatar <- avatar(updateLogin)
+                                result <- integrationUsersDAO.merge(IntegrationUser(integration.id, None, updateLogin, name.getOrElse(updateLogin), avatar))
                               } yield result).onSuccess { case success =>
                                 if (success)
                                   mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
 
-                                // TODO: We need to check if the update has been already inserted
-                                integrationUpdatesDAO.merge(update).onComplete {
-                                  case Success(inserted) =>
+                                (for {
+                                  groupName <- integration.userHandler.groupName(token, update.integrationGroupId)
+                                  result <- integrationGroupsDAO.merge(IntegrationGroup(integration.id, update.integrationGroupId, integrationToken.userId, groupName))
+                                } yield result).onSuccess { case success =>
+                                  if (success)
                                     mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-                                  case Failure(e) =>
-                                    log.error(s"Can't merge an integration update: $update", e)
+
+                                  // TODO: We need to check if the update has been already inserted
+                                  integrationUpdatesDAO.merge(update).onComplete {
+                                    case Success(inserted) =>
+                                      mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
+                                    case Failure(e) =>
+                                      log.error(s"Can't merge an integration update: $update", e)
+                                  }
                                 }
                               }
                             }
@@ -140,20 +142,17 @@ class MessagesActor(integration: Integration,
                         }
                       }
                     }
-                  }
-                  nextCheck
-              }.onComplete { case t =>
-                val duration = t match {
-                  case Failure(throwable) =>
+                    nextCheck
+                }.recover {
+                  case throwable: Throwable =>
                     log.error(throwable.getMessage, throwable)
                     MessagesActor.DEFAULT_DURATION
-                  case Success(result) => result
+                }.map { duration =>
+                  schedule(duration, ReceiveMessages(userId))
                 }
-                schedule(duration, ReceiveMessages(userId))
-              }
-            case _ => self ! FinishSchedule(userId)
-          }
-        }).withTimeout.onComplete { t =>
+              case _ => Future { self ! FinishSchedule(userId) }
+            }
+        }.withTimeout.onComplete { t =>
           t match {
             case Failure(throwable) => log.error(throwable, throwable.getMessage)
             case _ =>
