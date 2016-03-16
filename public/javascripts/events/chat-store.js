@@ -33,27 +33,27 @@ var ChatStore = Reflux.createStore({
         return (this.state)
             ? this.state
             : {
-            users: _global.users.filter(function (u) {
-                return u.id !== _global.user.id
-            }),
-            integrations: _global.integrations,
-            displaySettings: _global.displaySettings,
-            groups: _global.groups,
-            integrationGroups: _global.integrationGroups,
-            topics: _global.topics,
-            messages: [],
-            selectedGroup: _global.selectedGroupId ? _global.groups.filter(function (g) {
-                return g.id == _global.selectedGroupId
-            })[0] : undefined,
-            selectedTopic: _global.selectedTopic,
-            selectedUserTopic: _global.selectedUserTopicId ? _global.users.find(u => u.id == _global.selectedUserTopicId) : undefined,
-            selectedIntegrationTopic: _global.selectedIntegrationTopic,
-            selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(i => i.id == _global.selectedIntegrationId) : undefined,
-            selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
-            g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
-            selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined,
-            query: ""
-        };
+                users: _global.users.filter(function (u) {
+                    return u.id !== _global.user.id
+                }),
+                integrations: _global.integrations,
+                displaySettings: _global.displaySettings,
+                groups: _global.groups,
+                integrationGroups: _global.integrationGroups,
+                topics: _global.topics,
+                messages: [],
+                selectedGroup: _global.selectedGroupId ? _global.groups.filter(function (g) {
+                    return g.id == _global.selectedGroupId
+                })[0] : undefined,
+                selectedTopic: _global.selectedTopic,
+                selectedUserTopic: _global.selectedUserTopicId ? _global.users.find(u => u.id == _global.selectedUserTopicId) : undefined,
+                selectedIntegrationTopic: _global.selectedIntegrationTopic,
+                selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(i => i.id == _global.selectedIntegrationId) : undefined,
+                selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
+                g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
+                selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined,
+                query: ""
+            };
     },
 
     visibleQuery: function () {

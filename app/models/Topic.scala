@@ -3,7 +3,7 @@ package models
 import java.sql.Timestamp
 import javax.inject.{Inject, Singleton}
 
-import play.api.db.slick.{HasDatabaseConfigProvider, DatabaseConfigProvider}
+import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.Json
 
 import slick.driver.JdbcProfile
@@ -111,7 +111,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
   }
 
   def insert(topic: Topic): Future[Long] = {
-    db.run((allTopics returning allTopics.map(_.id)) += topic).flatMap( id =>
+    db.run((allTopics returning allTopics.map(_.id)) += topic).flatMap(id =>
       db.run(allTopicReadStatuses += TopicReadStatus(id, topic.userId)).map(_ => id)
     )
   }

@@ -57,6 +57,14 @@ input, textarea, #settings-dropdown:focus {
     background: white;
 }
 
+#message-bar.wide {
+    left: 200px;
+}
+
+#message-bar.hidden {
+    display: none;
+}
+
 #group-pane {
     padding: 10px 0;
 }
@@ -263,6 +271,7 @@ input.search-query {
 }
 
 #message-bar {
+    max-width: 700px;
     min-width: 350px;
 }
 
@@ -327,7 +336,7 @@ input.search-query {
 #message-roll {
     position: absolute;
     bottom: 70px;
-    width: 100%;
+    padding-right: 30px;
 }
 
 #message-pane li .info .user {

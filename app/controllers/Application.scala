@@ -105,7 +105,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                 integrationTopicGroupId, integrationTopicId, displaySettings, webSocketUrl))
           case None =>
             Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)).discardingCookies(DiscardingCookie("user"))
-        }
+         }
       case _ =>
         val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
       val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)

@@ -52,7 +52,6 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
       case None => topics
     }
   }
-
 }
 
 @Singleton()
@@ -158,7 +157,7 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
         group.integrationId === integrationId && group.integrationGroupId === topic.integrationGroupId})
       .map { case ((topic, user), group) => (topic, user, group) }.result
     ).flatMap { case t =>
-      db.run((integrationUpdates.filter(u => u.userId === userId && u.integrationId === integrationId
+      db.run((allIntegrationUpdates.filter(u => u.userId === userId && u.integrationId === integrationId
         && u.integrationGroupId === integrationGroupId && u.integrationTopicId === integrationTopicId)
         join allIntegrationUsers on { case (update, user) => user.integrationId === integrationId &&
           user.integrationUserId === update.integrationUserId }
