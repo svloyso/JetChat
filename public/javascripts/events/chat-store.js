@@ -8,6 +8,30 @@ var $ = require('jquery');
 var ChatStore = Reflux.createStore({
     listenables: [ChatActions],
 
+    firstDefined: function() {
+        for (var id = 0; id < arguments.length; ++id)
+            if (arguments[id])
+                return arguments[id];
+
+        return undefined;
+    },
+
+    integrationHistory: function(integrationId) {
+        var history = this.state.history;
+        if (!history.has(integrationId))
+            history.set(integrationId, { lastGroupId: undefined, groupsHistory: new Map() });
+
+        return history.get(integrationId);
+    },
+
+    groupHistory: function(integrationId, groupId) {
+        var history = this.integrationHistory(integrationId).groupsHistory;
+        if (!history.has(groupId))
+            history.set(groupId, { lastTopicId: undefined });
+
+        return history.get(groupId);
+    },
+
     init: function () {
         this.state = this.getInitialState();
         if (this.state.displaySettings) {
@@ -33,6 +57,14 @@ var ChatStore = Reflux.createStore({
         return (this.state)
             ? this.state
             : {
+                selected: {
+                    integration: this.firstDefined(_global.selectedIntegrationId, "chat"),
+                    group: this.firstDefined(_global.selectedGroupId, _global.selectedIntegrationGroupId),
+                    topic: undefined,
+                    query: undefined,
+                    settings: _global.displaySettings
+                },
+                history: new Map(),
                 users: _global.users.filter(function (u) {
                     return u.id !== _global.user.id
                 }),
@@ -51,22 +83,21 @@ var ChatStore = Reflux.createStore({
                 selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(i => i.id == _global.selectedIntegrationId) : undefined,
                 selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
                 g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
-                selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined,
-                query: ""
+                selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined
             };
     },
 
     visibleQuery: function () {
-        var keyValues = new Map();
-
-        if (this.state.selectedGroup)
-            keyValues.set("groupId", this.state.selectedGroup.id);
+        var keyValues = new Map([
+            ["integration", this.state.selected.integration],
+            ["group", this.state.selected.group],
+            ["settings", this.state.selected.settings],
+            ["query", this.state.selected.query],
+            ["topic", this.state.selected.topic]
+        ]);
 
         if (this.state.selectedTopic)
             keyValues.set("topicId", this.state.selectedTopic.id);
-
-        if (this.state.query && this.state.query !== "")
-            keyValues.set("query", this.state.query);
 
         if (this.state.selectedUserTopic)
             keyValues.set("userTopicId", this.state.selectedUserTopic.id);
@@ -90,6 +121,7 @@ var ChatStore = Reflux.createStore({
         var query = "?", separator = "";
 
         for (var [key, value] of keyValues) {
+            if (!value) continue;
             query += separator + key + "=" + value;
             separator = "&";
         }
@@ -98,8 +130,9 @@ var ChatStore = Reflux.createStore({
     },
 
     formQueryRequest: function(prefix) {
+        var selected = this.state.selected;
         if (!prefix) { prefix = "?" }
-        return this.state.query == "" ? "" : prefix + "query=" + this.state.query
+        return selected.query && selected.query !== "" ? prefix + "query=" + selected.query : "";
     },
 
     messagesURL: function () {
@@ -108,7 +141,7 @@ var ChatStore = Reflux.createStore({
 
     topicsURL: function () {
         return "/json/user/" + _global.user.id + "/topics" +
-            (this.state.selectedGroup ? "/" + this.state.selectedGroup.id : "") + this.formQueryRequest("?")
+            (this.state.selectedGroup ? "/" + this.state.selectedGroup.id : "") + this.formQueryRequest("?");
     },
 
     groupsURL: function () {
@@ -116,7 +149,7 @@ var ChatStore = Reflux.createStore({
     },
 
     userTopicURL: function () {
-        return "/json/user/" + _global.user.id + "/direct/" + this.selectedUserTopic.id + this.formQueryRequest("?")
+        return "/json/user/" + _global.user.id + "/direct/" + this.selectedUserTopic.id + this.formQueryRequest("?");
     },
 
     integrationTopicURL: function () {
@@ -130,7 +163,7 @@ var ChatStore = Reflux.createStore({
 
         return "/json/user/" + _global.user.id + "/integration/" + this.state.selectedIntegration.id +
         "/messages?integrationGroupId=" + integrationTopicGroupId
-        + "&integrationTopicId=" + integrationTopicId + this.formQueryRequest("&")
+        + "&integrationTopicId=" + integrationTopicId + this.formQueryRequest("&");
     },
 
     updateGroups: function () {
@@ -158,7 +191,7 @@ var ChatStore = Reflux.createStore({
                 self.onSelectUserTopic(self.state.selectedUserTopic);
             } else {
                 if (topics.length > 0) {
-                    var selectedTopic = self.state.selectedTopic ? topics.find(t => t.topic && t.topic.id == self.state.selectedTopic.id) : undefined;
+                    var selectedTopic = self.state.selected.topic ? topics.find(t => t.topic && t.topic.id == self.state.selected.topic) : undefined;
                     if (selectedTopic) {
                         self.onSelectTopic(selectedTopic.topic);
                     } else if (topics[0].topic) {
@@ -218,7 +251,13 @@ var ChatStore = Reflux.createStore({
     },
 
     onSelectGroup: function (group) {
-        var self = this;
+        if (group) {
+            var sel = this.state.selected;
+            sel.group = group.id;
+            this.integrationHistory(sel.integration).lastGroupId = sel.group;
+            sel.topic = this.groupHistory(sel.integration, sel.group).lastTopicId;
+            console.log("lastTopicId: " + sel.topic);
+        }
         this.state.selectedGroup = group;
         this.state.selectedUser = undefined;
         this.state.selectedIntegration = undefined;
@@ -228,7 +267,11 @@ var ChatStore = Reflux.createStore({
     },
 
     onSelectTopic: function (topic) {
-        var self = this;
+        if (topic && this.state.selected.integration) {
+            var sel = this.state.selected;
+            sel.topic = topic.id;
+            this.groupHistory(sel.integration, sel.group).lastTopicId = sel.topic;
+        }
         this.state.selectedTopic = topic;
         this.state.selectedUser = undefined;
         this.state.selectedUserTopic = undefined;
@@ -236,7 +279,7 @@ var ChatStore = Reflux.createStore({
         this.state.selectedIntegrationGroup = undefined;
         this.state.displaySettings = undefined;
         this.updateMessages();
-        this.trigger(self.state);
+        this.trigger(this.state);
     },
 
     onSelectUserTopic: function (userTopic) {
@@ -613,8 +656,8 @@ var ChatStore = Reflux.createStore({
     },
 
     onAlertQuery: function(newQuery) {
-        if (this.state.query !== newQuery) {
-            this.state.query = newQuery;
+        if (this.state.selected.query !== newQuery) {
+            this.state.selected.query = newQuery;
             this.updateGroups();
             this.updateTopics();
             this.trigger(this.state);

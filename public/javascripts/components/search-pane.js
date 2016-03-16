@@ -34,8 +34,9 @@ var SearchPane = React.createClass({
     },
 
     onClearSearch: function () {
+        if (this.state.timeoutRef) clearTimeout(this.state.timeoutRef);
         this.state.value = '';
-        ChatActions.alertQuery('');
+        ChatActions.alertQuery(undefined);
     },
 
     render: function () {
@@ -46,7 +47,7 @@ var SearchPane = React.createClass({
                            placeholder="Search people, groups, topics, and messages"
                            autoComplete="off" value={this.state.value}
                            onChange={this.onChange} onBlur={this.onBlur} />
-                    <span style={{visibility: this.state.store.query !== "" ? "visible" : "hidden"}}
+                    <span style={{visibility: this.state.value !== "" ? "visible" : "hidden"}}
                           id="clear-search" onClick={this.onClearSearch}/>
                 </div>
             </div>
