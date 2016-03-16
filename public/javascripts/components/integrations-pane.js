@@ -43,8 +43,9 @@ var IntegrationsPane = React.createClass({
 
             );
         });
+        var visible = this.state.store.selected.stateId == this.state.store.SETTINGS;
         return (
-            <div id="integration-pane" style={{display: this.state.store.displaySettings ? "" : "none"}}>
+            <div id="integration-pane" style={{display: visible ? "" : "none"}}>
                 <h5>Integrations</h5>
                 {integrationItems}
             </div>

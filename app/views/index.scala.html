@@ -1,10 +1,16 @@
 @import play.api.libs.json.JsValue
 
-@(user: User, groupId: Option[Long], topicId: Option[Long],
-        userId: Option[Long], userTopicId: Option[Long],
-        integrationId: Option[String], integrationGroupId: Option[String],
-        integrationTopicGroupId: Option[String], integrationTopicId: Option[String],
-        displaySettings: Option[Boolean], webSocketUrl: String)
+@(
+    user: User,
+    groupId: Option[Long],
+    topicId: Option[Long],
+    userId: Option[Long],
+    userTopicId: Option[Long],
+    integrationId: Option[String],
+    integrationGroupId: Option[String],
+    integrationTopicGroupId: Option[String],
+    integrationTopicId: Option[String],
+    webSocketUrl: String)
 
 @head = {
     <link rel="stylesheet" href="@routes.Assets.at("stylesheets/index.css")"/>
@@ -17,7 +23,6 @@
             selectedUserId: @{userId match { case Some(id) => id case None => Html("undefined") } },
             selectedIntegrationId: @{ integrationId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") }},
             selectedIntegrationGroupId: @{integrationGroupId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") } },
-            displaySettings: @{displaySettings match { case Some(value) => Html("true") case None => Html("undefined") } },
             webSocketUrl: "@Html(webSocketUrl)",
             selectedTopicId: @{topicId match { case Some(id) => id case None => Html("undefined") } },
             selectedIntegrationTopicGroupId: @{integrationTopicGroupId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") } },

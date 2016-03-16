@@ -170,7 +170,7 @@ var MessageBar = React.createClass({
         var className = classNames({
                 ['wide']: this.state.store.selectedUser,
                 ['narrow']: !this.state.store.selectedUser,
-                ['hidden']: this.state.store.displaySettings
+                ['hidden']: this.state.store.selected.stateId == this.state.store.SETTINGS
             }
         );
         return (

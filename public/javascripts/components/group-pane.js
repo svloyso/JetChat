@@ -88,7 +88,7 @@ var GroupPane = React.createClass({
         !self.state.store.selectedUser &&
         !self.state.store.selectedIntegration &&
         !self.state.store.selectedIntegrationGroup &&
-        !self.state.store.displaySettings });
+        self.state.store.selected.stateId != self.state.store.SETTINGS});
 
         return (
             <ul id="group-pane">
