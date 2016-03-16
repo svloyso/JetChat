@@ -91,7 +91,7 @@ object GitHubIntegration {
   val ID = "GitHub"
 
   val defaultPollInterval = 60 * 60
-  val sincePeriod = 1000 * 60 * 60 * 24 * 15
+  val sincePeriod = 1000 * 60 * 60 * 24 * 14
 
   private val LOG = Logger.apply(this.getClass)
 
