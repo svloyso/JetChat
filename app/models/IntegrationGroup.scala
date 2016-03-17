@@ -49,7 +49,7 @@ class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     }
   }
 
-  def allWithCounts(userId: Long): Future[Seq[(IntegrationGroup, Int)]] = {
+  def allWithCounts(userId: Long, query: Option[String]): Future[Seq[(IntegrationGroup, Int)]] = {
     db.run(allIntegrationGroups.filter(_.userId === userId).result).flatMap { f =>
       val groupMap = f.map { g => (g.integrationId, g.integrationGroupId) ->(g.name, 0) }.toMap
 

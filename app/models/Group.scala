@@ -25,6 +25,19 @@ trait GroupsComponent extends HasDatabaseConfigProvider[JdbcProfile] with UsersC
 
   val allGroups = TableQuery[GroupsTable]
 
+  def groupsByQuery(
+    query: Option[String],
+    messagesChecker: Function2[Option[String], Rep[Long], Rep[Boolean]],
+    groups: Query[GroupsTable, Group, Seq] = allGroups.to[Seq])
+  = {
+    query match {
+      case Some(words) => groups filter {
+        group => group.name.indexOf(words) >=0 || messagesChecker(query, group.id)
+      }
+      case None => groups
+    }
+  }
+
   class GroupFollowStatusesTable(tag: Tag) extends Table[GroupFollowStatus](tag, "topic_follow_statuses") {
     def groupId = column[Long]("group_id")
     def userId = column[Long]("user_id")
@@ -39,23 +52,30 @@ trait GroupsComponent extends HasDatabaseConfigProvider[JdbcProfile] with UsersC
 
 @Singleton()
 class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
-  extends HasDatabaseConfigProvider[JdbcProfile] with GroupsComponent with TopicsComponent with CommentsComponent {
-
+  extends HasDatabaseConfigProvider[JdbcProfile]
+    with GroupsComponent
+    with TopicsComponent
+    with CommentsComponent
+{
   import driver.api._
 
   def insert(group: Group): Future[Long] = {
     db.run((allGroups returning allGroups.map(_.id)) += group)
   }
 
-  def allWithCounts(userId: Long): Future[Seq[(Group, Int, Int)]] = {
-    db.run(allGroups.result).flatMap { f =>
+  def allWithCounts(userId: Long, query: Option[String]): Future[Seq[(Group, Int, Int)]] = {
+    val groups = groupsByQuery(query, commentsByQueryAndGroupId(_, _).exists)
+    val topics = topicsByQuery(query, commentsByQueryAndTopicId(_, _).exists, topicsByUserId(userId))
+    val comments = commentsByQuery(query)
+
+    db.run(groups.result).flatMap { f =>
       val groupMap = f.map { g => g.id ->(g.name, new Timestamp(0), 0, 0) }.toMap
 
       db.run(
-        (allTopics
-          joinLeft allTopics on { case (topic, myTopic) => topic.id === myTopic.id && myTopic.userId === userId }
+        (topics
+          joinLeft topics on { case (topic, myTopic) => topic.id === myTopic.id }
           joinLeft allTopicReadStatuses on { case ((topic, myTopic), topicReadStatus) => topic.id === topicReadStatus.topicId && topicReadStatus.userId === userId }
-          join allGroups on { case (((topic, myTopic), topicReadStatus), group) => topic.groupId === group.id }
+          join groups on { case (((topic, myTopic), topicReadStatus), group) => topic.groupId === group.id }
         ).groupBy { case (((topic, myTopic), topicReadStatus), group) =>
           (group.id, group.name)
         }.map { case ((groupId, groupName), g) =>
@@ -67,11 +87,11 @@ class GroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         }.toMap
 
         db.run(
-          (allComments
-            joinLeft allComments on { case (comment, myComment) => comment.id === myComment.id && myComment.userId === userId }
+          (comments
+            joinLeft comments on { case (comment, myComment) => comment.id === myComment.id && myComment.userId === userId }
             joinLeft allCommentReadStatuses on { case ((comment, myComment), commentReadStatus) => comment.id === commentReadStatus.commentId && commentReadStatus.userId === userId }
-            join allGroups on { case (((comment, myComment), commentReadStatus), group) => comment.groupId === group.id }
-          ).groupBy { case (((comment, myComment), commentReadStatus), group) => (group.id, group.name) }
+            join allGroups on { case (((comment, _), _), group) => comment.groupId === group.id }
+          ).groupBy { case (((_, _), _), group) => (group.id, group.name) }
           .map { case ((groupId, groupName), g) =>
             (groupId, groupName, g.map(_._1._1._2.map(_.date)).max, g.map(gg => gg._1._2.map(_.commentId)).countDefined, g.length)
           }.result
