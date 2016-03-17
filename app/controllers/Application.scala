@@ -38,31 +38,31 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   implicit val userReads: Reads[User] = (
     (JsPath \ "id").read[Long] and
-    (JsPath \ "login").read[String] and
-    (JsPath \ "name").read[String] and
-    (JsPath \ "avatar").readNullable[String]
-  )(User.apply _)
+      (JsPath \ "login").read[String] and
+      (JsPath \ "name").read[String] and
+      (JsPath \ "avatar").readNullable[String]
+    ) (User.apply _)
   implicit val userWrites: Writes[User] = (
     (JsPath \ "id").write[Long] and
-    (JsPath \ "login").write[String] and
-    (JsPath \ "name").write[String] and
-    (JsPath \ "avatar").writeNullable[String]
-  )(unlift(User.unapply))
+      (JsPath \ "login").write[String] and
+      (JsPath \ "name").write[String] and
+      (JsPath \ "avatar").writeNullable[String]
+    ) (unlift(User.unapply))
 
   implicit val topicReads: Reads[Topic] = (
     (JsPath \ "id").read[Long] and
-    (JsPath \ "groupId").read[Long] and
-    (JsPath \ "userId").read[Long] and
-    (JsPath \ "date").read[Timestamp] and
-    (JsPath \ "text").read[String]
-  )(Topic.apply _)
+      (JsPath \ "groupId").read[Long] and
+      (JsPath \ "userId").read[Long] and
+      (JsPath \ "date").read[Timestamp] and
+      (JsPath \ "text").read[String]
+    ) (Topic.apply _)
   implicit val topicWrites: Writes[Topic] = (
     (JsPath \ "id").write[Long] and
-    (JsPath \ "groupId").write[Long] and
-    (JsPath \ "userId").write[Long] and
-    (JsPath \ "date").write[Timestamp] and
-    (JsPath \ "text").write[String]
-  )(unlift(Topic.unapply))
+      (JsPath \ "groupId").write[Long] and
+      (JsPath \ "userId").write[Long] and
+      (JsPath \ "date").write[Timestamp] and
+      (JsPath \ "text").write[String]
+    ) (unlift(Topic.unapply))
 
   implicit val integrationTopicReads: Reads[IntegrationTopic] = (
     (JsPath \ "integrationId").read[String] and
@@ -83,7 +83,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
       (JsPath \ "date").write[Timestamp] and
       (JsPath \ "text").write[String] and
       (JsPath \ "title").write[String]
-  )(unlift(IntegrationTopic.unapply))
+    ) (unlift(IntegrationTopic.unapply))
 
   val TICK = JsString("Tick")
   val TACK = JsString("Tack")
@@ -95,7 +95,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   def index(groupId: Option[Long] = None, topicId: Option[Long] = None, userTopicId: Option[Long] = None, userId: Option[Long] = None,
             integrationId: Option[String] = None, integrationGroupId: Option[String] = None,
             integrationTopicGroupId: Option[String] = None, integrationTopicId: Option[String] = None,
-            displaySettings: Option[Boolean] = None) = Action.async { implicit request =>
+            displaySettings: Option[Boolean] = None, query: Option[String] = None) = Action.async { implicit request =>
     request.cookies.get("user") match {
       case Some(cookie) =>
         usersDAO.findByLogin(cookie.value).map {
@@ -104,11 +104,11 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
               Ok(views.html.index(user, groupId, topicId, userId, userTopicId, integrationId, integrationGroupId,
                 integrationTopicGroupId, integrationTopicId, displaySettings, webSocketUrl))
           case None =>
-            Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)).discardingCookies(DiscardingCookie("user"))
-        }
+            Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)).discardingCookies(DiscardingCookie("user"))
+         }
       case _ =>
         val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
-        val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)
+      val redirectUrl = controllers.routes.Application.index(None, None, None, None, None, None, None, None, None, None).absoluteURL(RequestUtils.secure)
         Future.successful(Redirect(controllers.routes.IntegrationAuth.auth(integration.id, Option(redirectUrl))))
     }
   }
@@ -119,11 +119,14 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                       integrationTopicId: Option[String] = None) = Action.async { implicit request =>
     (for {
       users <- getUsersJsValue(userId)
-      groups <- getGroupsJsValue(userId)
-      topics <- if (integrationId.isEmpty) (if (groupId.isDefined) getGroupTopicsJsValue(userId, groupId.get) else getAllTopicsJsValue(userId)) else Future.successful(JsNull)
+      groups <- getGroupsJsValue(userId, None)
+      topics <- if (integrationId.isEmpty) (
+        if (groupId.isDefined) getGroupTopicsJsValue(userId, groupId.get, None)
+        else getAllTopicsJsValue(userId, None))
+      else Future.successful(JsNull)
       topic <- if (topicId.isDefined) topicsDAO.findById(topicId.get) else Future.successful(None)
       integrations <- getUserIntegrationsJson(userId)
-      integrationGroups <- getIntegrationGroupsJsValue(userId)
+      integrationGroups <- getIntegrationGroupsJsValue(userId, None)
       integrationTopic <- integrationTopicId match {
         case Some(value) => integrationTopicsDAO.find(integrationId.get, integrationTopicGroupId.get, value, userId)
         case None => Future.successful(None)
@@ -199,24 +202,24 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  def getGroups(userId: Long) = Action.async { implicit request =>
-    getGroupsJsValue(userId).map(Ok(_))
+  def getGroups(userId: Long, query: Option[String]) = Action.async { implicit request =>
+    getGroupsJsValue(userId, query).map(Ok(_))
   }
 
-  def getIntegrationGroups(userId: Long) = Action.async { implicit request =>
-    getIntegrationGroupsJsValue(userId).map(Ok(_))
-  }
-
-  def getGroupsJsValue(userId: Long): Future[JsValue] = {
-    groupsDAO.allWithCounts(userId).map { f =>
+  def getGroupsJsValue(userId: Long, query: Option[String]): Future[JsValue] = {
+    groupsDAO.allWithCounts(userId, query).map { f =>
       Json.toJson(JsArray(f.map { case (group, readCount, count) => JsObject(Seq("id" -> JsNumber(group.id),
         "name" -> JsString(group.name), "unreadCount" -> JsNumber(count - readCount), "count" -> JsNumber(count)))
       }))
     }
   }
 
-  def getIntegrationGroupsJsValue(userId: Long): Future[JsValue] = {
-    integrationGroupsDAO.allWithCounts(userId).map { f =>
+  def getIntegrationGroups(userId: Long, query: Option[String]) = Action.async { implicit request =>
+    getIntegrationGroupsJsValue(userId, query).map(Ok(_))
+  }
+
+  def getIntegrationGroupsJsValue(userId: Long, query: Option[String]): Future[JsValue] = {
+    integrationGroupsDAO.allWithCounts(userId, query).map { f =>
       Json.toJson(JsArray(f.map { case (group, count) => JsObject(Seq("integrationId" -> JsString(group.integrationId),
         "integrationGroupId" -> JsString(group.integrationGroupId),
         "name" -> JsString(group.name), "count" -> JsNumber(count)))
@@ -224,12 +227,17 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  def getAllTopics(userId: Long) = Action.async { implicit request =>
-    getAllTopicsJsValue(userId).map(Ok(_))
+  def getAllTopics(userId: Long, query: Option[String]) = Action.async { implicit request =>
+    getAllTopicsJsValue(userId, query).map(Ok(_))
   }
 
-  def getAllTopicsJsValue(userId: Long): Future[JsValue] = {
-    topicsDAO.allWithCounts(userId, None).flatMap { topicChats =>
+  def getAllTopicsJsValue(userId: Long, query: Option[String]): Future[JsValue] = {
+    val topics = query match {
+      case Some(str) => topicsDAO.allWithCounts(userId, None, str)
+      case None => topicsDAO.allWithCounts(userId, None)
+    }
+
+    topics.flatMap { topicChats =>
       usersDAO.allWithCounts(userId, nonEmptyOnly = true).map { userTopics =>
         Json.toJson(JsArray((topicChats ++ userTopics).sortBy(-_.updateDate.getTime).map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
           JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
@@ -247,12 +255,17 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  def getGroupTopics(userId: Long, groupId: Long) = Action.async { implicit rs =>
-    getGroupTopicsJsValue(userId, groupId).map(Ok(_))
+  def getGroupTopics(userId: Long, groupId: Long, query: Option[String]) = Action.async { implicit rs =>
+    getGroupTopicsJsValue(userId, groupId, query).map(Ok(_))
   }
 
-  def getGroupTopicsJsValue(userId: Long, groupId: Long): Future[JsValue] = {
-    topicsDAO.allWithCounts(userId, Some(groupId)).map { topicChats =>
+  def getGroupTopicsJsValue(userId: Long, groupId: Long, query: Option[String]): Future[JsValue] = {
+    val topics = query match {
+      case Some(str) => topicsDAO.allWithCounts(userId, Some(groupId), str)
+      case None => topicsDAO.allWithCounts(userId, Some(groupId))
+    }
+    
+    topics.map { topicChats =>
       Json.toJson(JsArray(topicChats.map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
         JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
         (Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
@@ -264,12 +277,15 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  def getAllIntegrationTopics(userId: Long) = getIntegrationTopics(userId, None, None)
+  def getAllIntegrationTopics(userId: Long, query: Option[String]) = getIntegrationTopics(userId, None, None, query)
 
-  def getIntegrationGroupTopics(userId: Long, integrationId: String, groupId: Option[String]) = getIntegrationTopics(userId, Some(integrationId), groupId)
-
-  def getIntegrationTopics(userId: Long, integrationId: Option[String], groupId: Option[String]) = Action.async { implicit rs =>
-    integrationTopicsDAO.allWithCounts(userId, integrationId, groupId).map { f =>
+  def getIntegrationTopics(
+      userId: Long,
+      integrationId: Option[String],
+      groupId: Option[String],
+      query: Option[String])
+  = Action.async { implicit rs =>
+    integrationTopicsDAO.allWithCounts(userId, integrationId, groupId, query).map { f =>
       Json.toJson(JsArray(f.map { case (topicIntegrationId, topicId, topicDate, topicText, gId, groupName, integrationUserId, integrationUserName, uId, userName, c) =>
         var topic = JsObject(Seq("id" -> JsString(topicId), "integrationId" -> JsString(topicIntegrationId), "date" -> JsNumber(topicDate.getTime), "group" -> JsObject
         (Seq("id" -> JsString(gId), "name" -> JsString(groupName))),
@@ -283,8 +299,14 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }.map(Ok(_))
   }
 
-  def getMessages(userId: Long, topicId: Long) = Action.async { implicit request =>
-    topicsDAO.messages(userId, topicId).map { f =>
+  def getIntegrationGroupTopics(
+     userId: Long,
+     integrationId: String,
+     groupId: Option[String],
+     query: Option[String]) = getIntegrationTopics(userId, Some(integrationId), groupId, query)
+
+  def getMessages(userId: Long, topicId: Long, query: Option[String]) = Action.async { implicit request =>
+    topicsDAO.messages(userId, topicId, query).map { f =>
       Ok(Json.toJson(JsArray(f.map { case (message, user, group, read) =>
         val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
           (user.avatar match {
@@ -297,10 +319,10 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
           "date" -> JsNumber(message.date.getTime),
           "text" -> JsString(message.text),
           "unread" -> JsBoolean(!read)) ++ (message match {
-              case c: Comment =>
-                Seq("topicId" -> JsNumber(c.topicId))
-              case _ => Seq()
-            })
+          case c: Comment =>
+            Seq("topicId" -> JsNumber(c.topicId))
+          case _ => Seq()
+        })
         JsObject(fields)
       })))
     }
@@ -315,8 +337,14 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     topicsDAO.markAsRead(userId, topicIds).flatMap(_ => commentsDAO.markAsRead(userId, messageIds).flatMap(_ => directMessagesDAO.markAsRead(directMessageIds).map(_ => Ok)))
   }
 
-  def getIntegrationMessages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String) = Action.async { implicit request =>
-    integrationTopicsDAO.messages(userId, integrationId, integrationGroupId, integrationTopicId).map { f =>
+  def getIntegrationMessages(
+      userId: Long,
+      integrationId: String,
+      integrationGroupId: String,
+      integrationTopicId: String,
+      query: Option[String])
+  = Action.async { implicit request =>
+    integrationTopicsDAO.messages(userId, integrationId, integrationGroupId, integrationTopicId, query).map { f =>
       Ok(Json.toJson(JsArray(f.map { case (message, user, group) =>
         val integrationUserJson = Seq("integrationUserId" -> JsString(user.integrationUserId), "name" -> JsString(user.name)) ++
           (user.avatar match {
@@ -326,7 +354,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
         val fields = Seq("group" -> JsObject(Seq("integrationId" -> JsString(group.integrationId),
           "integrationGroupId" -> JsString(group.integrationGroupId), "name" -> JsString(group.name))),
           "integrationTopicId" -> JsString(message.integrationTopicId),
-            "integrationUser" -> JsObject(integrationUserJson),
+          "integrationUser" -> JsObject(integrationUserJson),
           "date" -> JsNumber(message.date.getTime),
           "text" -> JsString(message.text)) ++ (message match {
           case u: IntegrationUpdate =>
@@ -347,7 +375,6 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
       Ok(Json.toJson(groupJson))
     }
   }
-
 
   def addComment() = Action.async(parse.json) { implicit request =>
     val userId = (request.body \ "user" \ "id").get.asInstanceOf[JsNumber].value.toLong
@@ -412,7 +439,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  def getDirectMessages(fromUserId: Long, toUserId: Long) = Action.async { implicit request =>
+  def getDirectMessages(fromUserId: Long, toUserId: Long, query: Option[String]) = Action.async { implicit request =>
     directMessagesDAO.messages(fromUserId, toUserId).map { case seq =>
       Ok(Json.toJson(JsArray(seq.map { case (message, readStatus, fromUser, toUser) =>
         val fromUserJson = Seq("id" -> JsNumber(fromUser.id), "name" -> JsString(fromUser.name), "login" -> JsString(fromUser.login)) ++
@@ -468,7 +495,9 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def getUserIntegrations(userId: Long): Future[Map[Integration, Boolean]] = {
-    integrationTokensDAO.find(userId).map { _.map { case (i, t) => i -> (t.isDefined && t.get.enabled) } }
+    integrationTokensDAO.find(userId).map {
+      _.map { case (i, t) => i -> (t.isDefined && t.get.enabled) }
+    }
   }
 
   def addIntegrationComment(integrationId: String) = Action.async(parse.json) { implicit request =>

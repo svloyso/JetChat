@@ -4,17 +4,17 @@ GET         /webSocket                                                   control
 GET         /json/user                                                   controllers.Application.getUser(login: String)
 GET         /json/state                                                  controllers.Application.getInitialState(userId: Long, groupId: Option[Long], topicId: Option[Long], integrationId: Option[String], integrationTopicGroupId: Option[String], integrationTopicId: Option[String])
 GET         /json/user/:userId/users                                     controllers.Application.getUsers(userId: Long)
-GET         /json/user/:userId/groups                                    controllers.Application.getGroups(userId: Long)
-GET         /json/user/:userId/topics                                    controllers.Application.getAllTopics(userId: Long)
-GET         /json/user/:userId/topics/:groupId                           controllers.Application.getGroupTopics(userId: Long, groupId: Long)
-GET         /json/user/:userId/messages/:topicId                         controllers.Application.getMessages(userId: Long, topicId: Long)
+GET         /json/user/:userId/groups                                    controllers.Application.getGroups(userId: Long, query: Option[String])
+GET         /json/user/:userId/topics                                    controllers.Application.getAllTopics(userId: Long, query: Option[String])
+GET         /json/user/:userId/topics/:groupId                           controllers.Application.getGroupTopics(userId: Long, groupId: Long, query: Option[String])
+GET         /json/user/:userId/messages/:topicId                         controllers.Application.getMessages(userId: Long, topicId: Long, query: Option[String])
 
-GET         /json/user/:userId/integration/groups                        controllers.Application.getIntegrationGroups(userId: Long)
-GET         /json/user/:userId/integration/topics                        controllers.Application.getAllIntegrationTopics(userId: Long)
-GET         /json/user/:userId/integration/:integrationId/topics         controllers.Application.getIntegrationGroupTopics(userId: Long, integrationId:String, groupId: Option[String])
-GET         /json/user/:userId/integration/:integrationId/messages        controllers.Application.getIntegrationMessages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String)
+GET         /json/user/:userId/integration/groups                        controllers.Application.getIntegrationGroups(userId: Long, query: Option[String])
+GET         /json/user/:userId/integration/topics                        controllers.Application.getAllIntegrationTopics(userId: Long, query: Option[String])
+GET         /json/user/:userId/integration/:integrationId/topics         controllers.Application.getIntegrationGroupTopics(userId: Long, integrationId:String, groupId: Option[String], query: Option[String])
+GET         /json/user/:userId/integration/:integrationId/messages       controllers.Application.getIntegrationMessages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String, query: Option[String])
 
-GET         /json/user/:fromUserId/direct/:toUserId                      controllers.Application.getDirectMessages(fromUserId: Long, toUserId: Long)
+GET         /json/user/:fromUserId/direct/:toUserId                      controllers.Application.getDirectMessages(fromUserId: Long, toUserId: Long, query: Option[String])
 
 POST        /json/topic/add                                              controllers.Application.addTopic
 POST        /json/comment/add                                            controllers.Application.addComment
@@ -29,7 +29,7 @@ GET         /auth/callback                                               control
 
 GET         /assets/*file                                                controllers.Assets.at(path="/public", file)
 
-GET         /                                                            controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userTopicId: Option[Long], userId: Option[Long], integrationId: Option[String], integrationGroupId: Option[String], integrationTopicGroupId: Option[String], integrationTopicId: Option[String], settings: Option[Boolean])
+GET         /                                                            controllers.Application.index(groupId: Option[Long], topicId: Option[Long], userTopicId: Option[Long], userId: Option[Long], integrationId: Option[String], integrationGroupId: Option[String], integrationTopicGroupId: Option[String], integrationTopicId: Option[String], settings: Option[Boolean], query: Option[String])
 
 GET         /httpHeaders                                                 controllers.Application.httpHeaders
 GET         /config                                                      controllers.Application.config

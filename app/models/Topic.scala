@@ -4,8 +4,8 @@ import java.sql.Timestamp
 import javax.inject.{Inject, Singleton}
 
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
-import slick.driver.JdbcProfile
 
+import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -26,7 +26,10 @@ case class TopicChat(topic: Topic, group: Group, user: User, updateDate: Timesta
   override def text: String = topic.text
 }
 
-trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with GroupsComponent with UsersComponent {
+trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile]
+  with GroupsComponent
+  with UsersComponent
+{
   protected val driver: JdbcProfile
 
   import driver.api._
@@ -45,6 +48,29 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Groups
   }
 
   val allTopics = TableQuery[TopicsTable]
+
+  def topicsByGroupId(
+    groupId: Rep[Long],
+    topics: Query[TopicsTable, Topic, Seq] = allTopics.to[Seq])
+  = topics.filter(_.groupId === groupId)
+
+  def topicsByUserId(
+    userId: Long,
+    topics: Query[TopicsTable, Topic, Seq] = allTopics.to[Seq])
+  = topics.filter(_.userId === userId)
+
+  def topicsByQuery(
+    query: Option[String],
+    messagesChecker: Function2[Option[String], Rep[Long], Rep[Boolean]],
+    topics: Query[TopicsTable, Topic, Seq] = allTopics.to[Seq])
+  = {
+    query match {
+      case Some(words) => topics filter {
+        topic => topic.text.indexOf(words) >= 0 || messagesChecker(query, topic.id)
+      }
+      case None => topics
+    }
+  }
 
   class TopicReadStatusesTable(tag: Tag) extends Table[TopicReadStatus](tag, "topic_read_statuses") {
     def topicId = column[Long]("topic_id")
@@ -71,8 +97,12 @@ trait TopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with Groups
 
 @Singleton()
 class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
-  extends HasDatabaseConfigProvider[JdbcProfile] with TopicsComponent with UsersComponent with GroupsComponent with CommentsComponent {
-
+  extends HasDatabaseConfigProvider[JdbcProfile]
+    with TopicsComponent
+    with UsersComponent
+    with GroupsComponent
+    with CommentsComponent
+{
   import driver.api._
 
   def findById(id: Long): Future[Option[Topic]] = {
@@ -89,39 +119,98 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run(allTopicReadStatuses ++= topicIds.map(TopicReadStatus(_, userId)))
   }
 
-  def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[TopicChat]] = {
-    val sql = if (groupId.isDefined)
-      sql"""SELECT t.`id`, t.`text`, t.`date`, u.`id`, u.`name`, u.`avatar`, g.`id`, g.`name`, MAX(c.`date`), ts.`topic_id` IS NOT NULL, count(cs.`comment_id`), count(c.`id`)
-            FROM `topics` t
-              LEFT OUTER JOIN `comments` c ON c.topic_id = t.id
-              LEFT JOIN `users` u ON t.`user_id` = u.id
-              LEFT JOIN `groups` g ON t.`group_id` = g.id
-              LEFT JOIN `comment_read_statuses` cs ON c.`id` = cs.`comment_id` AND cs.`user_id` = $userId
-              LEFT JOIN `topic_read_statuses` ts ON t.`id` = ts.`topic_id` AND ts.`user_id` = $userId
-            WHERE t.`group_id` = ${groupId.get}
-            GROUP BY t.`id`, t.`text`, t.`date`, u.`id`"""
-    else
-      sql"""SELECT t.`id`, t.`text`, t.`date`, u.`id`, u.`name`, u.`avatar`, g.`id`, g.`name`, MAX(c.`date`), ts.`topic_id` IS NOT NULL, count(cs.`comment_id`), count(c.`id`)
-            FROM `topics` t
-              LEFT OUTER JOIN `comments` c ON c.topic_id = t.id
-              LEFT JOIN `users` u ON t.`user_id` = u.id
-              LEFT JOIN `groups` g ON t.`group_id` = g.id
-              LEFT JOIN `comment_read_statuses` cs ON c.`id` = cs.`comment_id` AND cs.`user_id` = $userId
-              LEFT JOIN `topic_read_statuses` ts ON t.`id` = ts.`topic_id` AND ts.`user_id` = $userId
-            WHERE t.`user_id` = $userId OR t.`id` IN (SELECT DISTINCT `topic_id` FROM `comments` WHERE user_id = $userId)
-            GROUP BY t.`id`, t.`text`, t.`date`, u.`id`"""
-    db.run(
-      sql.as[(Long, String, Timestamp, Long, String, Option[String], Long, String, Option[Timestamp], Boolean, Int, Int)]
-    ).map { case results =>
-      results.map { case (topicId, topicText, topicDate, uId, userName, userAvatar, gId, groupName, updateDate, topicRead, readCount, totalCount) =>
-        TopicChat(Topic(topicId, gId, uId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName, userAvatar), updateDate.getOrElse(topicDate), !topicRead, totalCount - readCount)
-      }.sortBy(-_.updateDate.getTime)
-    }
-  }
+   def allWithCounts(userId: Long, groupId: Option[Long]): Future[Seq[TopicChat]] = {
+     val sql = if (groupId.isDefined)
+       sql"""SELECT t.`id`, t.`text`, t.`date`, u.`id`, u.`name`, u.`avatar`, g.`id`, g.`name`, MAX(c.`date`), ts.`topic_id` IS NOT NULL, count(cs.`comment_id`), count(c.`id`)
+             FROM `topics` t
+               LEFT OUTER JOIN `comments` c ON c.topic_id = t.id
+               LEFT JOIN `users` u ON t.`user_id` = u.id
+               LEFT JOIN `groups` g ON t.`group_id` = g.id
+               LEFT JOIN `comment_read_statuses` cs ON c.`id` = cs.`comment_id` AND cs.`user_id` = $userId
+               LEFT JOIN `topic_read_statuses` ts ON t.`id` = ts.`topic_id` AND ts.`user_id` = $userId
+             WHERE t.`group_id` = ${groupId.get}
+             GROUP BY t.`id`, t.`text`, t.`date`, u.`id`"""
+     else
+       sql"""SELECT t.`id`, t.`text`, t.`date`, u.`id`, u.`name`, u.`avatar`, g.`id`, g.`name`, MAX(c.`date`), ts.`topic_id` IS NOT NULL, count(cs.`comment_id`), count(c.`id`)
+             FROM `topics` t
+               LEFT OUTER JOIN `comments` c ON c.topic_id = t.id
+               LEFT JOIN `users` u ON t.`user_id` = u.id
+               LEFT JOIN `groups` g ON t.`group_id` = g.id
+               LEFT JOIN `comment_read_statuses` cs ON c.`id` = cs.`comment_id` AND cs.`user_id` = $userId
+               LEFT JOIN `topic_read_statuses` ts ON t.`id` = ts.`topic_id` AND ts.`user_id` = $userId
+             WHERE t.`user_id` = $userId OR t.`id` IN (SELECT DISTINCT `topic_id` FROM `comments` WHERE user_id = $userId)
+             GROUP BY t.`id`, t.`text`, t.`date`, u.`id`"""
+     db.run(
+       sql.as[(Long, String, Timestamp, Long, String, Option[String], Long, String, Option[Timestamp], Boolean, Int, Int)]
+     ).map { case results =>
+       results.map { case (topicId, topicText, topicDate, uId, userName, userAvatar, gId, groupName, updateDate, topicRead, readCount, totalCount) =>
+         TopicChat(Topic(topicId, gId, uId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName, userAvatar), updateDate.getOrElse(topicDate), !topicRead, totalCount - readCount)
+       }.sortBy(-_.updateDate.getTime)
+     }
+   }
 
-  def messages(userId: Long, topicId: Long): Future[Seq[(AbstractMessage, User, Group, Boolean)]] = {
+    def allWithCounts(userId: Long, groupId: Option[Long], query: String): Future[Seq[TopicChat]] = {
+      def predicate(topic: TopicsTable, localUserId: Rep[Long]) = {
+         groupId match {
+          case Some(id) => topic.groupId === id
+          case None => localUserId === userId
+        }
+      }
+
+      val topics = topicsByQuery(Some(query), commentsByQueryAndTopicId(_, _).exists)
+      val comments = commentsByQuery(Some(query))
+
+      db.run(
+        (topics
+          joinLeft allTopicReadStatuses on { case (topic, status) => topic.id === status.topicId && status.userId === userId }
+          join allUsers on { case ((topic, status), user) => topic.userId === user.id }
+          join allGroups on { case (((topic, status), user), group) => topic.groupId === group.id }
+        )
+        .filter { case (((topic, _), _), _) =>
+          predicate(topic, topic.userId)
+        }.sortBy(_._1._1._1.date desc).map {
+          case (((topic, status), user), group) =>
+            (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name) -> status.map(_.topicId).isDefined
+        }.result
+      ).flatMap { case f =>
+        val userTopics = f.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (readStatus)) =>
+          (topicId, topicDate, topicText, gId, groupName, uId, userName) ->(topicDate, readStatus, 0, 0)
+        }.toMap
+
+        db.run(
+          (comments
+            join topics on { case (comment, topic) => comment.topicId === topic.id }
+            joinLeft allTopicReadStatuses on { case ((comment, topic), topicStatus) => topic.id === topicStatus.topicId && topicStatus.userId === userId }
+            joinLeft allCommentReadStatuses on { case (((comment, topic), topicStatus), commentStatus) => comment.id === commentStatus.commentId && commentStatus.userId === userId }
+            join allUsers on { case ((((comment, topic), topicStatus), commentStatus), user) => topic.userId === user.id }
+            join allGroups on { case (((((comment, topic), topicStatus), commentStatus), user), group) => topic.groupId === group.id }
+          ).filter { case (((((comment, topic), _), _), _), _) =>
+            predicate(topic, comment.userId)
+          }.groupBy { case (((((comment, topic), topicStatus), _), user), group) =>
+            (topic.id, topic.date, topic.text, group.id, group.name, user.id, user.name, topicStatus)
+          }.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus), g) =>
+            (topicId, topicDate, topicText, gId, groupName, uId, userName, topicStatus.map(_.topicId).isDefined, g.map(_._1._1._2.map(_.commentId)).countDefined, g.map(_._1._1._1._1._1.id).countDistinct, g.map(_._1._1._1._1._1.date).max)
+          }.sortBy(_._10 desc).result
+        ).map { case f =>
+          val commentedTopics = f.map { case (topicId, topicDate, topicText, gId, groupName, uId, userName, topicReadStatus, readCount, c, d) =>
+            (topicId, topicDate, topicText, gId, groupName, uId, userName) ->(d.get, topicReadStatus, readCount, c)
+          }.toMap
+
+          val total = (userTopics ++ commentedTopics).toSeq.sortBy(-_._2._1.getTime)
+
+          total.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (updateDate, readStatus, readCount, totalCount)) =>
+            TopicChat(Topic(topicId, gId, userId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName,  null), updateDate, !readStatus, totalCount - readCount)
+          }
+        }
+      }
+    }
+
+  def messages(userId: Long, topicId: Long, query: Option[String]): Future[Seq[(AbstractMessage, User, Group, Boolean)]] = {
+    val topics = topicsByQuery(query, commentsByQueryAndTopicId(_, _).exists)
+    val comments = commentsByQuery(query)
+
     db.run(
-      (allTopics.filter(_.id === topicId)
+      (topics.filter(_.id === topicId)
       join allUsers on { case (topic, user) => topic.userId === user.id }
       join allGroups on { case ((topic, user), group) => topic.groupId === group.id }
       joinLeft allTopicReadStatuses on { case (((topic, user), group), status) => topic.id === status.topicId && status.userId === userId })
@@ -129,7 +218,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         (topic, user, group, status.map(_.topicId).isDefined)
       }.result.head
     ).flatMap { case t =>
-      db.run((allComments.filter(comment => comment.topicId === topicId)
+      db.run((comments.filter(comment => comment.topicId === topicId)
         join allUsers on { case (comment, user) => comment.userId === user.id }
         join allGroups on { case ((comment, user), group) => comment.groupId === group.id }
         joinLeft allCommentReadStatuses on { case (((comment, user), group), status) => comment.id === status.commentId && status.userId === userId }
