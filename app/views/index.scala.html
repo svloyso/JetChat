@@ -2,6 +2,7 @@
 
 @(
     user: User,
+    stateId: String,
     groupId: Option[Long],
     topicId: Option[Long],
     userId: Option[Long],
@@ -18,6 +19,7 @@
     <script>
         var _global = {
             user: { id: @{user.id}, name: "@{user.name}", avatar: "@{user.avatar}" },
+            stateId: @{Html("\"" + stateId + "\"")},
             selectedGroupId: @{groupId match { case Some(id) => id case None => Html("undefined") } },
             selectedUserTopicId: @{userTopicId match { case Some(id) => id case None => Html("undefined") } },
             selectedUserId: @{userId match { case Some(id) => id case None => Html("undefined") } },
