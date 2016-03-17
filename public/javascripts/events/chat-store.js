@@ -202,7 +202,7 @@ var ChatStore = Reflux.createStore({
                     var topicId = self.state.selectedGroup
                         ? self.groupHistory(self.CHAT, self.state.selectedGroup.id).lastTopicId
                         : undefined;
-                    var selectedTopic = self.state.selectedTopic ? topics.find(t => t.topic && t.topic.id == topicId) : undefined;
+                    var selectedTopic = topicId ? topics.find(t => t.topic && t.topic.id == topicId) : undefined;
                     if (selectedTopic) {
                         self.onSelectTopic(selectedTopic.topic);
                     } else if (topics[0].topic) {
