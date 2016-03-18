@@ -229,7 +229,6 @@ object GitHubIntegration {
       askWithRecover(notificationsUrl, _.flatMap { result =>
         if (result.successful) {
           val seq: Seq[JsValue] = result.response.json.as[Seq[JsValue]]
-          LOG.error(seq.length + "")
           Future.sequence(seq.map { value =>
             val groupId = (value \ "repository" \ "full_name").as[String]
             val subject = value \ "subject"
@@ -262,7 +261,7 @@ object GitHubIntegration {
                       case "Commit" => new Timestamp(dateFormat.parse((json \ "commit" \ "author" \ "date").as[String]).getTime)
                       case _ => new Timestamp(dateFormat.parse((json \ "created_at").as[String]).getTime)
                     }
-                    val integrationTopic = IntegrationTopic(ID, topicId, groupId, integrationToken.userId, topicAuthor, topicTimestamp, topicText, topicTitle)
+                    val integrationTopic = IntegrationTopic(0, ID, Some(topicId), groupId, integrationToken.userId, topicAuthor, topicTimestamp, topicText, topicTitle)
 
                     val comments_url = (json \ "comments_url").as[String]
                     val commentsFuture = extractComments(groupId, topicId, comments_url)
@@ -327,6 +326,37 @@ object GitHubIntegration {
             case Commit(hash) => Future(None)//todo: working with commits
             case Issue(issueId) => update("issues", issueId)
             case PullRequest(pullId) => update("pulls", pullId)
+          }
+        case _ => Future(None)
+      }
+    }
+
+    override def isNewTopicAvailable: Boolean = true
+
+    override def newTopic(integrationToken: IntegrationToken, groupId: String,
+                          message: SentNewTopic): Future[Option[IntegrationTopic]] = {
+      message match {
+        case NewTopic(text) =>
+          WS.url(s"https://api.github.com/repos/$groupId/issues")(Play.current).
+            withQueryString("access_token" -> integrationToken.token).
+            withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON,
+              HeaderNames.CONTENT_TYPE -> MimeTypes.JSON
+            ).post(
+            s"""
+               |{
+               |  "title": "${StringEscapeUtils.escapeJson(text)}"
+               |}
+              """.stripMargin.trim).map { response =>
+            if (response.status == http.Status.CREATED) {
+              val json = response.json
+              val value = json.as[JsValue]
+              val id = (value \ "id").as[Long]
+              val userId = (value \ "user" \ "login").as[String]
+              val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
+              val title = (value \ "title").as[String]
+              val text = (value \ "body").as[String]
+              Some(IntegrationTopic(0, ID, Some(s"Issue/$id"), groupId, integrationToken.userId, userId, timestamp, text, title))
+            } else None
           }
         case _ => Future(None)
       }
