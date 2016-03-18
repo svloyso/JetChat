@@ -10,7 +10,7 @@ var NewTopicPane = React.createClass({
         if (this.state.store.selectedGroup) {
             ChatActions.selectTopic();
         } else if (this.state.store.selectedIntegrationGroup) {
-            ChatActions.selectIntegrationTopic();
+            ChatActions.selectIntegrationTopic(this.state.store.selectedIntegration, this.state.store.selectedIntegrationGroup);
         }
     },
 

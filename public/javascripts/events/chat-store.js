@@ -270,7 +270,13 @@ var ChatStore = Reflux.createStore({
                     console.error(e);
                 }
             });
+        } else if (this.state.selectedIntegration) {
+            this.state.integrationMessages = [];
+            this.state.messages = undefined;
+            //TODO: pushState
+            window.history.replaceState(this.state, window.title, this.visibleQuery());
         } else {
+            this.state.integrationMessages = undefined;
             this.state.messages = [];
             // TODO: pushState
             window.history.replaceState(this.state, window.title, this.visibleQuery());

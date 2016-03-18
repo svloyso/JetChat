@@ -536,8 +536,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  /*def addIntegrationTopic(integrationId: String) = Action.async(parse.json) { implicit request =>
-    val userId = (request.body \ "user" \ "id").get.asInstanceOf[JsNumber].value.toLong
+  def addIntegrationTopic(integrationId: String) = Action.async(parse.json) { implicit request =>
+    /*val userId = (request.body \ "user" \ "id").get.asInstanceOf[JsNumber].value.toLong
     val integrationGroupId = (request.body \ "integrationGroupId").as[String]
     val text = (request.body \ "text").get.asInstanceOf[JsString].value
     val date = new Timestamp(Calendar.getInstance.getTime.getTime)
@@ -566,8 +566,11 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             BadRequest(t.getMessage)
         }
       case None => Future(BadRequest("No integration for this id"))
-    }
-  }*/
+    }*/
+
+    //todo: implement me!!!
+    Future(BadRequest("NYI:("))
+  }
 
   def httpHeaders() = Action.async { implicit request =>
     Future.successful(Ok("headers:" + request.headers.toString() + ";secure:" + RequestUtils.secure))

@@ -40,7 +40,8 @@ GET         /integration/:id/auth                                        control
 GET         /integration/:id/enable                                      controllers.IntegrationAuth.enable(id: String, redirectUrl: Option[String])
 GET         /integration/:id/disable                                     controllers.IntegrationAuth.disable(id: String)
 GET         /integration/:id/callback                                    controllers.IntegrationAuth.callback(id: String, code: Option[String], state: Option[String], redirectUrl: Option[String])
-POST        /integration/:id/comment                                     controllers.Application.addIntegrationComment(id: String)
+POST        /integration/:id/comment/add                                 controllers.Application.addIntegrationComment(id: String)
+POST        /integration/:id/topic/add                                   controllers.Application.addIntegrationTopic(id: String)
 
 # Integration Hook
 POST        /integration/:id/hook                                        controllers.IntegrationHook.hook(id: String)
