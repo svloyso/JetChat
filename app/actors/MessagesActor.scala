@@ -1,6 +1,6 @@
 package actors
 
-import _root_.api.{CollectedMessages, TopicComment, Integration}
+import _root_.api.{CollectedMessages, Integration, TopicComment}
 import actors.ActorUtils.FutureExtensions
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
@@ -13,7 +13,7 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.Future
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
-import scala.util.{Success, Failure}
+import scala.util.{Failure, Success}
 
 /**
  * @author Alefas
@@ -31,6 +31,8 @@ class MessagesActor(integration: Integration,
   //If events contains value, so this user will get receive events, otherwise start schedule
   val events: mutable.HashMap[Long, mutable.Queue[Any]] = mutable.HashMap.empty
   val evaluating: mutable.HashMap[Long, Boolean] = mutable.HashMap.empty
+
+  val sinceMap: mutable.HashMap[Long, Long] = mutable.HashMap.empty
 
   def schedule(duration: FiniteDuration, message: Any): Unit = {
     system.scheduler.scheduleOnce(duration, new Runnable {
@@ -87,8 +89,8 @@ class MessagesActor(integration: Integration,
                   avatars.getOrElseUpdate(topicLogin, integration.userHandler.avatarUrl(token, Some(topicLogin)))
                 }
 
-                integration.messageHandler.collectMessages(integrationToken).map {
-                  case CollectedMessages(messages, nextCheck) =>
+                integration.messageHandler.collectMessages(integrationToken, sinceMap.get(userId)).map {
+                  case CollectedMessages(messages, nextCheck, newSince) =>
                     log.info(s"${integration.id} messages was collected. Topic updates: ${messages.size}.")
                     for ((topic, updates) <- messages) {
                       val topicLogin = topic.integrationUserId
@@ -142,6 +144,8 @@ class MessagesActor(integration: Integration,
                         }
                       }
                     }
+
+                    sinceMap.update(userId, newSince)
                     nextCheck
                 }.recover {
                   case throwable: Throwable =>
