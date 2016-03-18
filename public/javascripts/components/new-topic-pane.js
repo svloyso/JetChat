@@ -9,6 +9,8 @@ var NewTopicPane = React.createClass({
     onClick: function () {
         if (this.state.store.selectedGroup) {
             ChatActions.selectTopic();
+        } else if (this.state.store.selectedIntegrationGroup) {
+            ChatActions.selectIntegrationTopic();
         }
     },
 

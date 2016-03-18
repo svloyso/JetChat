@@ -165,8 +165,8 @@ var ChatStore = Reflux.createStore({
             ? this.state.selectedIntegrationTopic.integrationTopicId
             : this.state.selectedIntegrationTopic.id;
 
-        var integrationTopicGroupId = this.state.selectedIntegrationTopic.integrationGroupId
-            ? this.state.selectedIntegrationTopic.integrationGroupId
+        var integrationTopicGroupId = this.state.selectedIntegrationTopic.group.id
+            ? this.state.selectedIntegrationTopic.group.id
             : this.state.selectedIntegrationTopic.id;
 
         return "/json/user/" + _global.user.id + "/integration/" + this.state.selectedIntegration.id +
@@ -238,8 +238,8 @@ var ChatStore = Reflux.createStore({
     },
 
     updateMessages: function () {
+        var self = this;
         if (this.state.selectedTopic) {
-            var self = this;
             $.ajax({
                 context: this,
                 type: "GET",
@@ -254,6 +254,22 @@ var ChatStore = Reflux.createStore({
                     console.error(e);
                 }
             })
+        } else if (this.state.selectedIntegrationTopic) {
+            $.ajax({
+                context: this,
+                type: "GET",
+                url: this.integrationTopicURL(),
+                success: function (messages) {
+                    self.state.messages = undefined;
+                    self.state.integrationMessages = messages;
+                    self.trigger(self.state);
+                    // TODO: pushState
+                    window.history.replaceState(self.state, window.title, self.visibleQuery());
+                },
+                fail: function (e) {
+                    console.error(e);
+                }
+            });
         } else {
             this.state.messages = [];
             // TODO: pushState
@@ -302,35 +318,14 @@ var ChatStore = Reflux.createStore({
     },
 
     onSelectIntegrationTopic: function (integration, group, topic) {
-        var self = this;
         this.nullifyExcept();
         this.state.selectedIntegration = integration;
         this.state.selectedIntegrationGroup = group;
         this.state.selectedIntegrationTopic = topic;
 
-        if (topic) {
-            // TODO: Refactor it
-            $.ajax({
-                context: this,
-                type: "GET",
-                url: this.integrationTopicURL(),
-                success: function (messages) {
-                    self.state.messages = undefined;
-                    self.state.integrationMessages = messages;
-                    self.trigger(self.state);
-                    // TODO: pushState
-                    window.history.replaceState(self.state, window.title, self.visibleQuery());
-                },
-                fail: function (e) {
-                    console.error(e);
-                }
-            });
-        } else {
-            this.state.messages = undefined;
-            this.state.integrationMessages = []; // TODO
-            // TODO: pushState
-            window.history.replaceState(this.state, window.title, this.visibleQuery());
-        }
+        //todo: selected topic history
+
+        this.updateMessages();
         this.trigger(this.state);
     },
 
