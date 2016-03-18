@@ -10,7 +10,7 @@ ALTER TABLE `integration_updates` DROP INDEX integration_update_integration_topi
 
 ALTER TABLE `integration_topics` DROP PRIMARY KEY;
 
-ALTER TABLE `integration_topics` ADD `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY;
+ALTER TABLE `integration_topics` ADD `id` BIGINT AUTO_INCREMENT PRIMARY KEY;
 ALTER TABLE `integration_topics` MODIFY `integration_topic_id` VARCHAR(255);
 
 CREATE INDEX `integration_topics_index` ON `integration_topics` (`integration_id`, `integration_group_id`, `integration_user_id`, `user_id`);
