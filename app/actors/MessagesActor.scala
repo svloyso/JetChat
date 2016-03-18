@@ -145,7 +145,8 @@ class MessagesActor(integration: Integration,
                       }
                     }
 
-                    sinceMap.update(userId, newSince)
+                    val oldSince = sinceMap.getOrElse(userId, 0L)
+                    sinceMap.update(userId, newSince.max(oldSince))
                     nextCheck
                 }.recover {
                   case throwable: Throwable =>
