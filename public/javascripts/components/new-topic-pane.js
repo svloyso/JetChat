@@ -7,13 +7,13 @@ var NewTopicPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     onClick: function () {
-        if (this.state.store.selectedGroup) {
+        if (this.state.store.selected.groupId) {
             ChatActions.selectTopic();
         }
     },
 
     render: function () {
-        var newTopicClass = ((this.state.store.selectedGroup ? "enabled" : "") + " " + (!this.state.store.selectedTopic ? "selected" : "")).trim();
+        var newTopicClass = ((this.state.store.selected.groupId ? "enabled" : "") + " " + (!this.state.store.selectedTopic ? "selected" : "")).trim();
         return (
             <div id="new-topic-pane">
                 <a id="new-topic" className={newTopicClass}

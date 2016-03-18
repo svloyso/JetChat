@@ -31,13 +31,13 @@ var TopicPane = React.createClass({
                                unread={t.unread} unreadCount={t.unreadCount} count={t.count}
                                selected={self.state.store.selectedTopic &&
                            self.state.store.selectedTopic.id == t.topic.id}
-                               showGroup={!self.state.store.selectedGroup}
+                               showGroup={!self.state.store.selected.groupId}
                                key={t.topic.id}/>
                 ) : (<UserTopicItem userTopic={t.userTopic} updateDate={t.updateDate}
                                unread={t.unread} unreadCount={t.unreadCount} count={t.count}
                                selected={self.state.store.selectedUserTopic &&
                            self.state.store.selectedUserTopic.id == t.userTopic.id}
-                               showGroup={!self.state.store.selectedGroup}
+                               showGroup={!self.state.store.selected.groupId}
                                key={'u' + t.userTopic.id}/>
                 )
             )

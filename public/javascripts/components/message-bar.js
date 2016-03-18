@@ -53,7 +53,7 @@ var MessageBar = React.createClass({
                 var newMessage = {
                     "user": _global.user,
                     "date": new Date().getTime(),
-                    "group": { id: self.state.store.selectedTopic ? self.state.store.selectedTopic.group.id : self.state.store.selectedGroup.id },
+                    "group": { id: self.state.store.selectedTopic ? self.state.store.selectedTopic.group.id : self.state.store.selected.groupId },
                     "text": input.value
                 };
                 if (self.state.store.selectedTopic) {
@@ -170,7 +170,7 @@ var MessageBar = React.createClass({
         var className = classNames({
                 ['wide']: this.state.store.selectedUser,
                 ['narrow']: !this.state.store.selectedUser,
-                ['hidden']: this.state.store.displaySettings
+                ['hidden']: this.state.store.selected.stateId === this.state.store.SETTINGS
             }
         );
         return (

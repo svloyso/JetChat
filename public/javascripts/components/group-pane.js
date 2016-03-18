@@ -9,7 +9,7 @@ var GroupPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     onGroupClick: function (group) {
-        ChatActions.selectGroup(group);
+        ChatActions.selectGroup(group.id);
     },
 
     onUserClick: function (user) {
@@ -28,7 +28,7 @@ var GroupPane = React.createClass({
         var self = this;
         var groupItems = self.state.store.groups.map(function (group) {
             var groupClass = classNames({
-                    ['selected']: self.state.store.selectedGroup && self.state.store.selectedGroup.id == group.id,
+                    ['selected']: self.state.store.selected.groupId == group.id,
                     ['unread']: group.unreadCount > 0
                 }
             );
@@ -84,11 +84,12 @@ var GroupPane = React.createClass({
                 </ul>
             ) : null;
         });
-        var allGroupsClass = classNames({ ['selected']: !self.state.store.selectedGroup &&
-        !self.state.store.selectedUser &&
-        !self.state.store.selectedIntegration &&
-        !self.state.store.selectedIntegrationGroup &&
-        !self.state.store.displaySettings });
+        var store = self.state.store;
+        var allGroupsClass = classNames({ ['selected']: !self.state.store.selected.groupId &&
+        !store.selectedUser &&
+        !store.selectedIntegration &&
+        !store.selectedIntegrationGroup &&
+        store.selected.stateId !== store.SETTINGS });
 
         return (
             <ul id="group-pane">

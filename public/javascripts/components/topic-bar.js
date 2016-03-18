@@ -9,8 +9,9 @@ var TopicBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     render: function () {
+        var store = this.state.store;
         return (
-            <div id="topic-bar" style={{display: this.state.store.selectedUser || this.state.store.displaySettings ? "none" : ""}}>
+            <div id="topic-bar" style={{display: store.selectedUser || store.selected.stateId === store.SETTINGS ? "none" : ""}}>
                 <SearchPane/>
                 <NewTopicPane/>
                 <TopicPane/>
