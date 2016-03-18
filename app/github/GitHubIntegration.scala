@@ -131,7 +131,7 @@ object GitHubIntegration {
   class GitHubMessageHandler extends MessageHandler {
     private val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
 
-    override def collectMessages(integrationToken: IntegrationToken): Future[CollectedMessages] = {
+    override def collectMessages(integrationToken: IntegrationToken, since: Option[Long]): Future[CollectedMessages] = {
       def eventText(json: JsValue): String = {
         (json \ "event").asOpt[String] match {
           case Some("closed") =>
@@ -166,7 +166,7 @@ object GitHubIntegration {
             s"""renamed from:
                 |  $from
                 |
-               |        to:
+                |        to:
                 |  $to
              """.stripMargin
           case Some("head_ref_deleted") => "The pull request’s branch was deleted."
@@ -223,8 +223,18 @@ object GitHubIntegration {
         }, None)
       }
 
-      val since = dateFormat.format(new Date(System.currentTimeMillis() - sincePeriod))
-      val notificationsUrl = s"https://api.github.com/notifications?all=true&since=$since"
+      val defaultSince = System.currentTimeMillis() - sincePeriod
+      val sinceDate = dateFormat.format(new Date(since.map(_.max(defaultSince)).getOrElse(defaultSince)))
+      val notificationsUrl = s"https://api.github.com/notifications?all=true&since=$sinceDate"
+
+      def extractLatestSince(map: Map[IntegrationTopic, Seq[IntegrationUpdate]]): Long = {
+        map.foldLeft(defaultSince) {
+          case (since: Long, (topic: IntegrationTopic, updates: Seq[IntegrationUpdate])) =>
+            since.max(topic.date.getTime).max(updates.foldLeft(0L) {
+              case (l, update) => l.max(update.date.getTime)
+            })
+        }
+      }
 
       askWithRecover(notificationsUrl, _.flatMap { result =>
         if (result.successful) {
@@ -280,15 +290,17 @@ object GitHubIntegration {
                 }
               } else Future { None }
             }, None)
-          }).map(_.flatten.toMap).map(CollectedMessages(_, result.pollInterval.getOrElse(60).seconds)).recover {
+          }).map(_.flatten.toMap).map(topicToUpdates =>
+            CollectedMessages(topicToUpdates, result.pollInterval.getOrElse(60).seconds, extractLatestSince(topicToUpdates)))
+          .recover {
             case t: Throwable =>
               LOG.error(s"Error during $notificationsUrl check", t)
-              CollectedMessages(Map.empty, result.pollInterval.getOrElse(60).seconds)
+              CollectedMessages(Map.empty, result.pollInterval.getOrElse(60).seconds, defaultSince)
           }
         } else {
-          Future.successful(CollectedMessages(Map(), result.pollInterval.getOrElse(60).seconds))
+          Future.successful(CollectedMessages(Map(), result.pollInterval.getOrElse(60).seconds, defaultSince))
         }
-      }, CollectedMessages(Map(), 60.seconds))
+      }, CollectedMessages(Map(), 60.seconds, defaultSince))
     }
 
     override def sendMessage(integrationToken: IntegrationToken, groupId: String, topicId: String,
