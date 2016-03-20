@@ -8,12 +8,22 @@ import NewGroupButton from './new-group-button';
 var GroupPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
-    onGroupClick: function (group) {
-        ChatActions.selectGroup(group.id);
+    //componentWillMount: function () {
+    //    console.log("TopicBar: will mount");
+    //},
+    //
+    //componentWillUnmount: function () {
+    //    console.log("TopicBar: will unmount");
+    //},
+    //
+    //console.log("TopicBar: re-rendering");
+
+    onGroupClick: function (groupId) {
+        ChatActions.selectGroup(groupId);
     },
 
-    onUserClick: function (user) {
-        ChatActions.selectUser(user);
+    onUserClick: function (userId) {
+        ChatActions.selectUser(userId);
     },
 
     onIntegrationClick: function (integration) {
@@ -24,36 +34,39 @@ var GroupPane = React.createClass({
         ChatActions.selectIntegrationGroup(this.state.store.integrations.find(i => i.id == group.integrationId), group);
     },
 
+    groupItem: function (group) {
+        var groupClass = classNames({
+                ['selected']: this.state.store.selected.groupId == group.id,
+                ['unread']: group.unreadCount > 0
+            }
+        );
+        return (
+            <li data-group={group.id} className={groupClass}
+                onClick={this.onGroupClick.bind(this, group.id)} key={group.id}>
+                <span className="group-header">#</span>
+                <span>{group.name}</span>
+            </li>
+        );
+    },
+
+    userItem: function (user) {
+        var userClass = classNames({
+                ['selected']: this.state.store.selected.userId == user.id,
+                ['unread']: user.unreadCount > 0
+            }
+        );
+        return (
+            <li data-user={user.id} className={userClass}
+                onClick={this.onUserClick.bind(this, user.id)} key={user.id}>
+                <span>{user.name}</span>
+            </li>
+        );
+    },
+
     render: function () {
         var self = this;
-        var groupItems = self.state.store.groups.map(function (group) {
-            var groupClass = classNames({
-                    ['selected']: self.state.store.selected.groupId == group.id,
-                    ['unread']: group.unreadCount > 0
-                }
-            );
-            return (
-                <li data-group={group.id} className={groupClass}
-                    onClick={self.onGroupClick.bind(self, group)} key={group.id}>
-                    <span className="group-header">#</span>
-                    <span>{group.name}</span>
-                </li>
-            );
-        });
-
-        var userItems = self.state.store.users.map(function (user) {
-            var userClass = classNames({
-                    ['selected']: self.state.store.selectedUser && self.state.store.selectedUser.id == user.id,
-                    ['unread']: user.unreadCount > 0
-                }
-            );
-            return (
-                <li data-user={user.id} className={userClass}
-                    onClick={self.onUserClick.bind(self, user)} key={user.id}>
-                    <span>{user.name}</span>
-                </li>
-            );
-        });
+        var groupItems = this.state.store.groups.map(g => this.groupItem(g));
+        var userItems = this.state.store.users.map(u => this.userItem(u));
 
         var groupsByIntegrationId = self.state.store.integrationGroups.group(g => g.integrationId);
         var integrationItems = groupsByIntegrationId.map((group) => {
@@ -94,7 +107,7 @@ var GroupPane = React.createClass({
         return (
             <ul id="group-pane">
                 <li id="all-groups" className={allGroupsClass}
-                    onClick={self.onGroupClick.bind(self, undefined)}>
+                    onClick={this.onGroupClick.bind(this, undefined)}>
                     <span>My chats</span></li>
                 {groupItems}
                 <NewGroupButton/>

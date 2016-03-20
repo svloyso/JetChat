@@ -240,10 +240,9 @@ var Loader = React.createClass({
         this.loader.destroy();
     },
 
-
     render: function() {
         return (
-            <div id="loader" ref="loaderContainer">
+            <div id={this.props.id} ref="loaderContainer">
             </div>
         );
     }

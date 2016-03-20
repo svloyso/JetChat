@@ -48,13 +48,17 @@ input, textarea, #settings-dropdown:focus {
     background-color: white;
 }
 
-#message-bar {
-    width: 100%;
+#message-bar, #message-bar-loader {
+    width: calc(100% - 550px);
     height: 100%;
     position: absolute;
     left: 550px;
-    top: 0;
     background: white;
+    top: 0;
+}
+
+#message-bar-loader {
+    padding-top: 25%;
 }
 
 #message-bar.wide {

@@ -58,6 +58,14 @@ var App = React.createClass({
         }
     },
 
+    stateIsSettings: function () {
+        return this.state.store.selected.stateId === this.state.store.SETTINGS
+    },
+
+    isTopicBarVisible: function () {
+        return !this.state.store.selected.userId;
+    },
+
     render: function () {
         if (window.process && window.process.platform === 'darwin') {
             var app = window.require('remote').app;
@@ -67,12 +75,22 @@ var App = React.createClass({
             app.dock.setBadge(unreadCount ? unreadCount.toString() : "");
         }
 
+        console.log("re-rendering app");
+
+        var mainBars = [];
+
+        if (this.stateIsSettings()) {
+            mainBars.push(<IntegrationsPane/>);
+        } else {
+            if (this.isTopicBarVisible())
+                mainBars.push(<TopicBar/>);
+            mainBars.push(<MessageBar className={this.isTopicBarVisible() ? "narrow" : "wide"} />);
+        }
+
         return (
             <div>
                 <SideBar/>
-                <IntegrationsPane/>
-                <TopicBar/>
-                <MessageBar/>
+                {mainBars}
             </div>
         );
     }

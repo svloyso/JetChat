@@ -12,10 +12,10 @@ var UserTopicItem = React.createClass({
         var self = this;
         var topicClass = self.props.selected ? "selected" : "";
         var prettyDate = PrettyDate.format(new Date(self.props.updateDate));
-        var unreadLabel = self.props.unreadCount ? <span className="unread"></span> : null;
+        var unreadLabel = self.props.unreadCount ? <span className="unread"/> : null;
         return (
             <li data-user-topic={self.props.userTopic.id} className={topicClass}
-                onClick={self.onClick.bind(self, self.props.userTopic)}>
+                onClick={self.onClick.bind(self, self.props.userTopic.id)}>
                 <div className="text">{self.props.userTopic.text}</div>
                 <div className="info">
                     <span className="author">{self.props.userTopic.name}</span>

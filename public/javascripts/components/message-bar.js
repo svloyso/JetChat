@@ -5,7 +5,7 @@ import MessageItem from './message-item';
 import IntegrationMessageItem from './integration-message-item';
 import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
-import classNames from 'classnames';
+import Loader from './loader'
 var $ = require('jquery');
 
 var MessageBar = React.createClass({
@@ -135,6 +135,9 @@ var MessageBar = React.createClass({
         var topic = self.state.store.selectedUser === undefined;
         var sameUser = false;
         var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
+        if (!messages)
+            return (<Loader id="message-bar-loader"/>);
+
         var messageItems = messages.map(function (message, index) {
             var user = message.user ? message.user : message.integrationUser;
             if (index == 0) {
@@ -176,14 +179,9 @@ var MessageBar = React.createClass({
                 </li>
             </div>
         }
-        var className = classNames({
-                ['wide']: this.state.store.selectedUser,
-                ['narrow']: !this.state.store.selectedUser,
-                ['hidden']: this.state.store.selected.stateId === this.state.store.SETTINGS
-            }
-        );
+
         return (
-            <div id="message-bar" className={className}>
+            <div id="message-bar" className={this.props.className}>
                 <div id="message-pane">
                     <div id="message-roll" ref="messageRoll">
                         {messageItems}

@@ -39,7 +39,7 @@ var PreLoader = React.createClass({
     render: function () {
         return (
             <div>
-                <Loader message="Loading JetChat..."/>
+                <Loader id="loader" message="Loading JetChat..."/>
             </div>
         );
     }
