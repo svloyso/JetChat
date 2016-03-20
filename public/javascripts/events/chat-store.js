@@ -156,13 +156,10 @@ var ChatStore = Reflux.createStore({
                 integrationGroups: _global.integrationGroups,
                 topics: _global.topics,
                 messages: [],
-                //selectedTopic: _global.selectedTopic,
-                selectedUserTopic: _global.selectedUserTopicId ? _global.users.find(u => u.id == _global.selectedUserTopicId) : undefined,
                 selectedIntegrationTopic: _global.selectedIntegrationTopic,
                 selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(i => i.id == _global.selectedIntegrationId) : undefined,
                 selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
                     g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
-                selectedUser: _global.selectedUserId ? _global.users.find(u => u.id == _global.selectedUserId) : undefined,
                 query: undefined
             };
     },

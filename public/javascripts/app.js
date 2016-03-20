@@ -82,14 +82,18 @@ var App = React.createClass({
         if (this.stateIsSettings()) {
             mainBars.push(<IntegrationsPane/>);
         } else {
-            if (this.isTopicBarVisible())
-                mainBars.push(<TopicBar/>);
+            if (this.isTopicBarVisible()) {
+                var newTopicEnabled = !!this.state.store.selected.groupId;
+                var newTopicSelected = this.state.store.topics && this.state.store.topics.length === 0;
+
+                mainBars.push(<TopicBar newTopicEnabled={newTopicEnabled} newTopicSelected={newTopicSelected} />);
+            }
             mainBars.push(<MessageBar className={this.isTopicBarVisible() ? "narrow" : "wide"} />);
         }
 
         return (
             <div>
-                <SideBar/>
+                <SideBar selected={this.state.store.selected} />
                 {mainBars}
             </div>
         );

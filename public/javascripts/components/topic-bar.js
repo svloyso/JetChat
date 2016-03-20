@@ -5,19 +5,15 @@ import TopicPane from './topic-pane';
 import ChatStore from '../events/chat-store';
 
 var TopicBar = React.createClass({
-    //mixins: [Reflux.connect(ChatStore, 'store')],
-
-    //shouldComponentUpdate: function (nextProps, nextState) {
-    //    console.log("TopicBar: receiving\nprops=" + JSON.stringify(nextProps) + "\nstate=" + JSON.stringify(nextState));
-    //    return true;
-    //},
-
     render: function () {
+        var panes = [<SearchPane/>];
+        if (this.props.newTopicEnabled)
+            panes.push(<NewTopicPane selected={this.props.newTopicSelected} />);
+
+        panes.push(<TopicPane/>);
         return (
             <div id="topic-bar">
-                <SearchPane/>
-                <NewTopicPane/>
-                <TopicPane/>
+                {panes}
             </div>
         );
     }

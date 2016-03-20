@@ -36,8 +36,7 @@ var TopicPane = React.createClass({
                                key={t.topic.id}/>
                 ) : (<UserTopicItem userTopic={t.userTopic} updateDate={t.updateDate}
                                unread={t.unread} unreadCount={t.unreadCount} count={t.count}
-                               selected={self.state.store.selectedUserTopic &&
-                           self.state.store.selectedUserTopic.id == t.userTopic.id}
+                               selected={self.state.store.selected.userId === t.userTopic.id}
                                key={'u' + t.userTopic.id}/>
                 )
             );

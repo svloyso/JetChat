@@ -11,8 +11,8 @@ var PreLoader = React.createClass({
             url: "/json/state",
             data: {
                 userId: _global.user.id,
-                groupId: _global.selectedGroupId,
-                topicId: _global.selectedTopicId,
+                groupId: _global.groupId,
+                topicId: _global.topicId,
                 integrationId: _global.selectedIntegrationId,
                 integrationTopicGroupId: _global.selectedIntegrationTopicGroupId,
                 integrationTopicId: _global.selectedIntegrationTopicId

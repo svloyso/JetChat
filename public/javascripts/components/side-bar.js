@@ -30,7 +30,7 @@ var SideBar = React.createClass({
                         </Dropdown.Menu>
                     </Dropdown>
                 </div>
-                <GroupPane/>
+                <GroupPane />
             </div>
         );
     }

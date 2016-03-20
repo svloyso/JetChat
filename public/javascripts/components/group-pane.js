@@ -34,6 +34,11 @@ var GroupPane = React.createClass({
         ChatActions.selectIntegrationGroup(this.state.store.integrations.find(i => i.id == group.integrationId), group);
     },
 
+    myChatsSelected: function () {
+        return !this.state.store.selected.groupId &&
+            this.state.store.selected.stateId === this.state.store.CHAT;
+    },
+
     groupItem: function (group) {
         var groupClass = classNames({
                 ['selected']: this.state.store.selected.groupId == group.id,
@@ -97,16 +102,10 @@ var GroupPane = React.createClass({
                 </ul>
             ) : null;
         });
-        var store = self.state.store;
-        var allGroupsClass = classNames({ ['selected']: !self.state.store.selected.groupId &&
-        !store.selectedUser &&
-        !store.selectedIntegration &&
-        !store.selectedIntegrationGroup &&
-        store.selected.stateId !== store.SETTINGS });
 
         return (
             <ul id="group-pane">
-                <li id="all-groups" className={allGroupsClass}
+                <li id="all-groups" className={this.myChatsSelected() ? 'selected' : ''}
                     onClick={this.onGroupClick.bind(this, undefined)}>
                     <span>My chats</span></li>
                 {groupItems}
