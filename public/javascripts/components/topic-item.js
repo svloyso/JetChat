@@ -6,7 +6,7 @@ var $ = require('jquery');
 
 var TopicItem = React.createClass({
     onClick: function (topic) {
-        ChatActions.selectTopic(topic);
+        ChatActions.selectTopic(topic.id);
     },
 
     onChange: function (isVisible) {

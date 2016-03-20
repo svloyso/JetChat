@@ -26,11 +26,13 @@ var TopicPane = React.createClass({
                 )
             });
         } else if (self.state.store.topics) {
+            console.log("gonna draw " + self.state.store.topics.length + " groups")
+            this.state.store.topics.forEach(t =>
+                console.log("self.state.store.selected.topicId=" + self.state.store.selected.topicId + ", t.topic.id=" + t.topic.id));
             topicItems = self.state.store.topics.map(t =>
                 t.topic ? (<TopicItem topic={t.topic} updateDate={t.updateDate}
                                unread={t.unread} unreadCount={t.unreadCount} count={t.count}
-                               selected={self.state.store.selectedTopic &&
-                           self.state.store.selectedTopic.id == t.topic.id}
+                               selected={self.state.store.selected.topicId == t.topic.id}
                                showGroup={!self.state.store.selected.groupId}
                                key={t.topic.id}/>
                 ) : (<UserTopicItem userTopic={t.userTopic} updateDate={t.updateDate}

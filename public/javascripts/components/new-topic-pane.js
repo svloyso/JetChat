@@ -13,7 +13,7 @@ var NewTopicPane = React.createClass({
     },
 
     render: function () {
-        var newTopicClass = ((this.state.store.selected.groupId ? "enabled" : "") + " " + (!this.state.store.selectedTopic ? "selected" : "")).trim();
+        var newTopicClass = ((this.state.store.selected.groupId ? "enabled" : "") + " " + (!this.state.store.selected.topicId ? "selected" : "")).trim();
         return (
             <div id="new-topic-pane">
                 <a id="new-topic" className={newTopicClass}

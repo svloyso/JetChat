@@ -19,14 +19,14 @@
     <script>
         var _global = {
             stateId: "@{state}",
-            groupId: "@{groupId.getOrElse("undefined")}",
+            groupId: @{groupId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") } },
+            topicId: @{topicId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") } },
             user: { id: @{user.id}, name: "@{user.name}", avatar: "@{user.avatar}" },
             selectedUserTopicId: @{userTopicId match { case Some(id) => id case None => Html("undefined") } },
             selectedUserId: @{userId match { case Some(id) => id case None => Html("undefined") } },
             selectedIntegrationId: @{ integrationId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") }},
             selectedIntegrationGroupId: @{integrationGroupId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") } },
             webSocketUrl: "@Html(webSocketUrl)",
-            selectedTopicId: @{topicId match { case Some(id) => id case None => Html("undefined") } },
             selectedIntegrationTopicGroupId: @{integrationTopicGroupId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") } },
             selectedIntegrationTopicId: @{integrationTopicId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") } }
         };

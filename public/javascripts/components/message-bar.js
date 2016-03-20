@@ -21,6 +21,15 @@ var MessageBar = React.createClass({
         }, 0);
     },
 
+    groupId: function () {
+        var s = this.state.store;
+        if (!s.selected.topicId)
+            return s.selected.groupId;
+
+        var selectedTopic = s.topics.find(t => t.topic && t.topic.id === s.selected.topicId);
+        return selectedTopic ? selectedTopic.group.id : undefined;
+    },
+
     onInputKeyPress: function (event) {
         var self = this;
         var input = ReactDOM.findDOMNode(self.refs.input);
@@ -53,15 +62,15 @@ var MessageBar = React.createClass({
                 var newMessage = {
                     "user": _global.user,
                     "date": new Date().getTime(),
-                    "group": { id: self.state.store.selectedTopic ? self.state.store.selectedTopic.group.id : self.state.store.selected.groupId },
+                    "group": { id: groupId.bind(self) },
                     "text": input.value
                 };
-                if (self.state.store.selectedTopic) {
-                    newMessage.topicId = self.state.store.selectedTopic.id;
+                if (self.state.store.selected.topicId) {
+                    newMessage.topicId = self.state.store.selected.topicId;
                 }
                 $.ajax({
                     type: "POST",
-                    url: self.state.store.selectedTopic ? "/json/comment/add" : "/json/topic/add",
+                    url: self.state.store.selected.topicId ? "/json/comment/add" : "/json/topic/add",
                     data: JSON.stringify(newMessage),
                     contentType: "application/json",
                     success: function (id) {
@@ -151,7 +160,7 @@ var MessageBar = React.createClass({
                 )
             }
         });
-        var inputPlaceHolder = self.state.store.selectedIntegrationTopic || self.state.store.selectedTopic ?
+        var inputPlaceHolder = self.state.store.selectedIntegrationTopic || self.state.store.selected.topicId ?
             "Message..." : "Topic...";
         var userHeader;
         var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;
