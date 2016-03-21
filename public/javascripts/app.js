@@ -85,6 +85,9 @@ var App = React.createClass({
         console.log("re-rendering app");
 
         var selectedMyChats = !store.selected.groupId && store.selected.stateId === store.CHAT;
+        var selectedUserId = store.selected.stateId === store.USER
+            ? store.selected.userId
+            : undefined;
         var selectedIntegration = store.selected.groupId
             ? undefined
             : store.integrations.find(i => i.id === store.selected.stateId)
@@ -102,6 +105,7 @@ var App = React.createClass({
             selectedGroupId={store.selected.groupId}
             selectedIntegration={selectedIntegration}
             selectedMyChats={selectedMyChats}
+            selectedUserId={selectedUserId}
             users={store.users}
         />];
 

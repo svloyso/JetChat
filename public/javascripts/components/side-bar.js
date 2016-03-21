@@ -37,6 +37,7 @@ var SideBar = React.createClass({
                     selectedGroupId={this.props.selectedGroupId}
                     selectedIntegration={this.props.selectedIntegration}
                     selectedMyChats={this.props.selectedMyChats}
+                    selectedUserId={this.props.selectedUserId}
                     users={this.props.users}
                 />
             </div>

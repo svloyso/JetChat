@@ -1,22 +1,13 @@
 import React from 'react';
-import Reflux from 'reflux';
 import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
 import classNames from 'classnames';
 import NewGroupButton from './new-group-button';
 
 var GroupPane = React.createClass({
-    mixins: [Reflux.connect(ChatStore, 'store')],
-
-    //componentWillMount: function () {
-    //    console.log("TopicBar: will mount");
-    //},
-    //
-    //componentWillUnmount: function () {
-    //    console.log("TopicBar: will unmount");
-    //},
-    //
-    //console.log("TopicBar: re-rendering");
+    shouldComponentUpdate: function (nextProps) {
+        return JSON.stringify(this.props) !== JSON.stringify(nextProps);
+    },
 
     onGroupClick: function (groupId) {
         ChatActions.selectGroup(groupId);
@@ -73,7 +64,7 @@ var GroupPane = React.createClass({
 
     userItem: function (user) {
         var userClass = classNames({
-                ['selected']: this.state.store.selected.userId === user.id,
+                ['selected']: this.props.selectedUserId === user.id,
                 ['unread']: user.unreadCount > 0
             }
         );
