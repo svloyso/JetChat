@@ -22,7 +22,7 @@ var SideBar = React.createClass({
                 <div id="header"><a href="#" className="title" onClick={this.onHome}>JetChat</a>
                     <Dropdown id="settings-dropdown">
                         <a href="#" bsRole="toggle">
-                            <span id="gear"></span>
+                            <span id="gear" />
                         </a>
                         <Dropdown.Menu bsRole="menu">
                             <MenuItem eventKey="1" onSelect={this.onPreferences}>Preferences</MenuItem>
@@ -30,7 +30,15 @@ var SideBar = React.createClass({
                         </Dropdown.Menu>
                     </Dropdown>
                 </div>
-                <GroupPane />
+                <GroupPane
+                    groups={this.props.groups}
+                    integrations={this.props.integrations}
+                    integrationGroups={this.props.integrationGroups}
+                    selectedGroupId={this.props.selectedGroupId}
+                    selectedIntegration={this.props.selectedIntegration}
+                    selectedMyChats={this.props.selectedMyChats}
+                    users={this.props.users}
+                />
             </div>
         );
     }

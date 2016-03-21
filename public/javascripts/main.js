@@ -12,7 +12,6 @@ var PreLoader = React.createClass({
             data: {
                 userId: _global.user.id,
                 groupId: _global.groupId,
-                topicId: _global.topicId,
                 integrationId: _global.selectedIntegrationId,
                 integrationTopicGroupId: _global.selectedIntegrationTopicGroupId,
                 integrationTopicId: _global.selectedIntegrationTopicId
@@ -22,10 +21,7 @@ var PreLoader = React.createClass({
                 _global.groups = state.groups;
                 _global.integrations = state.integrations;
                 _global.integrationGroups = state.integrationGroups;
-
-                _global.selectedTopic = state.topic;
                 _global.selectedIntegrationTopic = state.integrationTopic;
-
                 _global.topics = state.topics;
                 var App = require('./app');
                 ReactDOM.render(<App/>, document.getElementById('app'))

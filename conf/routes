@@ -2,7 +2,7 @@
 
 GET         /webSocket                                                   controllers.Application.webSocket(login: String)
 GET         /json/user                                                   controllers.Application.getUser(login: String)
-GET         /json/state                                                  controllers.Application.getInitialState(userId: Long, groupId: Option[Long], topicId: Option[Long], integrationId: Option[String], integrationTopicGroupId: Option[String], integrationTopicId: Option[String])
+GET         /json/state                                                  controllers.Application.getInitialState(userId: Long, groupId: Option[Long], integrationId: Option[String], integrationTopicGroupId: Option[String], integrationTopicId: Option[String])
 GET         /json/user/:userId/users                                     controllers.Application.getUsers(userId: Long)
 GET         /json/user/:userId/groups                                    controllers.Application.getGroups(userId: Long, query: Option[String])
 GET         /json/user/:userId/topics                                    controllers.Application.getAllTopics(userId: Long, query: Option[String])
@@ -40,7 +40,8 @@ GET         /integration/:id/auth                                        control
 GET         /integration/:id/enable                                      controllers.IntegrationAuth.enable(id: String, redirectUrl: Option[String])
 GET         /integration/:id/disable                                     controllers.IntegrationAuth.disable(id: String)
 GET         /integration/:id/callback                                    controllers.IntegrationAuth.callback(id: String, code: Option[String], state: Option[String], redirectUrl: Option[String])
-POST        /integration/:id/comment                                     controllers.Application.addIntegrationComment(id: String)
+POST        /integration/:id/comment/add                                 controllers.Application.addIntegrationComment(id: String)
+POST        /integration/:id/topic/add                                   controllers.Application.addIntegrationTopic(id: String)
 
 # Integration Hook
 POST        /integration/:id/hook                                        controllers.IntegrationHook.hook(id: String)

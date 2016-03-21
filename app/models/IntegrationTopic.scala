@@ -9,12 +9,27 @@ import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-import play.api.Logger
 
-
-case class IntegrationTopic(integrationId: String, integrationTopicId: String, integrationGroupId: String,
+case class IntegrationTopic(id: Long = 0, integrationId: String, integrationTopicId: Option[String], integrationGroupId: String,
                             userId: Long, integrationUserId: String,
                             date: Timestamp, text: String, title: String) extends AbstractIntegrationMessage
+
+object IntegrationTopicFactory {
+  def applyNoOption(id: Long = 0, integrationId: String, integrationTopicId: String, integrationGroupId: String,
+            userId: Long, integrationUserId: String,
+            date: Timestamp, text: String, title: String): IntegrationTopic = {
+    IntegrationTopic(id, integrationId, Option(integrationTopicId), integrationGroupId, userId, integrationUserId, date, text, title)
+  }
+
+  def unapplyNoOption(topic: IntegrationTopic): Option[(Long, String, String, String, Long, String, Timestamp, String, String)] = {
+    IntegrationTopic.unapply(topic).map {
+      case (id: Long, integrationId: String, integrationTopicId: Option[String], integrationGroupId: String,
+        userId: Long, integrationUserId: String,
+        date: Timestamp, text: String, title: String) =>
+        (id, integrationId, integrationTopicId.orNull, integrationGroupId, userId, integrationUserId, date, text, title)
+    }
+  }
+}
 
 trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationUsersComponent with IntegrationGroupsComponent with UsersComponent {
   protected val driver: JdbcProfile
@@ -22,27 +37,25 @@ trait IntegrationTopicsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
   import driver.api._
 
   class IntegrationTopicsTable(tag: Tag) extends Table[IntegrationTopic](tag, "integration_topics") {
+    def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
     def userId = column[Long]("user_id")
     def integrationId = column[String]("integration_id")
-    def integrationTopicId = column[String]("integration_topic_id")
+    def integrationTopicId = column[Option[String]]("integration_topic_id")
     def integrationGroupId = column[String]("integration_group_id")
     def integrationUserId = column[String]("integration_user_id")
     def date = column[Timestamp]("date")
     def text = column[String]("text", O.SqlType("text"))
     def title = column[String]("title")
-    def pk = primaryKey("integration_topic_index", (integrationId, integrationTopicId, integrationGroupId, userId))
+    def integrationTopicIndex = index("integration_topics_index", (integrationId, integrationTopicId, integrationGroupId, userId))
     def user = foreignKey("integration_token_user_fk", userId, allUsers)(_.id)
-    def integrationGroup = foreignKey("integration_topic_integration_group_fk", (integrationId, integrationGroupId, userId), allIntegrationGroups)(g => (g.integrationId, g.integrationGroupId, userId))
-    def integrationUser = foreignKey("integration_topic_integration_user_fk", (integrationId, integrationUserId), allIntegrationUsers)(u => (u.integrationId, u.integrationUserId))
-    def integrationGroupIndex = index("integration_topic_integration_group_index", (integrationId, integrationGroupId, userId), unique = false)
-    def * = (integrationId, integrationTopicId, integrationGroupId, userId, integrationUserId, date, text, title) <> (IntegrationTopic.tupled, IntegrationTopic.unapply)
+    def * = (id, integrationId, integrationTopicId, integrationGroupId, userId, integrationUserId, date, text, title) <> (IntegrationTopic.tupled, IntegrationTopic.unapply)
   }
 
   val allIntegrationTopics = TableQuery[IntegrationTopicsTable]
 
   def integrationTopicsByQuery(
     query: Option[String],
-    updatesChecker: Function2[Option[String], Rep[String], Rep[Boolean]],
+    updatesChecker: Function2[Option[String], Rep[Option[String]], Rep[Boolean]],
     topics: Query[IntegrationTopicsTable, IntegrationTopic, Seq] = allIntegrationTopics.to[Seq])
   = {
     query match {
@@ -74,14 +87,32 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
       && t.userId === userId).result.headOption)
   }
 
+  def find(id: Long): Future[Option[IntegrationTopic]] = {
+    db.run(allIntegrationTopics.filter(t => t.id === id).result.headOption)
+  }
+
+  def insert(update: IntegrationTopic): Future[Long] = {
+    db.run((allIntegrationTopics returning allIntegrationTopics.map(_.id)) += update)
+  }
+
   def merge(topic: IntegrationTopic): Future[Boolean] = {
-    find(topic.integrationId, topic.integrationGroupId, topic.integrationTopicId, topic.userId).flatMap {
-      case None =>
-        db.run(allIntegrationTopics += topic).map(_ => true)
-      case Some(existing) =>
-        Future {
-          false
-        }
+    if (topic.id > 0) {
+      find(topic.id).flatMap {
+        case None => db.run(allIntegrationTopics += topic).map(_ => true)
+        case Some(existing) =>
+          db.run(allIntegrationTopics.filter(u => u.id === topic.id)
+            .map(_.integrationTopicId).update(topic.integrationTopicId)).map(_ => false)
+      }
+    } else if (topic.integrationTopicId.isDefined) {
+      find(topic.integrationId, topic.integrationGroupId, topic.integrationTopicId.get, topic.userId).flatMap {
+        case None => db.run(allIntegrationTopics += topic).map(_ => true)
+        case Some(existing) =>
+          db.run(allIntegrationTopics.filter(u => u.integrationTopicId === topic.integrationTopicId.get &&
+            u.integrationId === topic.integrationId && u.integrationGroupId === topic.integrationGroupId && u.userId === topic.userId)
+            .map(_.integrationTopicId).update(topic.integrationTopicId)).map(_ => false)
+      }
+    } else {
+      throw new IllegalArgumentException
     }
   }
 
@@ -89,10 +120,12 @@ class IntegrationTopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     userId: Long,
     integrationId: Option[String],
     integrationGroupId: Option[String],
-    query: Option[String]): Future[Seq[(String, String, Timestamp, String, String, String, String, String, Option[Long], Option[String], Int)]]
+    query: Option[String]): Future[Seq[(String, Option[String], Timestamp, String, String, String, String, String, Option[Long], Option[String], Int)]]
   = {
 
-    val integrationTopics = integrationTopicsByQuery(query, updatesByQueryAndTopicId(_, _).exists)
+    val integrationTopics = integrationTopicsByQuery(query, (q, integrationTopicId) => {
+      updatesByQueryAndTopicId(q, integrationTopicId).exists
+    })
     val updates = updatesByQuery(query)
 
     db.run((integrationTopics

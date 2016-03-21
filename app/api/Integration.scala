@@ -36,8 +36,10 @@ trait HookHandler {
 }
 
 trait MessageHandler {
-  def collectMessages(integrationToken: IntegrationToken): Future[CollectedMessages]
+  def collectMessages(integrationToken: IntegrationToken, since: Option[Long]): Future[CollectedMessages]
   def sendMessage(integrationToken: IntegrationToken, groupId: String, topicId: String, message: SentMessage, messageId: Long): Future[Option[IntegrationUpdate]]
+  def isNewTopicAvailable: Boolean
+  def newTopic(integrationToken: IntegrationToken, groupId: String, message: SentNewTopic): Future[Option[IntegrationTopic]]
 }
 
 trait UserHandler {
@@ -47,7 +49,10 @@ trait UserHandler {
   def groupName(token: String, groupId: String): Future[String]
 }
 
-case class CollectedMessages(messages: Map[IntegrationTopic, Seq[IntegrationUpdate]], nextCheck: FiniteDuration)
+case class CollectedMessages(messages: Map[IntegrationTopic, Seq[IntegrationUpdate]], nextCheck: FiniteDuration, lastUpdate: Long)
 
 sealed trait SentMessage
 case class TopicComment(text: String) extends SentMessage
+
+sealed trait SentNewTopic
+case class NewTopic(text: String) extends SentNewTopic

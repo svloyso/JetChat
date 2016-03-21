@@ -4,7 +4,10 @@ import ChatStore from '../events/chat-store';
 
 var NewTopicPane = React.createClass({
     onClick: function () {
-        ChatActions.selectTopic();
+        if (this.props.integration && this.props.integrationGroup)
+            ChatActions.selectIntegrationTopic(this.props.integration, this.props.integrationGroup);
+        else
+            ChatActions.selectTopic();
     },
 
     render: function () {

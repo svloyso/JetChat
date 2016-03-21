@@ -4,8 +4,8 @@ import ChatActions from '../events/chat-actions';
 var $ = require('jquery');
 
 var UserTopicItem = React.createClass({
-    onClick: function (userTopic) {
-        ChatActions.selectUserTopic(userTopic);
+    onClick: function (userId) {
+        ChatActions.selectUserTopic(userId);
     },
 
     render: function () {

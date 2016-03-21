@@ -92,21 +92,25 @@ var MessageBar = React.createClass({
                 });
             } else { //integration messages
                 //todo: remove duplicates with previous case?
-                var integrationTopicId =
-                    self.state.store.selectedIntegrationTopic.integrationTopicId ?
-                        self.state.store.selectedIntegrationTopic.integrationTopicId :
-                        self.state.store.selectedIntegrationTopic.id;
                 var newIntegrationMessage = {
                     "user": _global.user,
                     "date": new Date().getTime(),
                     "integrationGroupId": self.state.store.selectedIntegrationGroup.integrationGroupId,
-                    "integrationTopicId": integrationTopicId,
                     "text": text
                 };
 
+                if (self.state.store.selectedIntegrationTopic) {
+                    newIntegrationMessage.integrationTopicId = self.state.store.selectedIntegrationTopic.integrationTopicId ?
+                        self.state.store.selectedIntegrationTopic.integrationTopicId :
+                        self.state.store.selectedIntegrationTopic
+                }
+
                 //todo: add new topic case
 
-                var url = self.state.store.selectedIntegrationTopic ? "/integration/" + self.state.store.selectedIntegration.id + "/comment" : null;
+                var url =
+                    self.state.store.selectedIntegrationTopic ?
+                        "/integration/" + self.state.store.selectedIntegration.id + "/comment/add" :
+                        "/integration/" + self.state.store.selectedIntegration.id + "/topic/add";
                 if (url) $.ajax({
                     type: "POST",
                     url: url,
@@ -131,12 +135,11 @@ var MessageBar = React.createClass({
         var userId;
         var topic = self.state.store.selectedUser === undefined;
         var sameUser = false;
-        var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
 
-        if (!messages)
+        if (!self.state.store.messages)
             return (<Loader id="message-bar-loader"/>);
 
-        var messageItems = messages.map(function (message, index) {
+        var messageItems = self.state.store.messages.map(function (message, index) {
             var user = message.user ? message.user : message.integrationUser;
             if (index == 0) {
                 userId = user.id ? user.id : user.integrationUserId;

@@ -9,11 +9,11 @@ import slick.driver.JdbcProfile
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-import play.api.Logger
-
 case class IntegrationUpdate(id: Long, integrationId: String, integrationUpdateId: Option[String], integrationGroupId: String,
-                             integrationTopicId: String, userId: Long,
-                             integrationUserId: String, date: Timestamp, text: String) extends AbstractIntegrationMessage
+                             _integrationTopicId: String, userId: Long,
+                             integrationUserId: String, date: Timestamp, text: String) extends AbstractIntegrationMessage {
+  override def integrationTopicId: Option[String] = Some(_integrationTopicId)
+}
 
 trait IntegrationUpdatesComponent extends HasDatabaseConfigProvider[JdbcProfile] with IntegrationTopicsComponent with IntegrationUsersComponent with IntegrationGroupsComponent with UsersComponent {
   protected val driver: JdbcProfile
@@ -34,7 +34,6 @@ trait IntegrationUpdatesComponent extends HasDatabaseConfigProvider[JdbcProfile]
     def integrationUpdateIndex = index("integration_update_index", (integrationId, integrationUpdateId, userId), unique = false)
     def integrationGroup = foreignKey("integration_update_integration_group_fk", (integrationId, integrationGroupId, userId), allIntegrationGroups)(g => (g.integrationId, g.integrationGroupId, g.userId))
     def integrationUser = foreignKey("integration_update_integration_user_fk", (integrationId, integrationUserId), allIntegrationUsers)(u => (u.integrationId, u.integrationUserId))
-    def integrationTopic = foreignKey("integration_update_integration_topic_fk", (integrationId, integrationTopicId, integrationGroupId, userId), allIntegrationTopics)(u => (u.integrationId, u.integrationTopicId, u.integrationGroupId, u.userId))
     def integrationGroupIndex = index("integration_update_integration_group_index", (integrationId, integrationGroupId, userId), unique = false)
     def * = (id, integrationId, integrationUpdateId, integrationGroupId, integrationTopicId, userId, integrationUserId, date, text) <> (IntegrationUpdate.tupled, IntegrationUpdate.unapply)
   }
@@ -50,13 +49,13 @@ trait IntegrationUpdatesComponent extends HasDatabaseConfigProvider[JdbcProfile]
     }
 
 
-  def updatesByTopicId(
-    topicId: Rep[String],
-    updates: Query[IntegrationUpdatesTable, IntegrationUpdate, Seq] = allIntegrationUpdates.to[Seq])
-  = updates.filter(_.integrationTopicId === topicId)
+  def updatesByTopicId(topicId: Rep[Option[String]],
+                       updates: Query[IntegrationUpdatesTable, IntegrationUpdate, Seq] = allIntegrationUpdates.to[Seq]) =
+    updates.filter(_.integrationTopicId === topicId)
 
-  def updatesByQueryAndTopicId(query: Option[String], topicId: Rep[String]): Query[IntegrationUpdatesTable, IntegrationUpdate, Seq]
-  = updatesByQuery(query, updatesByTopicId(topicId))
+  def updatesByQueryAndTopicId(query: Option[String],
+                               topicId: Rep[Option[String]]): Query[IntegrationUpdatesTable, IntegrationUpdate, Seq] =
+    updatesByQuery(query, updatesByTopicId(topicId))
 }
 
 @Singleton()

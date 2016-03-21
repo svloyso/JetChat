@@ -31,32 +31,49 @@ var GroupPane = React.createClass({
     },
 
     onIntegrationGroupClick: function (group) {
-        ChatActions.selectIntegrationGroup(this.state.store.integrations.find(i => i.id == group.integrationId), group);
-    },
-
-    myChatsSelected: function () {
-        return !this.state.store.selected.groupId &&
-            this.state.store.selected.stateId === this.state.store.CHAT;
+        ChatActions.selectIntegrationGroup(this.props.integrations.find(i => i.id == group.integrationId), group);
     },
 
     groupItem: function (group) {
         var groupClass = classNames({
-                ['selected']: this.state.store.selected.groupId == group.id,
+                ['selected']: this.props.selectedGroupId === group.id,
                 ['unread']: group.unreadCount > 0
             }
         );
         return (
-            <li data-group={group.id} className={groupClass}
-                onClick={this.onGroupClick.bind(this, group.id)} key={group.id}>
-                <span className="group-header">#</span>
-                <span>{group.name}</span>
+            <li className={groupClass} data-group={group.id} key={group.id} onClick={this.onGroupClick.bind(this, group.id)}>
+                <span className="group-header">#</span><span>{group.name}</span>
             </li>
+        );
+    },
+
+    integrationItem: function (group) {
+        var integration = this.props.integrations.find(i => i.id == group.key);
+        var integrationGroupItems = group.data.map(group => {
+            return (
+                <li className={this.props.selectedGroupId === group.integrationGroupId ? 'selected' : ''}
+                    data-group={group.id}
+                    key={group.integrationGroupId}
+                    onClick={this.onIntegrationGroupClick.bind(this, group)}>
+                    <span className="group-header">#</span><span>{group.name}</span>
+                </li>
+            )
+        });
+
+        return (
+            <ul className="integration-groups" key={group.key}>
+                <li className={this.props.selectedIntegration === group.key ? "selected" : ""}
+                    data-integration={group.key}
+                    onClick={this.onIntegrationClick.bind(this, integration)}>
+                    <span className="integration-name">{integration.name}</span></li>
+                {integrationGroupItems}
+            </ul>
         );
     },
 
     userItem: function (user) {
         var userClass = classNames({
-                ['selected']: this.state.store.selected.userId == user.id,
+                ['selected']: this.state.store.selected.userId === user.id,
                 ['unread']: user.unreadCount > 0
             }
         );
@@ -70,43 +87,14 @@ var GroupPane = React.createClass({
 
     render: function () {
         var self = this;
-        var groupItems = this.state.store.groups.map(g => this.groupItem(g));
-        var userItems = this.state.store.users.map(u => this.userItem(u));
-
-        var groupsByIntegrationId = self.state.store.integrationGroups.group(g => g.integrationId);
-        var integrationItems = groupsByIntegrationId.map((group) => {
-            var integration = self.state.store.integrations.find(i => i.id == group.key);
-            var integrationGroupItems = integration.enabled ? group.data.map(group => {
-                var groupClass = classNames({
-                        ['selected']: self.state.store.selectedIntegrationGroup &&
-                        self.state.store.selectedIntegrationGroup.integrationGroupId == group.integrationGroupId
-                    }
-                );
-
-                return (
-                    <li data-group={group.id} className={groupClass}
-                        onClick={self.onIntegrationGroupClick.bind(self, group)} key={group.integrationGroupId}>
-                        <span className="group-header">#</span>
-                        <span>{group.name}</span>
-                    </li>
-                )
-            }) : [];
-            var integrationClass = (self.state.store.selectedIntegration &&
-                !self.state.store.selectedIntegrationGroup &&
-                self.state.store.selectedIntegration.id == group.key) ? "selected" : "";
-            return integration.enabled ? (
-                <ul className="integration-groups" key={integration.id}>
-                    <li data-integration={integration.id} onClick={self.onIntegrationClick.bind(self, integration)} className={integrationClass}>
-                        <span className="integration-name">{integration.name}</span></li>
-                    {integrationGroupItems}
-                </ul>
-            ) : null;
-        });
+        var groupItems = this.props.groups.map(g => this.groupItem(g));
+        var userItems = this.props.users.map(u => this.userItem(u));
+        var integrationItems = this.props.integrationGroups.map(g => this.integrationItem(g));
 
         return (
             <ul id="group-pane">
-                <li id="all-groups" className={this.myChatsSelected() ? 'selected' : ''}
-                    onClick={this.onGroupClick.bind(this, undefined)}>
+                <li id="all-groups" className={this.props.selectedMyChats ? 'selected' : ''}
+                    onClick={this.onGroupClick.bind(this)}>
                     <span>My chats</span></li>
                 {groupItems}
                 <NewGroupButton/>
