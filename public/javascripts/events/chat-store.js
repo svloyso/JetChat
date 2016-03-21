@@ -50,18 +50,6 @@ var ChatStore = Reflux.createStore({
          }, false);*/
     },
 
-    nullifyExcept: function () {
-        var keys = new Set([
-            "selectedIntegrationGroup",
-            "selectedIntegrationTopic"]);
-
-        for (var id = 0; id < arguments.length; ++id)
-            keys.delete(arguments[id]);
-
-        for (let key of keys)
-            this.state[key] = undefined;
-    },
-
     setStateId: function (stateId) {
         this.state.selected.stateId = stateId;
         this.state.selected.groupId = undefined;
