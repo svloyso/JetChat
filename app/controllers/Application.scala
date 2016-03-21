@@ -318,6 +318,18 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     val topicId = (request.body \ "topicId").get.asInstanceOf[JsNumber].value.toLong
     val text = (request.body \ "text").get.asInstanceOf[JsString].value
     val date = new Timestamp(Calendar.getInstance.getTime.getTime)
+
+
+    if (text contains "bot") {
+      usersDAO.findByLogin("Bot").map {
+        case None =>
+          usersDAO.insert(User(login="Bot", name="Bot", avatar=None)).map {
+            id => BotActor.actorSelection(system) ! MentionEvent(id, groupId, topicId, text)
+          }
+        case Some(user) => BotActor.actorSelection(system) ! MentionEvent(user.id, groupId, topicId, text)
+      }
+    }
+
     commentsDAO.insert(Comment(groupId = groupId, userId = userId, topicId = topicId, date = date, text = text)).flatMap { case id =>
       Logger.debug(s"Adding comment: $userId, $groupId, $topicId, $text")
       usersDAO.findById(userId).map { case option =>
