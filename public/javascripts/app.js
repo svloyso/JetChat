@@ -15,7 +15,8 @@ var App = React.createClass({
         var self = this;
         var socket = new WebSocket(_global.webSocketUrl);
         socket.onmessage = function (message) {
-            if (message.data != JSON.stringify("Tack")) {
+            console.log("openSocket: " + JSON.stringify(message));
+            if (message.data && message.data !== JSON.stringify("Tack")) {
                 var data = JSON.parse(message.data);
                 if (data.topicId) {
                     ChatActions.newMessage(data);

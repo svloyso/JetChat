@@ -12,38 +12,35 @@ var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     componentDidUpdate: function () {
-        var self = this;
-        var messageRoll = $(ReactDOM.findDOMNode(self.refs.messageRoll));
+        var messageRoll = $(ReactDOM.findDOMNode(this.refs.messageRoll));
         messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        ReactDOM.findDOMNode(self.refs.input).focus();
+        ReactDOM.findDOMNode(this.refs.input).focus();
         window.setTimeout(function () {
             messageRoll.scrollTop(messageRoll[0].scrollHeight);
         }, 0);
     },
 
-    groupId: function () {
-        var s = this.state.store;
-        if (!s.selected.topicId)
-            return s.selected.groupId;
+    groupId: function (store) {
+        if (!store.selected.topicId)
+            return store.selected.groupId;
 
-        var selectedTopic = s.topics.find(t => t.topic && t.topic.id === s.selected.topicId);
+        var selectedTopic = store.topics.find(t => t.topic && t.topic.id === store.selected.topicId);
         return selectedTopic ? selectedTopic.group.id : undefined;
     },
 
     onInputKeyPress: function (event) {
         var self = this;
-        var input = ReactDOM.findDOMNode(self.refs.input);
-        if (event.which == 13 && input.value.trim() && !event.shiftKey) {
-            var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;
-            if (selectedUser) {
-                var toUser = self.state.store.users.filter(function (u) {
-                    return u.id == selectedUser.id
-                })[0];
+        var inputNode = ReactDOM.findDOMNode(self.refs.input);
+        var text = inputNode.value.trim();
+        if (event.which == 13 && input && !event.shiftKey) {
+            var selectedUserId = self.state.store.selected.userId;
+            if (selectedUserId) {
+                var toUser = self.state.store.users.find(u => u.id === selectedUserId);
                 var newDirectMessage = {
                     "user": _global.user,
                     "toUser": toUser,
                     "date": new Date().getTime(),
-                    "text": input.value
+                    "text": text
                 };
                 $.ajax({
                     type: "POST",
@@ -62,12 +59,12 @@ var MessageBar = React.createClass({
                 var newMessage = {
                     "user": _global.user,
                     "date": new Date().getTime(),
-                    "group": { id: groupId.bind(self) },
-                    "text": input.value
+                    "group": { id: this.groupId(self.state.store) },
+                    "text": text
                 };
-                if (self.state.store.selected.topicId) {
-                    newMessage.topicId = self.state.store.selected.topicId;
-                }
+
+                newMessage.topicId = self.state.store.selected.topicId;
+
                 $.ajax({
                     type: "POST",
                     url: self.state.store.selected.topicId ? "/json/comment/add" : "/json/topic/add",
@@ -104,7 +101,7 @@ var MessageBar = React.createClass({
                     "date": new Date().getTime(),
                     "integrationGroupId": self.state.store.selectedIntegrationGroup.integrationGroupId,
                     "integrationTopicId": integrationTopicId,
-                    "text": input.value
+                    "text": text
                 };
 
                 //todo: add new topic case
@@ -124,7 +121,7 @@ var MessageBar = React.createClass({
                     }
                 });
             }
-            input.value = "";
+            inputNode.value = "";
             event.preventDefault();
         }
     },
@@ -135,6 +132,7 @@ var MessageBar = React.createClass({
         var topic = self.state.store.selectedUser === undefined;
         var sameUser = false;
         var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
+
         if (!messages)
             return (<Loader id="message-bar-loader"/>);
 

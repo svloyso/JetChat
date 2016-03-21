@@ -27,8 +27,8 @@ var ChatStore = Reflux.createStore({
             this.onShowIntegrations();
         } else if (this.isStateIdIn([this.state.CHAT])) {
             this.onSelectGroup(this.state.selected.groupId);
-        } else if (this.state.selectedUser) {
-            this.onSelectUser(this.state.selectedUser);
+        } else if (this.isStateIdIn([this.state.USER])) {
+            this.onSelectUser(this.state.selected.userId);
         } else if (this.state.selectedIntegration && !this.state.selectedIntegrationGroup && !this.state.selectedIntegrationTopic) {
             this.onSelectIntegration(this.state.selectedIntegration);
         } else if (this.state.selectedIntegration) {
@@ -48,9 +48,7 @@ var ChatStore = Reflux.createStore({
         var keys = new Set([
             "selectedIntegration",
             "selectedIntegrationGroup",
-            "selectedIntegrationTopic",
-            "selectedUser",
-            "selectedUserTopic"]);
+            "selectedIntegrationTopic"]);
 
         for (var id = 0; id < arguments.length; ++id)
             keys.delete(arguments[id]);
@@ -100,9 +98,6 @@ var ChatStore = Reflux.createStore({
             ["user", this.state.selected.userId]
         ]);
 
-        if (this.state.selectedUserTopic)
-            keyValues.set("userTopicId", this.state.selectedUserTopic.id);
-
         if (this.state.selectedIntegration)
             keyValues.set("integrationId", this.state.selectedIntegration.id);
 
@@ -148,9 +143,10 @@ var ChatStore = Reflux.createStore({
                     topicId: _global.topicId,
                     userId: undefined
                 },
-                users: _global.users.filter(function (u) {
-                    return u.id !== _global.user.id
-                }),
+                users: _global.users,
+                //users: _global.users.filter(function (u) {
+                //    return u.id !== _global.user.id
+                //}),
                 integrations: _global.integrations,
                 groups: _global.groups,
                 integrationGroups: _global.integrationGroups,
@@ -237,9 +233,9 @@ var ChatStore = Reflux.createStore({
         this.state.integrationMessages = undefined;
 
         var url = '';
-        if (this.state.selected.stateId === this.state.CHAT) {
+        if (this.isStateIdIn([this.state.CHAT])) {
             url = this.messagesURL();
-        } else if (this.state.selected.stateId === this.state.USER) {
+        } else if (this.isStateIdIn([this.state.USER])) {
             url = this.userURL();
         } else {
             console.error("updateMessages: unsupported stateId=" + this.state.selected.stateId);
@@ -439,7 +435,18 @@ var ChatStore = Reflux.createStore({
     },
 
     onNewMessage: function (message) {
+        console.log("onNewMessage: " + JSON.stringify(message));
         var trigger = false;
+
+        function messageFitTopic(message, selected) {
+            if (message.toUser && message.user && selected.userId)
+                return (_global.user.id === message.user.id && selected.userId === message.toUser.id) ||
+                    (_global.user.id === message.toUser.id && selected.userId === message.user.id);
+
+            if (message.topicId)
+                return selected.topicId === message.topicId;
+        }
+
         // TODO: Check if we may apply message twice
         if (this.state.messages && !this.state.messages.find(m => m.text == message.text)) {
             var unread = message.user.id != _global.user.id;
@@ -479,11 +486,7 @@ var ChatStore = Reflux.createStore({
                     }
                 }
             }
-            if (this.state.selectedTopic && this.state.selectedTopic.id == message.topicId ||
-                this.state.selectedUser && message.toUser && (this.state.selectedUser.id == message.toUser.id && _global.user.id == message.user.id ||
-                this.state.selectedUser.id == message.user.id && _global.user.id == message.toUser.id) ||
-                this.state.selectedUserTopic && message.toUser && (this.state.selectedUserTopic.id == message.toUser.id && _global.user.id == message.user.id ||
-                this.state.selectedUserTopic.id == message.user.id && _global.user.id == message.toUser.id)) {
+            if (messageFitTopic(message, this.state.selected)) {
                 // TODO: Preserve message order
                 this.state.messages.push(message);
                 trigger = true;
