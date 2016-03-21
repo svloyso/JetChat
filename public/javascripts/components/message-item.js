@@ -36,18 +36,41 @@ var MessageItem = React.createClass({
                       data-date={self.props.message.date}>{prettyDate}</span>
             </div>;
         }
+        // TODO: Refactor me
         return (
             <li className={className} data-user={self.props.message.user.id}>
                 <VisibilitySensor onChange={self.onChange} />
                 {avatar}
                 <div className="details">
                     {info}
-                    <div className="text">{this.autolink(self.props.message.text, { className: "imagify"}).map(function (el) {
-                        if (typeof el === "string")
-                            return self.emojify(el);
-                        else
-                            return el;
-                    })}</div>
+                    { this.autolink(self.props.message.text, { target: "_blank", className: "imagify"}).map(function (el) {
+                        if ((typeof el === "string") && el.trim().length) {
+                            return self.emojify(el).map(function (el) {
+                                    if (typeof el === "string") {
+                                        var tokens = el.split("\n");
+                                        return tokens.map(function(item) {
+                                            return (
+                                                <div className="text">
+                                                    {item}
+                                                </div>
+                                            )
+                                        })
+                                    } else {
+                                        return (
+                                            <div className="text">
+                                                {el}
+                                            </div>
+                                        );
+                                    }
+                                });
+                        } else {
+                            if ((typeof el !== "string") || el.trim().length) return (
+                                <div className="text">
+                                    {el}
+                                </div>
+                            ); else return null;
+                        }
+                    })}
                 </div>
             </li>
         );

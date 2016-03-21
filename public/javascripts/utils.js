@@ -10,11 +10,18 @@ var __urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&
 window.setInterval(function () {
     $(".imagify").each(function (i, a) {
         var _a = a;
+        $(_a).removeClass("imagify");
         var img = $("<img>");
         img.load(function () {
             $(_a).replaceWith($("<a target='_blank'>").append($(img)).attr("href", _a.href));
         }).error(function () {
-            $(_a).removeClass("imagify");
+            if (window.process) {
+                var shell = window.require('remote').shell;
+                $(_a).click((e) => {
+                    shell.openExternal(_a.href);
+                    return false;
+                });
+            }
         }).attr("src", _a.href).addClass("").
             attr("class", "preview");
     });
@@ -27,7 +34,8 @@ window.setInterval(function () {
 }, 1000 * 60);
 
 window.setInterval(function() {
-    $("#message-bar").width($(window).width() - 200 - 350);
+    $("#message-bar.narrow").width($(window).width() - 200 - 350);
+    $("#message-bar.wide").width($(window).width() - 200);
     $("#message-bar").height($(window).height());
     $("#side-bar").height($(window).height());
     $("#group-pane").height($(window).height() - 80);

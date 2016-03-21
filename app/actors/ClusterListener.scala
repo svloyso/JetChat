@@ -52,7 +52,7 @@ class ClusterListener extends Actor with ActorLogging {
 
   def receive = {
     case inquiry: MasterStateInquiry =>
-      context.system.eventStream.publish(if (isMaster) MasterEvent() else SlaveEvent() )
+      context.system.eventStream.publish(if (isMaster) MasterEvent else SlaveEvent )
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
     case UnreachableMember(member) =>
@@ -93,7 +93,7 @@ class ClusterListener extends Actor with ActorLogging {
           log.info(s"The cluster master is self-elected: '$selfHost:$selfPort'")
           if (!isMaster) {
             isMaster = true
-            context.system.eventStream.publish(MasterEvent())
+            context.system.eventStream.publish(MasterEvent)
           }
         } catch { case e:EtcdException =>
         }

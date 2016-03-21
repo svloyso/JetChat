@@ -5,24 +5,30 @@ import MessageItem from './message-item';
 import IntegrationMessageItem from './integration-message-item';
 import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
+import classNames from 'classnames';
 var $ = require('jquery');
 
 var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     componentDidUpdate: function () {
-        var messageRoll = $(ReactDOM.findDOMNode(this.refs.messageRoll));
+        var self = this;
+        var messageRoll = $(ReactDOM.findDOMNode(self.refs.messageRoll));
         messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        ReactDOM.findDOMNode(this.refs.input).focus();
+        ReactDOM.findDOMNode(self.refs.input).focus();
+        window.setTimeout(function () {
+            messageRoll.scrollTop(messageRoll[0].scrollHeight);
+        }, 0);
     },
 
     onInputKeyPress: function (event) {
         var self = this;
         var input = ReactDOM.findDOMNode(self.refs.input);
-        if (event.which == 13 && input.value.trim()) {
-            if (self.state.store.selectedUser) {
+        if (event.which == 13 && input.value.trim() && !event.shiftKey) {
+            var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;
+            if (selectedUser) {
                 var toUser = self.state.store.users.filter(function (u) {
-                    return u.id == self.state.store.selectedUser.id
+                    return u.id == selectedUser.id
                 })[0];
                 var newDirectMessage = {
                     "user": _global.user,
@@ -80,21 +86,25 @@ var MessageBar = React.createClass({
                 });
             } else { //integration messages
                 //todo: remove duplicates with previous case?
-                var integrationTopicId =
-                    self.state.store.selectedIntegrationTopic.integrationTopicId ?
-                        self.state.store.selectedIntegrationTopic.integrationTopicId :
-                        self.state.store.selectedIntegrationTopic.id;
                 var newIntegrationMessage = {
                     "user": _global.user,
                     "date": new Date().getTime(),
                     "integrationGroupId": self.state.store.selectedIntegrationGroup.integrationGroupId,
-                    "integrationTopicId": integrationTopicId,
                     "text": input.value
                 };
 
+                if (self.state.store.selectedIntegrationTopic) {
+                    newIntegrationMessage.integrationTopicId = self.state.store.selectedIntegrationTopic.integrationTopicId ?
+                        self.state.store.selectedIntegrationTopic.integrationTopicId :
+                        self.state.store.selectedIntegrationTopic
+                }
+
                 //todo: add new topic case
 
-                var url = self.state.store.selectedIntegrationTopic ? "/integration/" + self.state.store.selectedIntegration.id + "/comment" : null;
+                var url =
+                    self.state.store.selectedIntegrationTopic ?
+                        "/integration/" + self.state.store.selectedIntegration.id + "/comment/add" :
+                        "/integration/" + self.state.store.selectedIntegration.id + "/topic/add";
                 if (url) $.ajax({
                     type: "POST",
                     url: url,
@@ -148,21 +158,27 @@ var MessageBar = React.createClass({
         var inputPlaceHolder = self.state.store.selectedIntegrationTopic || self.state.store.selectedTopic ?
             "Message..." : "Topic...";
         var userHeader;
-        if (self.state.store.selectedUser) {
+        var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;
+        if (selectedUser) {
             userHeader = <div id="message-roll-header">
                 <li className="clearfix topic">
-                    <img className="img avatar pull-left" src={self.state.store.selectedUser.avatar}/>
+                    <img className="img avatar pull-left" src={selectedUser.avatar}/>
                     <div className="details">
                         <div className="info">
-                            <span className="user">{self.state.store.selectedUser.name}</span>
+                            <span className="user">{selectedUser.name}</span>
                         </div>
                     </div>
                 </li>
             </div>
         }
+        var className = classNames({
+                ['wide']: this.state.store.selectedUser,
+                ['narrow']: !this.state.store.selectedUser,
+                ['hidden']: this.state.store.displaySettings
+            }
+        );
         return (
-            // TODO: Replace logic with className
-            <div id="message-bar" style={{left: this.state.store.selectedUser ? "200px" : "550px", display: this.state.store.displaySettings ? "none" : ""}}>
+            <div id="message-bar" className={className}>
                 <div id="message-pane">
                     <div id="message-roll" ref="messageRoll">
                         {messageItems}

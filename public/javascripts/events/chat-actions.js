@@ -3,6 +3,7 @@ import Reflux from 'reflux';
 var ChatActions = Reflux.createActions([
     'selectGroup',
     'selectTopic',
+    'selectUserTopic',
     'selectUser',
     'newGroup',
     'newUser',
@@ -16,7 +17,8 @@ var ChatActions = Reflux.createActions([
     'markMessageAsRead',
     'markDirectMessageAsRead',
     'enableIntegration',
-    'disableIntegration'
+    'disableIntegration',
+    'alertQuery'
 ]);
 
 export default ChatActions;

@@ -26,7 +26,7 @@ trait IntegrationTokensComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
     def enabled = column[Boolean]("enabled")
 
-    def user = foreignKey("integration_token_user_fk", userId, users)(_.id)
+    def user = foreignKey("integration_token_user_fk", userId, allUsers)(_.id)
 
     def tokenIndex = index("integration_token_index", (userId, integrationId), unique = true)
 

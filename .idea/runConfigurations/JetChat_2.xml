@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="JetChat 2" type="Play2FrameworkRunConfigurations" factoryName="Play 2 App" singleton="true">
+    <module name="root" />
+    <setting name="play2JpdaPort" value="9999" />
+    <setting name="play2JvmOptions" value="-Xms512M -Xmx1024M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M -Dapi.GitHub.clientId=7d0f155efea53ab0ec9e -Dapi.GitHub.clientSecret=afc6a60885a2739ca7dc1bb0359bf277c75af48d -Dlfs.app-name=jetchat.andrey-mbp-2 -Dlfs.servers=lfs-srv-1.intellij.net,lfs-srv-2.intellij.net -DETCDCTL_PEERS=192.168.99.100:4001 -Dhttp.port=9001 -Dakka.remote.netty.tcp.port=2501" />
+    <setting name="play2NeedOpenInBrowser" value="false" />
+    <setting name="play2OpenUrl" value="http://localhost:9001" />
+    <setting name="play2EnvVariables" value="" />
+    <setting name="play2IsNonDefaultInstallDirUsed" value="false" />
+    <setting name="play2NonDefaultInstallDir" value="" />
+    <setting name="play2isAutoReloadEnabled" value="false" />
+    <method />
+  </configuration>
+</component>

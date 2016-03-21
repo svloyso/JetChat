@@ -1,6 +1,5 @@
 package test
 
-import java.io.File
 import java.sql.Timestamp
 import java.util.Calendar
 
@@ -8,8 +7,8 @@ import models._
 import models.api.{IntegrationToken, IntegrationTokensDAO}
 import org.specs2.mutable.Specification
 import play.api.Application
-import play.api.db.{DBApi, Database}
-import play.api.db.evolutions.{Evolutions, ClassLoaderEvolutionsReader}
+import play.api.db.DBApi
+import play.api.db.evolutions.{ClassLoaderEvolutionsReader, Evolutions}
 import play.api.test.{FakeApplication, WithApplication}
 
 import scala.concurrent.Await
@@ -94,7 +93,7 @@ class ModelSpec extends Specification {
       m = Await.result(integrationGroupsDAO.merge(IntegrationGroup("test-integration", "test-integration-group", user.get.id, "Test Integration Group")), Duration.Inf)
       m mustEqual false
 
-      m = Await.result(integrationTopicsDAO.merge(IntegrationTopic("test-integration", "test-integration-topic", "test-integration-group", user.get.id, "test-integration-user",
+      m = Await.result(integrationTopicsDAO.merge(IntegrationTopic(0, "test-integration", Some("test-integration-topic"), "test-integration-group", user.get.id, "test-integration-user",
         new Timestamp(Calendar.getInstance.getTime.getTime), "Test integration topic", "Test integraiton topic title")), Duration.Inf)
       m mustEqual true
 

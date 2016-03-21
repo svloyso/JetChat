@@ -94,7 +94,7 @@ var GroupPane = React.createClass({
             <ul id="group-pane">
                 <li id="all-groups" className={allGroupsClass}
                     onClick={self.onGroupClick.bind(self, undefined)}>
-                    <span>All groups</span></li>
+                    <span>My chats</span></li>
                 {groupItems}
                 <NewGroupButton/>
                 {integrationItems}

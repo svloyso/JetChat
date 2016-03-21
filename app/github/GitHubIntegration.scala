@@ -91,7 +91,7 @@ object GitHubIntegration {
   val ID = "GitHub"
 
   val defaultPollInterval = 60 * 60
-  val sincePeriod = 1000 * 60 * 60 * 24 * 7
+  val sincePeriod = 1000 * 60 * 60 * 24 * 14
 
   private val LOG = Logger.apply(this.getClass)
 
@@ -131,7 +131,7 @@ object GitHubIntegration {
   class GitHubMessageHandler extends MessageHandler {
     private val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
 
-    override def collectMessages(integrationToken: IntegrationToken): Future[CollectedMessages] = {
+    override def collectMessages(integrationToken: IntegrationToken, since: Option[Long]): Future[CollectedMessages] = {
       def eventText(json: JsValue): String = {
         (json \ "event").asOpt[String] match {
           case Some("closed") =>
@@ -166,7 +166,7 @@ object GitHubIntegration {
             s"""renamed from:
                 |  $from
                 |
-               |        to:
+                |        to:
                 |  $to
              """.stripMargin
           case Some("head_ref_deleted") => "The pull request’s branch was deleted."
@@ -176,9 +176,67 @@ object GitHubIntegration {
         }
       }
 
-      val since = dateFormat.format(new Date(System.currentTimeMillis() - sincePeriod))
-      val notificationsUrl = s"https://api.github.com/notifications?all=true&since=$since"
-      askAPI(notificationsUrl, integrationToken.token).flatMap { result =>
+      def askWithRecover[R](url: String, f: Future[APICallResult] => Future[R], default: => R): Future[R] = {
+        f(askAPI(url, integrationToken.token)).recover {
+          case t: Throwable =>
+            LOG.error(s"Error during $url API check.", t)
+            default
+        }
+      }
+
+      def extractEvents(groupId: String, topicId: String, events_url: String): Future[Option[Seq[IntegrationUpdate]]] = {
+        askWithRecover(events_url, _.map { result =>
+          if (result.successful) {
+            val json = result.response.json
+            val events = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
+            Some(events.collect {
+              case v if !Set(Option("mentioned"), Option("subscribed")).contains((v \ "event").asOpt[String]) =>
+                val eventId = (v \ "id").as[Long]
+                val userId = (v \ "actor" \ "login").asOpt[String].getOrElse(
+                  (v \ "creator" \ "login").as[String]
+                )
+                val timestamp = new Timestamp(dateFormat.parse((v \ "created_at").as[String]).getTime)
+                val text = eventText(v)
+                IntegrationUpdate(0, ID, Some(eventId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
+            })
+          } else {
+            None
+          }
+        }, None)
+      }
+
+      def extractComments(groupId: String, topicId: String, comments_url: String): Future[Option[Seq[IntegrationUpdate]]] = {
+        askWithRecover(comments_url, _.map { result =>
+          if (result.successful) {
+            val json = result.response.json
+            val comments = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
+            Some(comments.map { value =>
+              val commentId = (value \ "id").as[Long]
+              val userId = (value \ "user" \ "login").as[String]
+              val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
+              val text = (value \ "body").as[String]
+              IntegrationUpdate(0, ID, Some(commentId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
+            })
+          } else {
+            None
+          }
+        }, None)
+      }
+
+      val defaultSince = System.currentTimeMillis() - sincePeriod
+      val sinceDate = dateFormat.format(new Date(since.map(_.max(defaultSince)).getOrElse(defaultSince)))
+      val notificationsUrl = s"https://api.github.com/notifications?all=true&since=$sinceDate"
+
+      def extractLatestSince(map: Map[IntegrationTopic, Seq[IntegrationUpdate]]): Long = {
+        map.foldLeft(defaultSince) {
+          case (since: Long, (topic: IntegrationTopic, updates: Seq[IntegrationUpdate])) =>
+            since.max(topic.date.getTime).max(updates.foldLeft(0L) {
+              case (l, update) => l.max(update.date.getTime)
+            })
+        }
+      }
+
+      askWithRecover(notificationsUrl, _.flatMap { result =>
         if (result.successful) {
           val seq: Seq[JsValue] = result.response.json.as[Seq[JsValue]]
           Future.sequence(seq.map { value =>
@@ -189,79 +247,60 @@ object GitHubIntegration {
             val url = (subject \ "url").as[String]
             val index = url.lastIndexOf('/')
             val lastPart = url.substring(index + 1)
-            val topicTitle = tp match {
-              case "Commit" => s"$title (${lastPart.substring(0, 7)})"
-              case "Issue" => s"#$lastPart $title"
-              case "PullRequest" => s"PR #$lastPart $title"
-            }
-
             val topicId = s"$tp/$lastPart"
 
-            askAPI(url, integrationToken.token).flatMap { result =>
+            askWithRecover(url, _.flatMap { result =>
               if (result.successful) {
-                val json = result.response.json
-                val topicAuthor = tp match {
-                  case "Commit" => (json \ "author" \ "login").as[String]
-                  case _ => (json \ "user" \ "login").as[String]
-                }
-                val topicText = tp match {
-                  case "Commit" => (json \ "commit" \ "message").as[String]
-                  case _ => (json \ "title").as[String]
-                }
-                val topicTimestamp = tp match {
-                  case "Commit" => new Timestamp(dateFormat.parse((json \ "commit" \ "author" \ "date").as[String]).getTime)
-                  case _ => new Timestamp(dateFormat.parse((json \ "created_at").as[String]).getTime)
-                }
-                val integrationTopic = IntegrationTopic(ID, topicId, groupId, integrationToken.userId, topicAuthor, topicTimestamp, topicText, topicTitle)
-
-                val commentsFuture = askAPI((json \ "comments_url").as[String], integrationToken.token).map { result =>
-                  if (result.successful) {
+                tp match {
+                  case "Commit" | "Issue" | "PullRequest" =>
                     val json = result.response.json
-                    val comments = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
-                    Some(comments.map { value =>
-                      val commentId = (value \ "id").as[Long]
-                      val userId = (value \ "user" \ "login").as[String]
-                      val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
-                      val text = (value \ "body").as[String]
-                      IntegrationUpdate(0, ID, Some(commentId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
-                    })
-                  } else {
-                    None
-                  }
-                }
-                ((json \ "events_url").asOpt[String].orElse((json \ "statuses_url").asOpt[String]) match {
-                  case Some(events_url) =>
-                    commentsFuture.zip {
-                      askAPI(events_url, integrationToken.token).map { result =>
-                        if (result.successful) {
-                          val json = result.response.json
-                          val events = json.asOpt[Seq[JsValue]].getOrElse(Seq(json.as[JsValue]))
-                          Some(events.collect {
-                            case v if !Set(Option("mentioned"), Option("subscribed")).contains((v \ "event").asOpt[String]) =>
-                              val eventId = (v \ "id").as[Long]
-                              val userId = (v \ "actor" \ "login").asOpt[String].getOrElse(
-                                (v \ "creator" \ "login").as[String]
-                              )
-                              val timestamp = new Timestamp(dateFormat.parse((v \ "created_at").as[String]).getTime)
-                              val text = eventText(v)
-                              IntegrationUpdate(0, ID, Some(eventId.toString), groupId, topicId, integrationToken.userId, userId, timestamp, text)
-                          })
-                        } else {
-                          None
+                    val topicTitle = tp match {
+                      case "Commit" => s"$title (${lastPart.substring(0, 7)})"
+                      case "Issue" => s"#$lastPart $title"
+                      case "PullRequest" => s"PR #$lastPart $title"
+                    }
+                    val topicAuthor = tp match {
+                      case "Commit" => (json \ "author" \ "login").as[String]
+                      case _ => (json \ "user" \ "login").as[String]
+                    }
+                    val topicText = tp match {
+                      case "Commit" => (json \ "commit" \ "message").as[String]
+                      case _ => (json \ "title").as[String]
+                    }
+                    val topicTimestamp = tp match {
+                      case "Commit" => new Timestamp(dateFormat.parse((json \ "commit" \ "author" \ "date").as[String]).getTime)
+                      case _ => new Timestamp(dateFormat.parse((json \ "created_at").as[String]).getTime)
+                    }
+                    val integrationTopic = IntegrationTopic(0, ID, Some(topicId), groupId, integrationToken.userId, topicAuthor, topicTimestamp, topicText, topicTitle)
+
+                    val comments_url = (json \ "comments_url").as[String]
+                    val commentsFuture = extractComments(groupId, topicId, comments_url)
+
+                    ((json \ "events_url").asOpt[String].orElse((json \ "statuses_url").asOpt[String]) match {
+                      case Some(events_url) =>
+                        commentsFuture.zip(extractEvents(groupId, topicId, events_url)).map {
+                          case (Some(comments), Some(events)) => Some(comments ++ events)
+                          case _ => None
                         }
-                      }
-                    }.map { case (Some(comments), Some(events)) => Some(comments ++ events) case _ => None }
-                  case _ => commentsFuture
-                }).map{ case Some(x) => Some(integrationTopic -> x) case _ => None }
-              } else {
-                Future { None }
-              }
-            }
-          }).map(_.flatten.toMap).map (CollectedMessages(_, result.pollInterval.getOrElse(60).seconds))
+                      case _ => commentsFuture
+                    }).map { case Some(x) => Some(integrationTopic -> x) case _ => None }
+                  case _ =>
+                    LOG.error(s"Unsupported topic title $tp")
+                    Future { None }
+                }
+              } else Future { None }
+            }, None)
+          }).map(_.flatten.toMap).map(topicToUpdates =>
+            CollectedMessages(topicToUpdates, result.pollInterval.getOrElse(60).seconds, extractLatestSince(topicToUpdates)))
+          .recover {
+            case t: Throwable =>
+              LOG.error(s"Error during $notificationsUrl check", t)
+              CollectedMessages(Map.empty, result.pollInterval.getOrElse(60).seconds, defaultSince)
+          }
         } else {
-          Future.successful(CollectedMessages(Map(), result.pollInterval.getOrElse(60).seconds))
+          Future.successful(CollectedMessages(Map(), result.pollInterval.getOrElse(60).seconds, defaultSince))
         }
-      }
+      }, CollectedMessages(Map(), 60.seconds, defaultSince))
     }
 
     override def sendMessage(integrationToken: IntegrationToken, groupId: String, topicId: String,
@@ -299,6 +338,37 @@ object GitHubIntegration {
             case Commit(hash) => Future(None)//todo: working with commits
             case Issue(issueId) => update("issues", issueId)
             case PullRequest(pullId) => update("pulls", pullId)
+          }
+        case _ => Future(None)
+      }
+    }
+
+    override def isNewTopicAvailable: Boolean = true
+
+    override def newTopic(integrationToken: IntegrationToken, groupId: String,
+                          message: SentNewTopic): Future[Option[IntegrationTopic]] = {
+      message match {
+        case NewTopic(text) =>
+          WS.url(s"https://api.github.com/repos/$groupId/issues")(Play.current).
+            withQueryString("access_token" -> integrationToken.token).
+            withHeaders(HeaderNames.ACCEPT -> MimeTypes.JSON,
+              HeaderNames.CONTENT_TYPE -> MimeTypes.JSON
+            ).post(
+            s"""
+               |{
+               |  "title": "${StringEscapeUtils.escapeJson(text)}"
+               |}
+              """.stripMargin.trim).map { response =>
+            if (response.status == http.Status.CREATED) {
+              val json = response.json
+              val value = json.as[JsValue]
+              val id = (value \ "id").as[Long]
+              val userId = (value \ "user" \ "login").as[String]
+              val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
+              val title = (value \ "title").as[String]
+              val text = (value \ "body").as[String]
+              Some(IntegrationTopic(0, ID, Some(s"Issue/$id"), groupId, integrationToken.userId, userId, timestamp, text, title))
+            } else None
           }
         case _ => Future(None)
       }

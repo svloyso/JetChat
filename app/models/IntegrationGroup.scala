@@ -15,21 +15,15 @@ trait IntegrationGroupsComponent extends HasDatabaseConfigProvider[JdbcProfile] 
 
   class IntegrationGroupsTable(tag: Tag) extends Table[IntegrationGroup](tag, "integration_groups") {
     def userId = column[Long]("user_id")
-
     def integrationId = column[String]("integration_id")
-
     def integrationGroupId = column[String]("integration_group_id")
-
     def name = column[String]("name")
-
     def pk = primaryKey("integration_group_pk", (integrationId, integrationGroupId, userId))
-
-    def user = foreignKey("integration_group_user_fk", userId, users)(_.id)
-
-    def * = (integrationId, integrationGroupId, userId, name) <>(IntegrationGroup.tupled, IntegrationGroup.unapply)
+    def user = foreignKey("integration_group_user_fk", userId, allUsers)(_.id)
+    def * = (integrationId, integrationGroupId, userId, name) <> (IntegrationGroup.tupled, IntegrationGroup.unapply)
   }
 
-  val integrationGroups = TableQuery[IntegrationGroupsTable]
+  val allIntegrationGroups = TableQuery[IntegrationGroupsTable]
 }
 
 @Singleton()
@@ -40,14 +34,14 @@ class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
   import driver.api._
 
   def find(integrationId: String, integrationGroupId: String, userId: Long): Future[Option[IntegrationGroup]] = {
-    db.run(integrationGroups.filter(g => g.integrationGroupId === integrationGroupId &&
+    db.run(allIntegrationGroups.filter(g => g.integrationGroupId === integrationGroupId &&
       g.integrationId === integrationId && g.userId === userId).result.headOption)
   }
 
   def merge(group: IntegrationGroup): Future[Boolean] = {
     find(group.integrationId, group.integrationGroupId, group.userId).flatMap {
       case None =>
-        db.run(integrationGroups += group).map(_ => true)
+        db.run(allIntegrationGroups += group).map(_ => true)
       case Some(existing) =>
         Future {
           false
@@ -55,12 +49,12 @@ class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
     }
   }
 
-  def allWithCounts(userId: Long): Future[Seq[(IntegrationGroup, Int)]] = {
-    db.run(integrationGroups.filter(_.userId === userId).result).flatMap { f =>
+  def allWithCounts(userId: Long, query: Option[String]): Future[Seq[(IntegrationGroup, Int)]] = {
+    db.run(allIntegrationGroups.filter(_.userId === userId).result).flatMap { f =>
       val groupMap = f.map { g => (g.integrationId, g.integrationGroupId) ->(g.name, 0) }.toMap
 
-      db.run((integrationTopics.filter(_.userId === userId)
-        join integrationGroups on { case (topic, group) => topic.integrationGroupId === group.integrationGroupId && topic.integrationId === group.integrationId })
+      db.run((allIntegrationTopics.filter(_.userId === userId)
+        join allIntegrationGroups on { case (topic, group) => topic.integrationGroupId === group.integrationGroupId && topic.integrationId === group.integrationId })
         .groupBy { case (topic, group) => (group.integrationId, group.integrationGroupId, group.name) }
         .map { case ((integrationId, integrationGroupId, groupName), g) => (integrationId, integrationGroupId, groupName, g.length) }.result)
         .flatMap { f =>
@@ -68,8 +62,8 @@ class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
             (integrationId, integrationGroupId) ->(groupName, count)
           }.toMap
 
-          db.run((integrationUpdates.filter(_.userId === userId)
-            join integrationGroups on { case (update, group) => update.integrationGroupId === group.integrationGroupId && update.integrationId === group.integrationId })
+          db.run((allIntegrationUpdates.filter(_.userId === userId)
+            join allIntegrationGroups on { case (update, group) => update.integrationGroupId === group.integrationGroupId && update.integrationId === group.integrationId })
             .groupBy { case (update, group) => (group.integrationId, group.integrationGroupId, group.name) }
             .map { case ((integrationId, integrationGroupId, groupName), g) => (integrationId, integrationGroupId, groupName, g.length) }.result)
             .map { f =>
