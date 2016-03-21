@@ -117,6 +117,7 @@ var App = React.createClass({
                     newTopicSelected={newTopicSelected}
                     selectedGroupId={store.selected.groupId}
                     selectedTopicId={store.selected.topicId}
+                    separator={store.SEP}
                     stateIsIntegration={this.stateIsIntegration()}
                     topics={store.topics}
                 />);

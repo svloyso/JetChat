@@ -8,8 +8,8 @@ var TopicPane = React.createClass({
     integrationItem: function (t) {
         return (<IntegrationTopicItem
             text={t.topic.text}
-            topicId={t.topic.id + "@" + t.topic.group.id}
-            selected={t.topic.id === this.props.selectedTopicId}
+            topicId={t.topic.id + this.props.separator + t.topic.group.id}
+            selected={t.topic.id + this.props.separator + t.topic.group.id === this.props.selectedTopicId}
             groupName={this.props.selectedGroupId ? undefined : t.topic.group.name}
             updateDate={t.topic.date}
             userName={t.topic.integrationUser.name}

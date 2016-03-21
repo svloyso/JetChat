@@ -15,6 +15,7 @@ var TopicBar = React.createClass({
             panes.push(<TopicPane
                 selectedGroupId={this.props.selectedGroupId}
                 selectedTopicId={this.props.selectedTopicId}
+                separator={this.props.separator}
                 stateIsIntegration={this.props.stateIsIntegration}
                 topics={this.props.topics}
             />);

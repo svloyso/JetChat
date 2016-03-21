@@ -8,8 +8,6 @@ var $ = require('jquery');
 var ChatStore = Reflux.createStore({
     listenables: [ChatActions],
 
-    SEP: "@",
-
     history: new Map(),
 
     stateHistory: function() {
@@ -132,6 +130,7 @@ var ChatStore = Reflux.createStore({
                 CHAT: "chat",
                 SETTINGS: "settings",
                 USER: "user",
+                SEP: "@",
                 selected: {
                     stateId: _global.stateId,
                     groupId: _global.groupId,
@@ -147,10 +146,6 @@ var ChatStore = Reflux.createStore({
                 integrationGroups: _global.integrationGroups,
                 topics: _global.topics,
                 messages: [],
-                selectedIntegrationTopic: _global.selectedIntegrationTopic,
-                //selectedIntegration: _global.selectedIntegrationId ? _global.integrations.find(i => i.id == _global.selectedIntegrationId) : undefined,
-                selectedIntegrationGroup: _global.selectedIntegrationId && _global.selectedIntegrationGroupId ? _global.integrationGroups.find(g =>
-                    g.integrationId == _global.selectedIntegrationId && g.integrationGroupId == _global.selectedIntegrationGroupId) : undefined,
                 query: undefined
             };
     },
@@ -189,7 +184,7 @@ var ChatStore = Reflux.createStore({
 
     integrationUpdatesURL: function () {
         var groupId, topicId;
-        [topicId, groupId] = this.state.selected.topicId.split(this.SEP);
+        [topicId, groupId] = this.state.selected.topicId.split(this.state.SEP);
 
         return "/json/user/" + _global.user.id + "/integration/" + this.state.selected.stateId
             + "/messages?integrationGroupId=" + groupId
