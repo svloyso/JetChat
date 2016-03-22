@@ -387,8 +387,7 @@ input.search-query {
 }
 
 #message-pane li {
-    margin-right: 15px;
-    margin-bottom: 15px;
+    margin:0 15px 15px 10px;
 }
 
 #message-pane li.same-user {

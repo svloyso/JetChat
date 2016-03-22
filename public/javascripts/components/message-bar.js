@@ -44,7 +44,7 @@ var MessageBar = React.createClass({
             return store.selected.groupId;
 
         var selectedTopic = store.topics.find(t => t.topic && t.topic.id === store.selected.topicId);
-        return selectedTopic ? selectedTopic.group.id : undefined;
+        return selectedTopic && selectedTopic.topic && selectedTopic.topic.group ? selectedTopic.topic.group.id : undefined;
     },
 
     onInputKeyPress: function (event) {
