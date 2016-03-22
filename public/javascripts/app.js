@@ -21,6 +21,10 @@ var App = React.createClass({
                     ChatActions.newMessage(data);
                 } else if (data.newGroup) {
                     ChatActions.newGroup(data.newGroup);
+                } else if (data.userOffline) {
+                    ChatActions.userOffline(data.userOffline);
+                } else if (data.userOnline) {
+                    ChatActions.userOnline(data.userOnline);
                 } else if (data.newUser) {
                     // TODO newUser
                     ChatActions.newUser(data.newUser);

@@ -9,7 +9,7 @@ trait MasterActor extends Actor with ActorLogging {
     context.system.eventStream.publish(MasterStateInquiry())
   }
 
-  final override def receive: Receive = receiveMaster
+  final override def receive: Receive = receiveMaster orElse receiveAsSlave
 
   private def receiveMaster: Receive = {
     case SlaveEvent =>
@@ -29,6 +29,7 @@ trait MasterActor extends Actor with ActorLogging {
 
   def turningMaster(): Unit = {}
   def turningSlave(): Unit = {}
+  def receiveAsSlave: Receive = { case _ => }
   def receiveAsMaster: Receive
 }
 

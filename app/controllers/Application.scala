@@ -31,7 +31,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                             val integrationTokensDAO: IntegrationTokensDAO,
                             val integrationGroupsDAO: IntegrationGroupsDAO,
                             val integrationUpdatesDAO: IntegrationUpdatesDAO,
-                            val integrationUsersDAO: IntegrationUsersDAO) extends Controller {
+                            val integrationUsersDAO: IntegrationUsersDAO,
+                            val onlineUserRegistry: OnlineUserRegistry) extends Controller {
 
   implicit val tsReads: Reads[Timestamp] = Reads.of[Long] map (new Timestamp(_))
   implicit val tsWrites: Writes[Timestamp] = Writes { (ts: Timestamp) => JsString(ts.toString) }
@@ -102,7 +103,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
       case Some(cookie) =>
         usersDAO.findByLogin(cookie.value).map {
           case Some(user) =>
-            val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL(RequestUtils.secure).replaceAll("http", "ws")
+            val webSocketUrl = routes.Application.webSocket(user.id, user.login).absoluteURL(RequestUtils.secure).replaceAll("http", "ws")
               Ok(views.html.index(user, groupId, topicId, userId, userTopicId, integrationId, integrationGroupId,
                 integrationTopicGroupId, integrationTopicId, displaySettings, webSocketUrl))
           case None =>
@@ -154,15 +155,17 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  def webSocket(login: String) = WebSocket.using[JsValue] { request =>
+  def webSocket(userId: Long, userLogin: String) = WebSocket.using[JsValue] { request =>
     val (out, channel) = Concurrent.broadcast[JsValue]
 
     actorCounter += 1
-    val actor = system.actorOf(WebSocketActor.props(channel), s"${ActorUtils.encodePath(login)}.$actorCounter")
+    val actor = system.actorOf(WebSocketActor.props(channel), s"${ActorUtils.encodePath(userLogin)}.$actorCounter")
 
     val in = Iteratee.foreach[JsValue] { message =>
-      if (message.equals(TICK))
+      if (message.equals(TICK)) {
+        system.actorSelection("/user/online-user-registry") ! Tick(userId)
         channel.push(TACK)
+      }
     } map { _ =>
       actor ! PoisonPill
     }
@@ -194,7 +197,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             "login" -> JsString(user.login),
             "name" -> JsString(user.name),
             "avatar" -> (if (user.avatar.isDefined) JsString(user.avatar.get) else JsNull),
-            "unreadCount" -> JsNumber(unreadCount)
+            "unreadCount" -> JsNumber(unreadCount),
+            "online" -> JsBoolean(onlineUserRegistry.userKeys.contains(user.id))
           ) ++ (user.avatar match {
             case Some(value) => Seq("avatar" -> JsString(value))
             case None => Seq()

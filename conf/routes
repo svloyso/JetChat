@@ -1,6 +1,6 @@
 # Routes
 
-GET         /webSocket                                                   controllers.Application.webSocket(login: String)
+GET         /webSocket                                                   controllers.Application.webSocket(userId: Long, userLogin: String)
 GET         /json/user                                                   controllers.Application.getUser(login: String)
 GET         /json/state                                                  controllers.Application.getInitialState(userId: Long, groupId: Option[Long], topicId: Option[Long], integrationId: Option[String], integrationTopicGroupId: Option[String], integrationTopicId: Option[String])
 GET         /json/user/:userId/users                                     controllers.Application.getUsers(userId: Long)

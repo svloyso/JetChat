@@ -425,6 +425,22 @@ var ChatStore = Reflux.createStore({
         this.trigger(this.state);
     },
 
+    onUserOffline: function (id) {
+        var i = this.state.users.findIndex(u => u.id == id);
+        if (i > -1) {
+            this.state.users[i].online = false;
+            this.trigger(this.state);
+        }
+    },
+
+    onUserOnline: function (id) {
+        var i = this.state.users.findIndex(u => u.id == id);
+        if (i > -1) {
+            this.state.users[i].online = true;
+            this.trigger(this.state);
+        }
+    },
+
     onEnableIntegration: function (integrationId, integration) {
         var i = this.state.integrations.findIndex(ii => ii.id == integrationId);
         if (i > -1) {

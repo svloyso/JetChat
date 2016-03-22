@@ -18,7 +18,9 @@ var ChatActions = Reflux.createActions([
     'markDirectMessageAsRead',
     'enableIntegration',
     'disableIntegration',
-    'alertQuery'
+    'alertQuery',
+    'userOnline',
+    'userOffline'
 ]);
 
 export default ChatActions;

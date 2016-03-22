@@ -24,6 +24,7 @@ libraryDependencies ++= Seq(
   "com.h2database" % "h2" % "1.4.189",
   "com.typesafe.akka" %% "akka-cluster" % "2.4-SNAPSHOT",
   "com.typesafe.akka" %% "akka-cluster-tools" % "2.4-SNAPSHOT",
+  "com.typesafe.akka" %% "akka-distributed-data-experimental" % "2.4-SNAPSHOT",
   "org.mousio" % "etcd4j" % "2.7.0",
   "com.fasterxml.jackson.jaxrs" % "jackson-jaxrs-json-provider" % "2.5.4",
   "org.apache.commons" % "commons-lang3" % "3.3.2",

@@ -104,6 +104,15 @@ input, textarea, #settings-dropdown:focus {
     overflow: scroll;
 }
 
+#group-pane > li > .user-header:before {
+    content: "\25CB";
+}
+
+#group-pane > li.online > .user-header:before {
+    content: "\25CF";
+    color: #29a668;
+}
+
 #topic-pane li {
     list-style: none;
     cursor: pointer;
