@@ -93,7 +93,7 @@ var ChatStore = Reflux.createStore({
             };
     },
 
-    visibleQuery: function () {
+    updateState: function () {
         var keyValues = new Map();
 
         if (this.state.selectedGroup)
@@ -135,7 +135,9 @@ var ChatStore = Reflux.createStore({
             separator = "&";
         }
 
-        return query;
+        window.history.replaceState(this.state, window.title, query);
+        // TODO: pushState
+        this.trigger(this.state);
     },
 
     formQueryRequest: function(prefix) {
@@ -247,8 +249,7 @@ var ChatStore = Reflux.createStore({
                 success: function (messages) {
                     self.state.messages = messages;
                     self.state.integrationMessages = undefined;
-                    // TODO: pushState
-                    window.history.replaceState(self.state, window.title, self.visibleQuery());
+                    self.updateState();
                 },
                 fail: function (e) {
                     console.error(e);
@@ -262,9 +263,7 @@ var ChatStore = Reflux.createStore({
                 success: function (messages) {
                     self.state.messages = undefined;
                     self.state.integrationMessages = messages;
-                    self.trigger(self.state);
-                    // TODO: pushState
-                    window.history.replaceState(self.state, window.title, self.visibleQuery());
+                    self.updateState();
                 },
                 fail: function (e) {
                     console.error(e);
@@ -273,13 +272,11 @@ var ChatStore = Reflux.createStore({
         } else if (this.state.selectedIntegration) {
             this.state.integrationMessages = [];
             this.state.messages = undefined;
-            //TODO: pushState
-            window.history.replaceState(this.state, window.title, this.visibleQuery());
+            self.updateState();
         } else {
             this.state.integrationMessages = undefined;
             this.state.messages = [];
-            // TODO: pushState
-            window.history.replaceState(this.state, window.title, this.visibleQuery());
+            self.updateState();
         }
     },
 
@@ -314,8 +311,7 @@ var ChatStore = Reflux.createStore({
             success: function (messages) {
                 self.state.messages = messages;
                 self.state.integrationMessages = undefined;
-                self.trigger(self.state);
-                window.history.replaceState(self.state, window.title, self.visibleQuery());
+                self.updateState();
             },
             fail: function (e) {
                 console.error(e);
