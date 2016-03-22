@@ -31,6 +31,8 @@ var ChatStore = Reflux.createStore({
         this.state = this.getInitialState();
         if (this.state.displaySettings) {
             this.onShowIntegrations(true);
+        } else if (this.state.selectedTopic) {
+            this.onSelectTopic(this.state.selectedTopic);
         } else if (this.state.selectedUser) {
             this.onSelectUser(this.state.selectedUser);
         } else if (this.state.selectedIntegration && !this.state.selectedIntegrationGroup && !this.state.selectedIntegrationTopic) {
@@ -40,7 +42,7 @@ var ChatStore = Reflux.createStore({
         } else {
             this.onSelectGroup(this.state.selectedGroup);
         }
-        this.trigger(this.state);
+        this.updateState();
         // var self = this;
         // TODO: Re-fetch groups, topics, etc
         /*window.addEventListener('popstate', function (e) {
