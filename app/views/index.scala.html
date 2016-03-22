@@ -1,6 +1,7 @@
 @import play.api.libs.json.JsValue
 
 @(
+        id: Long,
         user: User,
         state: String,
         groupId: Option[Long],
@@ -21,7 +22,7 @@
             stateId: "@{state}",
             groupId: @{groupId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") } },
             topicId: @{topicId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") } },
-            user: { id: @{user.id}, name: "@{user.name}", avatar: "@{user.avatar}" },
+            user: { id: @{id}, name: "@{user.name}", avatar: "@{user.avatar}" },
             selectedUserTopicId: @{userTopicId match { case Some(id) => id case None => Html("undefined") } },
             selectedUserId: @{userId match { case Some(id) => id case None => Html("undefined") } },
             selectedIntegrationId: @{ integrationId match { case Some(id) => Html("\"" + id + "\"") case None => Html("undefined") }},

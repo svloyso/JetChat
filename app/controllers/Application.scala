@@ -95,7 +95,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
   var actorCounter = 0
 
-  def index(state: Option[String],
+  def index(ws: String, id: Long, state: Option[String],
             groupId: Option[Long] = None,
             topicId: Option[Long] = None,
             userTopicId: Option[Long] = None,
@@ -107,18 +107,20 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             query: Option[String] = None) = Action.async { implicit request =>
     request.cookies.get("user") match {
       case Some(cookie) =>
-        usersDAO.findByLogin(cookie.value).map {
+        usersDAO.findById(id).map {
+//        usersDAO.findByLogin(cookie.value).map {
           case Some(user) =>
-            val webSocketUrl = routes.Application.webSocket(user.login).absoluteURL(RequestUtils.secure).replaceAll("http", "ws")
-              Ok(views.html.index(user, state.getOrElse(DEFAULT_STATE), groupId, topicId, userId, userTopicId, integrationId,
+            val webSocketUrl = if (ws.length > 3) ws
+              else routes.Application.webSocket(user.login).absoluteURL(RequestUtils.secure).replaceAll("http", "ws")
+              Ok(views.html.index(id, user, state.getOrElse(DEFAULT_STATE), groupId, topicId, userId, userTopicId, integrationId,
                 integrationGroupId, integrationTopicGroupId, integrationTopicId, webSocketUrl))
           case None =>
-            Redirect(controllers.routes.Application.index(None, None, None, None, None, None, None,
+            Redirect(controllers.routes.Application.index(ws, id, None, None, None, None, None, None, None,
               None, None, None).absoluteURL(RequestUtils.secure)).discardingCookies(DiscardingCookie("user"))
          }
       case _ =>
         val integration = integrations.iterator().next() //todo[Alefas]: implement UI to choose integrations!
-      val redirectUrl = controllers.routes.Application.index(None, None, None, None,
+      val redirectUrl = controllers.routes.Application.index(ws, id, None, None, None, None,
           None, None, None, None, None, None).absoluteURL(RequestUtils.secure)
         Future.successful(Redirect(controllers.routes.IntegrationAuth.auth(integration.id, Option(redirectUrl))))
     }

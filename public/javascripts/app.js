@@ -68,7 +68,8 @@ var App = React.createClass({
     },
 
     isTopicBarVisible: function () {
-        return !this.state.store.selected.userId;
+        return this.state.store.selected.stateId !== this.state.store.USER &&
+            this.state.store.selected.stateId !== this.state.store.SETTINGS;
     },
 
     render: function () {

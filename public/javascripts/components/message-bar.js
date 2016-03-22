@@ -12,25 +12,23 @@ var $ = require('jquery');
 var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
-    componentDidUpdate: function () {
-        //this.scrollContainer.nanoScroller({ scroll: 'top' });
-        //ReactDOM.findDOMNode(this.refs.input).focus();
-        //window.setTimeout(function () {
-        //    messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        //}, 0);
-        var roll = this.messageRoll();
-        if (roll)
-            roll.nanoScroller({ scroll: 'bottom' });
-    },
-
     messageRoll: function () {
         return $(ReactDOM.findDOMNode(this.refs['messageRoll']));
     },
 
+    componentDidUpdate: function() {
+        //ReactDOM.findDOMNode(this.refs.input).focus();
+        var roll = this.messageRoll();
+        if (roll) {
+            roll.nanoScroller({scroll: "bottom"});
+        }
+    },
+
     componentDidMount: function () {
         var roll = this.messageRoll();
-        if (roll)
-            roll.nanoScroller({ scroll: 'bottom' });
+        if (roll) {
+            roll.nanoScroller({scroll: "bottom"});
+        }
     },
 
     componentWillUnmount: function () {
@@ -209,7 +207,7 @@ var MessageBar = React.createClass({
             <div id="message-bar" className={this.props.className}>
                 <div id="message-pane">
                     {this.userHeader()}
-                    <div id="message-roll" ref="messageRoll" className="nano">
+                    <div className="nano" id="message-roll" ref="messageRoll">
                         <div className="nano-content">
                             {messageItems}
                         </div>
