@@ -2,17 +2,18 @@
   "dependencies": {
     "classnames": "^2.2.3",
     "core-decorators": "^0.7.2",
-    "react": "~0.14.7",
-    "react-dom": "~0.14.7",
-    "reflux": "~0.2.4",
-    "react-emoji": "~0.4.1",
-    "react-autolink": "~0.2.1",
-    "pretty-date": "~0.2.0",
-    "react-visibility-sensor": "~3.0.0",
+    "is-electron-renderer": "~2.0.0",
     "jquery": "~2.2.0",
+    "nanoscroller": "^0.8.7",
+    "pretty-date": "~0.2.0",
+    "react": "~0.14.7",
+    "react-autolink": "~0.2.1",
     "react-bootstrap": "~0.28.3",
     "react-bootstrap-switch": "~3.4.2",
-    "is-electron-renderer": "~2.0.0"
+    "react-dom": "~0.14.7",
+    "react-emoji": "~0.4.1",
+    "react-visibility-sensor": "~3.0.0",
+    "reflux": "~0.2.4"
   },
   "devDependencies": {
     "babel-core": "^5.8.25",

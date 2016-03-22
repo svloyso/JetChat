@@ -6,13 +6,14 @@ import ChatStore from '../events/chat-store';
 
 var TopicBar = React.createClass({
     render: function () {
-        var panes = [<SearchPane/>];
+        var panes = [<SearchPane key="search-pane" />];
         if (this.props.newTopicEnabled) {
-            panes.push(<NewTopicPane selected={this.props.newTopicSelected} />);
+            panes.push(<NewTopicPane key="new-topic-pane" selected={this.props.newTopicSelected} />);
         }
 
         if (this.props.topics) {
             panes.push(<TopicPane
+                key="topic-pane"
                 selectedGroupId={this.props.selectedGroupId}
                 selectedTopicId={this.props.selectedTopicId}
                 separator={this.props.separator}

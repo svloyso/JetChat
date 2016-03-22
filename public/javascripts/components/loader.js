@@ -242,7 +242,7 @@ var Loader = React.createClass({
 
     render: function() {
         return (
-            <div id={this.props.id} ref="loaderContainer">
+            <div id={this.props.id} className={this.props.className} ref="loaderContainer">
             </div>
         );
     }

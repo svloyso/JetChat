@@ -102,6 +102,7 @@ var App = React.createClass({
             groups={store.groups}
             integrations={store.integrations.filter(i => i.enabled)}
             integrationGroups={integrationGroups}
+            key="side-bar"
             selectedGroupId={store.selected.groupId}
             selectedIntegration={selectedIntegration}
             selectedMyChats={selectedMyChats}
@@ -110,13 +111,14 @@ var App = React.createClass({
         />];
 
         if (this.stateIsSettings()) {
-            bars.push(<IntegrationsPane/>);
+            bars.push(<IntegrationsPane key="integrations-pane"/>);
         } else {
             if (this.isTopicBarVisible()) {
                 var newTopicEnabled = !!store.selected.groupId;
                 var newTopicSelected = store.topics && store.topics.length === 0;
 
                 bars.push(<TopicBar
+                    key="topic-bar"
                     newTopicEnabled={newTopicEnabled}
                     newTopicSelected={newTopicSelected}
                     selectedGroupId={store.selected.groupId}
@@ -126,7 +128,7 @@ var App = React.createClass({
                     topics={store.topics}
                 />);
             }
-            bars.push(<MessageBar className={this.isTopicBarVisible() ? "narrow" : "wide"} />);
+            bars.push(<MessageBar key="message-bar" className={this.isTopicBarVisible() ? "narrow" : "wide"} />);
         }
 
         return (<div>{bars}</div>);

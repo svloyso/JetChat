@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Reflux from 'reflux';
+import nanoScroller from 'nanoscroller';
 import MessageItem from './message-item';
 import IntegrationMessageItem from './integration-message-item';
 import ChatStore from '../events/chat-store';
@@ -12,12 +13,30 @@ var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
     componentDidUpdate: function () {
-        var messageRoll = $(ReactDOM.findDOMNode(this.refs.messageRoll));
-        messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        ReactDOM.findDOMNode(this.refs.input).focus();
-        window.setTimeout(function () {
-            messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        }, 0);
+        //this.scrollContainer.nanoScroller({ scroll: 'top' });
+        //ReactDOM.findDOMNode(this.refs.input).focus();
+        //window.setTimeout(function () {
+        //    messageRoll.scrollTop(messageRoll[0].scrollHeight);
+        //}, 0);
+        var roll = this.messageRoll();
+        if (roll)
+            roll.nanoScroller({ scroll: 'bottom' });
+    },
+
+    messageRoll: function () {
+        return $(ReactDOM.findDOMNode(this.refs['messageRoll']));
+    },
+
+    componentDidMount: function () {
+        var roll = this.messageRoll();
+        if (roll)
+            roll.nanoScroller({ scroll: 'bottom' });
+    },
+
+    componentWillUnmount: function () {
+        var roll = this.messageRoll();
+        if (roll)
+            roll.nanoScroller({destroy: true});
     },
 
     groupId: function (store) {
@@ -130,14 +149,33 @@ var MessageBar = React.createClass({
         }
     },
 
+    userHeader: function () {
+        var user = this.state.store.users.find(u => u.id === this.state.store.selected.userId);
+        if (!user)
+            return undefined;
+
+        return (
+            <div id="message-roll-header" className={this.props.className}>
+                <li className="clearfix topic">
+                    <img className="img avatar pull-left" src={user.avatar}/>
+                    <div className="details">
+                        <div className="info">
+                            <span className="user">{user.name}</span>
+                        </div>
+                    </div>
+                </li>
+            </div>
+        );
+    },
+
     render: function () {
         var self = this;
         var userId;
-        var topic = self.state.store.selectedUser === undefined;
+        var topic = self.state.store.selected.userId === undefined;
         var sameUser = false;
 
         if (!self.state.store.messages)
-            return (<Loader id="message-bar-loader"/>);
+            return (<Loader id="message-bar-loader" className={this.props.className} />);
 
         var messageItems = self.state.store.messages.map(function (message, index) {
             var user = message.user ? message.user : message.integrationUser;
@@ -164,30 +202,18 @@ var MessageBar = React.createClass({
                 )
             }
         });
-        var inputPlaceHolder = self.state.store.selectedIntegrationTopic || self.state.store.selected.topicId ?
-            "Message..." : "Topic...";
-        var userHeader;
-        var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;
-        if (selectedUser) {
-            userHeader = <div id="message-roll-header">
-                <li className="clearfix topic">
-                    <img className="img avatar pull-left" src={selectedUser.avatar}/>
-                    <div className="details">
-                        <div className="info">
-                            <span className="user">{selectedUser.name}</span>
-                        </div>
-                    </div>
-                </li>
-            </div>
-        }
+
+        var inputPlaceHolder = self.state.store.selected.topicId ? "Message..." : "Topic...";
 
         return (
             <div id="message-bar" className={this.props.className}>
                 <div id="message-pane">
-                    <div id="message-roll" ref="messageRoll">
-                        {messageItems}
+                    {this.userHeader()}
+                    <div id="message-roll" ref="messageRoll" className="nano">
+                        <div className="nano-content">
+                            {messageItems}
+                        </div>
                     </div>
-                    {userHeader}
                 </div>
                 <textarea id="input" ref="input" autoComplete="off"
                           placeholder={inputPlaceHolder} className="enabled"
