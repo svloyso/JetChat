@@ -12,29 +12,14 @@ var $ = require('jquery');
 var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
-    messageRoll: function () {
-        return $(ReactDOM.findDOMNode(this.refs['messageRoll']));
-    },
-
     componentDidUpdate: function() {
-        //ReactDOM.findDOMNode(this.refs.input).focus();
-        var roll = this.messageRoll();
-        if (roll) {
-            roll.nanoScroller({scroll: "bottom"});
-        }
-    },
-
-    componentDidMount: function () {
-        var roll = this.messageRoll();
-        if (roll) {
-            roll.nanoScroller({scroll: "bottom"});
-        }
+        var roll = $("#message-roll");
+        roll.nanoScroller();
+        roll.nanoScroller({scroll: "bottom"});
     },
 
     componentWillUnmount: function () {
-        var roll = this.messageRoll();
-        if (roll)
-            roll.nanoScroller({destroy: true});
+        $("#message-roll").nanoScroller({destroy: true});
     },
 
     groupId: function (store) {
