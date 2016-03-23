@@ -9,22 +9,33 @@ var ChatStore = Reflux.createStore({
     listenables: [ChatActions],
 
     history: new Map(),
-    CHAT: "chat",
 
-    integrationHistory: function(integrationId) {
-        var history = this.history;
-        if (!history.has(integrationId))
-            history.set(integrationId, { lastGroupId: undefined, groupsHistory: new Map() });
+    groupPaneHash: function () {
+        var result = ""
 
-        return history.get(integrationId);
+        if (this.state.selectedIntegrationGroup) {
+            result = "IG_" + this.state.selectedIntegrationGroup.integrationGroupId;
+        } else if (this.state.selectedIntegration) {
+            result = "I_" + this.state.selectedIntegration.id;
+        } else if (this.state.selectedGroup) {
+            result = "G_" + this.state.selectedGroup.id;
+        } else if (!this.state.displaySettings) {
+            result = "CHAT";
+        }
+
+        return result;
     },
 
-    groupHistory: function(integrationId, groupId) {
-        var history = this.integrationHistory(integrationId).groupsHistory;
-        if (!history.has(groupId))
-            history.set(groupId, { lastTopicId: undefined });
+    groupPaneHistory: function () {
+        var hash = this.groupPaneHash();
+        if (!this.history.has(hash))
+            this.history.set(hash, {
+                selectedTopic: undefined,
+                selectedIntegrationTopic: undefined,
+                selectedUserTopic: undefined
+            });
 
-        return history.get(groupId);
+        return this.history.get(hash);
     },
 
     init: function () {
@@ -35,10 +46,12 @@ var ChatStore = Reflux.createStore({
             this.onSelectTopic(this.state.selectedTopic);
         } else if (this.state.selectedUser) {
             this.onSelectUser(this.state.selectedUser);
-        } else if (this.state.selectedIntegration && !this.state.selectedIntegrationGroup && !this.state.selectedIntegrationTopic) {
-            this.onSelectIntegration(this.state.selectedIntegration);
-        } else if (this.state.selectedIntegration) {
+        } else if (this.state.selectedIntegration && this.state.selectedIntegrationGroup && this.state.selectedIntegrationTopic) {
+            this.onSelectIntegrationTopic(this.state.selectedIntegration, this.state.selectedIntegrationGroup, this.state.selectedIntegrationTopic);
+        } else if (this.state.selectedIntegration && this.state.selectedIntegrationGroup) {
             this.onSelectIntegrationGroup(this.state.selectedIntegration, this.state.selectedIntegrationGroup);
+        } else if (this.state.selectedIntegration) {
+            this.onSelectIntegration(this.state.selectedIntegration);
         } else {
             this.onSelectGroup(this.state.selectedGroup);
         }
@@ -203,15 +216,18 @@ var ChatStore = Reflux.createStore({
                 self.onSelectUserTopic(self.state.selectedUserTopic);
             } else {
                 if (topics.length > 0) {
-                    var topicId = self.state.selectedGroup
-                        ? self.groupHistory(self.CHAT, self.state.selectedGroup.id).lastTopicId
-                        : undefined;
-                    var selectedTopic = topicId ? topics.find(t => t.topic && t.topic.id == topicId) : undefined;
-                    if (selectedTopic) {
-                        self.onSelectTopic(selectedTopic.topic);
+                    var history = self.groupPaneHistory();
+                    if (history.selectedTopic && topics.find(t => t.topic && t.topic.id === history.selectedTopic.id)) {
+                        self.onSelectTopic(history.selectedTopic);
+                    } else if (history.selectedUserTopic && topics.find(t => t.userTopic && t.userTopic.id === history.selectedUserTopic.id)) {
+                        self.onSelectUserTopic(history.selectedUserTopic);
                     } else if (topics[0].topic) {
+                        history.selectedTopic = topics[0].topic;
+                        history.selectedUserTopic = undefined;
                         self.onSelectTopic(topics[0].topic);
                     } else if (topics[0].userTopic) {
+                        history.selectedTopic = undefined;
+                        history.selectedUserTopic = topics[0].userTopic;
                         self.onSelectUserTopic(topics[0].userTopic);
                     } else {
                         self.onSelectTopic();
@@ -285,17 +301,16 @@ var ChatStore = Reflux.createStore({
     onSelectGroup: function (group) {
         this.nullifyExcept('selectedTopic', 'selectedUserTopic');
         this.state.selectedGroup = group;
-
-        if (group)
-            this.integrationHistory(this.CHAT).lastGroupId = group.id;
-
         this.updateTopics();
     },
 
     onSelectTopic: function (topic) {
         this.nullifyExcept("selectedGroup");
-        if (topic && this.state.selectedGroup)
-            this.groupHistory(this.CHAT, this.state.selectedGroup.id).lastTopicId = topic.id;
+        if (topic) {
+            var history = this.groupPaneHistory();
+            history.selectedTopic = topic;
+            history.selectedUserTopic = undefined;
+        }
 
         this.state.selectedTopic = topic;
         this.updateMessages();
@@ -305,6 +320,13 @@ var ChatStore = Reflux.createStore({
     onSelectUserTopic: function (userTopic) {
         var self = this;
         this.nullifyExcept();
+
+        if (userTopic) {
+            var history = this.groupPaneHistory();
+            history.selectedTopic = undefined;
+            history.selectedUserTopic = userTopic;
+        }
+
         this.state.selectedUserTopic = userTopic;
         $.ajax({
             context: this,
@@ -322,6 +344,12 @@ var ChatStore = Reflux.createStore({
     },
 
     onSelectIntegrationTopic: function (integration, group, topic) {
+        if (topic) {
+            this.groupPaneHistory().selectedIntegrationTopic = topic;
+        } else {
+            topic = this.groupPaneHistory().selectedIntegrationTopic;
+        }
+
         this.nullifyExcept();
         this.state.selectedIntegration = integration;
         this.state.selectedIntegrationGroup = group;
@@ -365,7 +393,12 @@ var ChatStore = Reflux.createStore({
                 self.state.topics = undefined;
                 self.state.integrationTopics = topics;
                 if (topics.length > 0) {
-                    self.onSelectIntegrationTopic(integration, undefined, topics[0].topic);
+                    var history = this.groupPaneHistory();
+                    if (!history.selectedIntegrationTopic) {
+                        history.selectedIntegrationTopic = topics[0].topic;
+                    }
+
+                    self.onSelectIntegrationTopic(integration, undefined, history.selectedIntegrationTopic);
                 } else {
                     self.onSelectIntegrationTopic(integration);
                 }
@@ -390,9 +423,12 @@ var ChatStore = Reflux.createStore({
                 self.state.topics = undefined;
                 self.state.integrationTopics = topics;
                 if (topics.length > 0) {
-                    var selectedIntegrationTopicId = self.state.selectedIntegrationTopic ? (self.state.selectedIntegrationTopic.integrationTopicId ? self.state.selectedIntegrationTopic.integrationTopicId : self.state.selectedIntegrationTopic.id) : undefined;
-                    self.onSelectIntegrationTopic(integration, group, self.state.selectedIntegrationTopic &&
-                    topics.find(t => t.topic.id == selectedIntegrationTopicId) ? self.state.selectedIntegrationTopic : topics[0].topic);
+                    var history = this.groupPaneHistory();
+                    if (!history.selectedIntegrationTopic || !topics.find(t => t.topic.id == history.selectedIntegrationTopic.id && t.topic.group.id == history.selectedIntegrationTopic.group.id)) {
+                        history.selectedIntegrationTopic = topics[0].topic;
+                    }
+
+                    self.onSelectIntegrationTopic(integration, group, history.selectedIntegrationTopic);
                 } else {
                     self.onSelectIntegrationTopic(integration, group);
                 }
