@@ -314,7 +314,7 @@ var ChatStore = Reflux.createStore({
 
         this.state.selectedTopic = topic;
         this.updateMessages();
-        this.trigger(this.state);
+        this.updateState();
     },
 
     onSelectUserTopic: function (userTopic) {
