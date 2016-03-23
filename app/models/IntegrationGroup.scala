@@ -50,10 +50,16 @@ class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
   }
 
   def allWithCounts(userId: Long, query: Option[String]): Future[Seq[(IntegrationGroup, Int)]] = {
+
+    val integrationTopics = integrationTopicsByQuery(query, (q, integrationTopicId) => {
+      updatesByQueryAndTopicId(q, integrationTopicId).exists
+    })
+    val integrationUpdates = updatesByQuery(query)
+
     db.run(allIntegrationGroups.filter(_.userId === userId).result).flatMap { f =>
       val groupMap = f.map { g => (g.integrationId, g.integrationGroupId) ->(g.name, 0) }.toMap
 
-      db.run((allIntegrationTopics.filter(_.userId === userId)
+      db.run((integrationTopics.filter(_.userId === userId)
         join allIntegrationGroups on { case (topic, group) => topic.integrationGroupId === group.integrationGroupId && topic.integrationId === group.integrationId })
         .groupBy { case (topic, group) => (group.integrationId, group.integrationGroupId, group.name) }
         .map { case ((integrationId, integrationGroupId, groupName), g) => (integrationId, integrationGroupId, groupName, g.length) }.result)
@@ -62,7 +68,7 @@ class IntegrationGroupsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvide
             (integrationId, integrationGroupId) ->(groupName, count)
           }.toMap
 
-          db.run((allIntegrationUpdates.filter(_.userId === userId)
+          db.run((integrationUpdates.filter(_.userId === userId)
             join allIntegrationGroups on { case (update, group) => update.integrationGroupId === group.integrationGroupId && update.integrationId === group.integrationId })
             .groupBy { case (update, group) => (group.integrationId, group.integrationGroupId, group.name) }
             .map { case ((integrationId, integrationGroupId, groupName), g) => (integrationId, integrationGroupId, groupName, g.length) }.result)
