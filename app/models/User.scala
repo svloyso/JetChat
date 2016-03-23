@@ -51,20 +51,39 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run(allUsers.result)
   }
 
-  def allWithCounts(userId: Long, nonEmptyOnly: Boolean = false): Future[Seq[UserChat]] = {
+  def allWithCounts(userId: Long, nonEmptyOnly: Boolean = false, query: Option[String]): Future[Seq[UserChat]] = {
     db.run(allUsers.result).flatMap { case u =>
       val allUsers = if (!nonEmptyOnly) u.map(_ ->("", new Timestamp(0), 0, 0)).toMap else Seq().toMap
+      val sqlQuery = query match {
+        case None =>
+          sql"""SELECT u.id, u.login, u.name, u.avatar, ld.date, ld.text,
+            sum(CASE WHEN ds.direct_message_id IS NOT NULL AND d.to_user_id = $userId THEN 1 ELSE 0 END) read_count,
+            sum(CASE WHEN d.to_user_id = $userId THEN 1 ELSE 0 END) count
+            FROM direct_messages d
+            LEFT JOIN users u ON u.id = d.to_user_id OR u.id = d.from_user_id
+            LEFT JOIN direct_message_read_statuses ds ON ds.direct_message_id = d.id
+            LEFT JOIN last_direct_messages ld ON ld.min_user_id = LEAST($userId, u.id) AND ld.max_user_id = GREATEST($userId, u.id)
+            WHERE (d.from_user_id = $userId OR d.to_user_id = $userId) AND u.id <> $userId
+            GROUP BY u.id, u.login, u.name, u.avatar, ld.date, ld.text
+            ORDER BY date DESC"""
+        case Some(words) =>
+          sql"""SELECT u.id, u.login, u.name, u.avatar, ld.date, ld.text,
+            sum(CASE WHEN ds.direct_message_id IS NOT NULL AND d.to_user_id = $userId THEN 1 ELSE 0 END) read_count,
+            sum(CASE WHEN d.to_user_id = $userId THEN 1 ELSE 0 END) count
+            FROM direct_messages d
+            LEFT JOIN users u ON u.id = d.to_user_id OR u.id = d.from_user_id
+            LEFT JOIN direct_message_read_statuses ds ON ds.direct_message_id = d.id
+            LEFT JOIN last_direct_messages ld ON ld.min_user_id = LEAST($userId, u.id) AND ld.max_user_id = GREATEST($userId, u.id)
+            LEFT JOIN direct_messages dm ON LEAST(dm.from_user_id, dm.to_user_id) = LEAST($userId, u.id)
+              AND GREATEST(dm.from_user_id, dm.to_user_id) = GREATEST($userId, u.id)
+              AND locate($words, dm.text) >= 1
+            WHERE (d.from_user_id = $userId OR d.to_user_id = $userId) AND u.id <> $userId
+            GROUP BY u.id, u.login, u.name, u.avatar, ld.date, ld.text
+            ORDER BY date DESC"""
+      }
+
       db.run(
-        sql"""SELECT u.id, u.login, u.name, u.avatar, ld.date, ld.text,
-                sum(CASE WHEN ds.direct_message_id IS NOT NULL AND d.to_user_id = $userId THEN 1 ELSE 0 END) read_count,
-                sum(CASE WHEN d.to_user_id = $userId THEN 1 ELSE 0 END) count
-              FROM direct_messages d
-                LEFT JOIN users u ON u.id = d.to_user_id OR u.id = d.from_user_id
-                LEFT JOIN direct_message_read_statuses ds ON ds.direct_message_id = d.id
-                LEFT JOIN last_direct_messages ld ON ld.min_user_id = LEAST($userId, u.id) AND ld.max_user_id = GREATEST($userId, u.id)
-              WHERE (d.from_user_id = $userId OR d.to_user_id = $userId) AND u.id <> $userId
-              GROUP BY u.id, u.login, u.name, u.avatar, ld.date, ld.text
-              ORDER BY date DESC""".as[(Long, String, String, Option[String], Timestamp, String, Int, Int)]
+        sqlQuery.as[(Long, String, String, Option[String], Timestamp, String, Int, Int)]
       ).map { case results =>
         val myMessages = results.map { case (id, login, name, avatar, updateDate, text, readCount, totalCount) =>
           User(id, login, name, avatar) ->(text, updateDate, readCount, totalCount)

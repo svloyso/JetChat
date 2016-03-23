@@ -688,11 +688,9 @@ var ChatStore = Reflux.createStore({
             this.state.query = newQuery;
             this.updateGroups();
             this.updateTopics();
-            this.trigger(this.state);
+            this.updateState();
         }
     }
 });
-
-var $ = require('jquery');
 
 export default ChatStore;

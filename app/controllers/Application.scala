@@ -190,7 +190,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def getUsersJsValue(userId: Long): Future[JsValue] = {
-    usersDAO.allWithCounts(userId).map { case userChats =>
+    usersDAO.allWithCounts(userId, nonEmptyOnly = false, None).map { case userChats =>
       Json.toJson(JsArray(userChats.map { case UserChat(user, text, updateDate, unreadCount) =>
         JsObject(
           Seq("id" -> JsNumber(user.id),
@@ -244,7 +244,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
 
     topics.flatMap { topicChats =>
-      usersDAO.allWithCounts(userId, nonEmptyOnly = true).map { userTopics =>
+      usersDAO.allWithCounts(userId, nonEmptyOnly = true, query).map { userTopics =>
         Json.toJson(JsArray((topicChats ++ userTopics).sortBy(-_.updateDate.getTime).map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
           JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
           (Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
@@ -446,7 +446,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def getDirectMessages(fromUserId: Long, toUserId: Long, query: Option[String]) = Action.async { implicit request =>
-    directMessagesDAO.messages(fromUserId, toUserId).map { case seq =>
+    directMessagesDAO.messages(fromUserId, toUserId, query).map { case seq =>
       Ok(Json.toJson(JsArray(seq.map { case (message, readStatus, fromUser, toUser) =>
         val fromUserJson = Seq("id" -> JsNumber(fromUser.id), "name" -> JsString(fromUser.name), "login" -> JsString(fromUser.login)) ++
           (fromUser.avatar match {
