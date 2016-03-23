@@ -19,7 +19,7 @@ var MessageBar = React.createClass({
             ReactDOM.findDOMNode(self.refs.input).focus();
 
         window.setTimeout(function () {
-            messageRoll.scrollTop(messageRoll[0].scrollHeight);
+            messageRoll.stop().animate({ scrollTop: messageRoll[0].scrollHeight }, "fast");
         }, 0);
     },
 
