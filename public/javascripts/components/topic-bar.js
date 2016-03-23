@@ -16,6 +16,7 @@ var TopicBar = React.createClass({
                 key="topic-pane"
                 selectedGroupId={this.props.selectedGroupId}
                 selectedTopicId={this.props.selectedTopicId}
+                selectedUserId={this.props.selectedUserId}
                 separator={this.props.separator}
                 stateIsIntegration={this.props.stateIsIntegration}
                 topics={this.props.topics}
