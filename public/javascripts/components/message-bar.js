@@ -15,7 +15,9 @@ var MessageBar = React.createClass({
         var self = this;
         var messageRoll = $(ReactDOM.findDOMNode(self.refs.messageRoll));
         messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        ReactDOM.findDOMNode(self.refs.input).focus();
+        if (!this.state.store.query || this.state.store.query.length === 0)
+            ReactDOM.findDOMNode(self.refs.input).focus();
+
         window.setTimeout(function () {
             messageRoll.scrollTop(messageRoll[0].scrollHeight);
         }, 0);

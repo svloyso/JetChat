@@ -7,6 +7,11 @@ import ChatActions from '../events/chat-actions';
 var SearchPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
+    componentWillUpdate: function () {
+        if (!this.state.store.query && this.state.value)
+            this.state.value = '';
+    },
+
     getInitialState: function() {
         if (this.state) {
             return this.state;

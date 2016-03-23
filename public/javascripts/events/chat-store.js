@@ -86,7 +86,7 @@ var ChatStore = Reflux.createStore({
             ? this.state
             : {
                 users: _global.users.filter(function (u) {
-                    return u.id !== _global.user.id
+                    return u.id !== _global.user.id;
                 }),
                 integrations: _global.integrations,
                 displaySettings: _global.displaySettings,
@@ -122,6 +122,9 @@ var ChatStore = Reflux.createStore({
 
         if (this.state.selectedUserTopic)
             keyValues.set("userTopicId", this.state.selectedUserTopic.id);
+
+        if (this.state.selectedUser)
+            keyValues.set("userId", this.state.selectedUser.id);
 
         if (this.state.selectedIntegration)
             keyValues.set("integrationId", this.state.selectedIntegration.id);
@@ -298,6 +301,12 @@ var ChatStore = Reflux.createStore({
         }
     },
 
+    filterUsers: function () {
+        this.state.users = _global.users.filter(function (u) {
+            return u.id !== _global.user.id && (!this.state.query || u.name.indexOf(this.state.query) > -1);
+        }.bind(this));
+    },
+
     onSelectGroup: function (group) {
         this.nullifyExcept('selectedTopic', 'selectedUserTopic');
         this.state.selectedGroup = group;
@@ -363,8 +372,14 @@ var ChatStore = Reflux.createStore({
 
     onSelectUser: function (user) {
         var self = this;
+        if (this.state.query) {
+            this.state.query = undefined;
+            this.filterUsers();
+            this.updateGroups();
+        }
         this.nullifyExcept();
         this.state.selectedUser = user;
+        this.updateState();
         $.ajax({
             context: this,
             type: "GET",
@@ -372,8 +387,7 @@ var ChatStore = Reflux.createStore({
             success: function (messages) {
                 self.state.messages = messages;
                 self.state.integrationMessages = undefined;
-                self.trigger(self.state);
-                window.history.replaceState(self.state, window.title, "?userId=" + self.state.selectedUser.id);
+                self.updateState();
             },
             fail: function (e) {
                 console.error(e);
@@ -686,6 +700,7 @@ var ChatStore = Reflux.createStore({
     onAlertQuery: function(newQuery) {
         if (this.state.query !== newQuery) {
             this.state.query = newQuery;
+            this.filterUsers();
             this.updateGroups();
             this.updateTopics();
             this.updateState();

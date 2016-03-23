@@ -76,8 +76,7 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
             LEFT JOIN last_direct_messages ld ON ld.min_user_id = LEAST($userId, u.id) AND ld.max_user_id = GREATEST($userId, u.id)
             LEFT JOIN direct_messages dm ON LEAST(dm.from_user_id, dm.to_user_id) = LEAST($userId, u.id)
               AND GREATEST(dm.from_user_id, dm.to_user_id) = GREATEST($userId, u.id)
-              AND locate($words, dm.text) >= 1
-            WHERE (d.from_user_id = $userId OR d.to_user_id = $userId) AND u.id <> $userId
+            WHERE locate($words, dm.text) >= 1 AND (d.from_user_id = $userId OR d.to_user_id = $userId) AND u.id <> $userId
             GROUP BY u.id, u.login, u.name, u.avatar, ld.date, ld.text
             ORDER BY date DESC"""
       }
