@@ -23,10 +23,10 @@ var MessageBar = React.createClass({
     },
 
     groupId: function (store) {
-        if (!store.selected.topicId)
-            return store.selected.groupId;
+        if (!store.topicId)
+            return store.groupId;
 
-        var selectedTopic = store.topics.find(t => t.topic && t.topic.id === store.selected.topicId);
+        var selectedTopic = store.topics.find(t => t.topic && t.topic.id === store.topicId);
         return selectedTopic && selectedTopic.topic && selectedTopic.topic.group ? selectedTopic.topic.group.id : undefined;
     },
 
@@ -35,7 +35,7 @@ var MessageBar = React.createClass({
         var inputNode = ReactDOM.findDOMNode(self.refs.input);
         var text = inputNode.value.trim();
         if (event.which == 13 && input && !event.shiftKey) {
-            var selectedUserId = self.state.store.selected.userId;
+            var selectedUserId = self.state.store.userId;
             if (selectedUserId) {
                 var toUser = self.state.store.users.find(u => u.id === selectedUserId);
                 var newDirectMessage = {
@@ -65,11 +65,11 @@ var MessageBar = React.createClass({
                     "text": text
                 };
 
-                newMessage.topicId = self.state.store.selected.topicId;
+                newMessage.topicId = self.state.store.topicId;
 
                 $.ajax({
                     type: "POST",
-                    url: self.state.store.selected.topicId ? "/json/comment/add" : "/json/topic/add",
+                    url: self.state.store.topicId ? "/json/comment/add" : "/json/topic/add",
                     data: JSON.stringify(newMessage),
                     contentType: "application/json",
                     success: function (id) {
@@ -133,7 +133,7 @@ var MessageBar = React.createClass({
     },
 
     userHeader: function () {
-        var user = this.state.store.users.find(u => u.id === this.state.store.selected.userId);
+        var user = this.state.store.users.find(u => u.id === this.state.store.userId);
         if (!user)
             return undefined;
 
@@ -154,7 +154,7 @@ var MessageBar = React.createClass({
     render: function () {
         var self = this;
         var userId;
-        var topic = self.state.store.selected.userId === undefined;
+        var topic = self.state.store.userId === undefined;
         var sameUser = false;
 
         if (!self.state.store.messages)
@@ -186,7 +186,7 @@ var MessageBar = React.createClass({
             }
         });
 
-        var inputPlaceHolder = self.state.store.selected.topicId ? "Message..." : "Topic...";
+        var inputPlaceHolder = self.state.store.topicId ? "Message..." : "Topic...";
 
         return (
             <div id="message-bar" className={this.props.className}>

@@ -33,7 +33,7 @@ var TopicPane = React.createClass({
         return (<UserTopicItem
             count={t.count}
             key={'u' + t.userTopic.id}
-            selected={t.userTopic.id === this.props.selectedUserId}
+            selected={this.props.userPrefix + this.props.separator + t.userTopic.id === this.props.selectedTopicId}
             unread={t.unread}
             unreadCount={t.unreadCount}
             userTopic={t.userTopic}

@@ -60,16 +60,16 @@ var App = React.createClass({
     },
 
     stateIsSettings: function () {
-        return this.state.store.selected.stateId === this.state.store.SETTINGS
+        return this.state.store.stateId === this.state.store.SETTINGS
     },
 
     stateIsIntegration: function () {
-        return !!this.state.store.integrations.find(i => i.id === this.state.store.selected.stateId);
+        return !!this.state.store.integrations.find(i => i.id === this.state.store.stateId);
     },
 
     isTopicBarVisible: function () {
-        return this.state.store.selected.stateId !== this.state.store.USER &&
-            this.state.store.selected.stateId !== this.state.store.SETTINGS;
+        return this.state.store.stateId !== this.state.store.USER &&
+            this.state.store.stateId !== this.state.store.SETTINGS;
     },
 
     render: function () {
@@ -85,14 +85,14 @@ var App = React.createClass({
 
         console.log("re-rendering app");
 
-        var selectedMyChats = !store.selected.groupId && store.selected.stateId === store.CHAT;
-        var selectedUserId = store.selected.stateId === store.USER
-            ? store.selected.userId
+        var selectedMyChats = !store.groupId && store.stateId === store.CHAT;
+        var selectedUserId = store.stateId === store.USER
+            ? store.userId
             : undefined;
-        var selectedIntegration = store.selected.groupId
+        var selectedIntegration = store.groupId
             ? undefined
-            : store.integrations.find(i => i.id === store.selected.stateId)
-                ? store.selected.stateId
+            : store.integrations.find(i => i.id === store.stateId)
+                ? store.stateId
                 : undefined;
 
         var integrationGroups = store.integrationGroups
@@ -104,7 +104,7 @@ var App = React.createClass({
             integrations={store.integrations.filter(i => i.enabled)}
             integrationGroups={integrationGroups}
             key="side-bar"
-            selectedGroupId={store.selected.groupId}
+            selectedGroupId={store.groupId}
             selectedIntegration={selectedIntegration}
             selectedMyChats={selectedMyChats}
             selectedUserId={selectedUserId}
@@ -115,19 +115,19 @@ var App = React.createClass({
             bars.push(<IntegrationsPane key="integrations-pane"/>);
         } else {
             if (this.isTopicBarVisible()) {
-                var newTopicEnabled = !!store.selected.groupId;
+                var newTopicEnabled = !!store.groupId;
                 var newTopicSelected = store.topics && store.topics.length === 0;
 
                 bars.push(<TopicBar
                     key="topic-bar"
                     newTopicEnabled={newTopicEnabled}
                     newTopicSelected={newTopicSelected}
-                    selectedGroupId={store.selected.groupId}
-                    selectedTopicId={store.selected.topicId}
-                    selectedUserId={store.selected.userId}
+                    selectedGroupId={store.groupId}
+                    selectedTopicId={store.topicId}
                     separator={store.SEP}
                     stateIsIntegration={this.stateIsIntegration()}
                     topics={store.topics}
+                    userPrefix={store.USER}
                 />);
             }
             bars.push(<MessageBar key="message-bar" className={this.isTopicBarVisible() ? "narrow" : "wide"} />);
