@@ -98,7 +98,7 @@ var MessageBar = React.createClass({
                 if (self.state.store.selectedIntegrationTopic) {
                     newIntegrationMessage.integrationTopicId = self.state.store.selectedIntegrationTopic.integrationTopicId ?
                         self.state.store.selectedIntegrationTopic.integrationTopicId :
-                        self.state.store.selectedIntegrationTopic
+                        self.state.store.selectedIntegrationTopic.id
                 }
 
                 //todo: add new topic case
@@ -112,9 +112,12 @@ var MessageBar = React.createClass({
                     url: url,
                     data: JSON.stringify(newIntegrationMessage),
                     contentType: "application/json",
-                    success: function (id) {
-                        // TODO: Send full object from server
-                        //todo: update integration messages, onNewIntegrationMessage
+                    success: function (m) {
+                        if (m.integrationTopicId) {
+                            ChatActions.newIntegrationMessage(m);
+                        } else {
+                            //todo: onNewIntegrationTopic
+                        }
                     },
                     fail: function (e) {
                         console.error(e);

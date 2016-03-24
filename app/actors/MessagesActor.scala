@@ -1,6 +1,6 @@
 package actors
 
-import _root_.api.{CollectedMessages, Integration, TopicComment}
+import _root_.api.{CollectedMessages, Integration, NewTopic, TopicComment}
 import actors.ActorUtils.FutureExtensions
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
@@ -60,6 +60,31 @@ class MessagesActor(integration: Integration,
           realUpdate <- integration.messageHandler.sendMessage(token, integrationGroupId, integrationTopicId, TopicComment(text), messageId)
           if realUpdate.isDefined
           result <- integrationUpdatesDAO.merge(realUpdate.get)
+        } yield {
+          mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
+        }).withTimeout.onComplete { t =>
+          t match {
+            case Failure(throwable) => log.error(throwable, throwable.getMessage)
+            case _ =>
+          }
+          self ! FinishTask(userId)
+        }
+      case CreateTopic(userId, integrationGroupId, text, topicId) =>
+        evaluating.update(userId, true)
+
+        log.info(s"Creating topic: { userId: $userId, integrationGroupId: $integrationGroupId }")
+
+        val integrationId = integration.id
+        implicit val timeout = 1.second
+
+        (for {
+          tokenOption <- integrationTokensDAO.find(userId, integrationId)
+          if tokenOption.isDefined
+          token = tokenOption.get
+          if token.enabled
+          realUpdate <- integration.messageHandler.newTopic(token, integrationGroupId, NewTopic(text))
+          if realUpdate.isDefined
+          result <- integrationTopicsDAO.merge(realUpdate.get.copy(id = topicId))
         } yield {
           mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
         }).withTimeout.onComplete { t =>
@@ -146,7 +171,7 @@ class MessagesActor(integration: Integration,
                     }
 
                     val oldSince = sinceMap.getOrElse(userId, 0L)
-                    sinceMap.update(userId, newSince.max(oldSince))
+                    sinceMap.update(userId, newSince.max(oldSince).min(System.currentTimeMillis()))
                     nextCheck
                 }.recover {
                   case throwable: Throwable =>
@@ -190,7 +215,8 @@ class MessagesActor(integration: Integration,
     case event@ReceiveMessages(userId) =>
       events.getOrElseUpdate(userId, mutable.Queue.empty).enqueue(event)
       self ! NextTask(userId)
-    case event@SendMessage(userId, _, _, _, _) =>
+    case event: IntegrationWriteEvent =>
+      val userId = event.userId
       if (!events.contains(userId)) {
         events.getOrElseUpdate(userId, mutable.Queue.empty).enqueue(ReceiveMessages(userId)) // start schedule
       }
@@ -234,6 +260,10 @@ case object CollectReceivers
 case class FinishTask(userId: Long)
 case class NextTask(userId: Long)
 case class ReceiveMessages(userId: Long)
-case class SendMessage(userId: Long, integrationGroupId: String, integrationTopicId: String, text: String, messageId: Long)
+sealed trait IntegrationWriteEvent {
+  val userId: Long
+}
+case class SendMessage(userId: Long, integrationGroupId: String, integrationTopicId: String, text: String, messageId: Long) extends IntegrationWriteEvent
+case class CreateTopic(userId: Long, integrationGroupId: String, text: String, topicId: Long) extends IntegrationWriteEvent
 case class StartSchedule(userId: Long)
 case class FinishSchedule(userId: Long)

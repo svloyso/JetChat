@@ -531,7 +531,22 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
         } yield {
           mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
           MessagesActor.actorSelection(integration, system) ! SendMessage(userId, integrationGroupId, integrationTopicId, text, result)
-          Created("Good!")
+          Created(Json.toJson(JsObject(Seq(
+            "id" -> JsNumber(result),
+            "date" -> JsNumber(date.getTime),
+            "group" -> JsObject(Seq(
+              "integrationGroupId" -> JsString(integrationGroupId),
+              "integrationId" -> JsString(integrationId),
+              "name" -> JsString(integrationGroupId)
+            )),
+            "integrationTopicId" -> JsString(integrationTopicId),
+            "integrationUser" -> JsObject(Seq(
+              "avatar" -> integrationUserId.avatar.map(JsString(_)).getOrElse(JsNull),
+              "integrationUserId" -> JsString(integrationUserId.integrationUserId),
+              "name" -> JsString(integrationUserId.name)
+            )),
+            "text" -> JsString(text)
+          ))))
         }).recover {
           case t: Throwable =>
             BadRequest(t.getMessage)
@@ -541,7 +556,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
   }
 
   def addIntegrationTopic(integrationId: String) = Action.async(parse.json) { implicit request =>
-    /*val userId = (request.body \ "user" \ "id").get.asInstanceOf[JsNumber].value.toLong
+    val userId = (request.body \ "user" \ "id").get.asInstanceOf[JsNumber].value.toLong
     val integrationGroupId = (request.body \ "integrationGroupId").as[String]
     val text = (request.body \ "text").get.asInstanceOf[JsString].value
     val date = new Timestamp(Calendar.getInstance.getTime.getTime)
@@ -549,31 +564,24 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     integrations.find(_.id == integrationId) match {
       case Some(integration) =>
         (for {
-          topicOption <- integrationTopicsDAO.find(integrationId, integrationGroupId, integrationTopicId, userId)
-          if topicOption.isDefined
-          topic = topicOption.get
           tokenOption <- integrationTokensDAO.find(userId, integrationId)
           if tokenOption.isDefined
           token = tokenOption.get
           if token.enabled
-          integrationUserIdOption <- integrationUsersDAO.findByUserId(userId, integrationId)
-          if integrationUserIdOption.isDefined
-          integrationUserId = integrationUserIdOption.get
-          integrationUpdate = IntegrationUpdate(0, integrationId, None, integrationGroupId, integrationTopicId, userId, integrationUserId.integrationUserId, date, text)
-          result <- integrationUpdatesDAO.insert(integrationUpdate)
+          integrationUserOption <- integrationUsersDAO.findByUserId(userId, integration.id)
+          if integrationUserOption.isDefined
+          integrationTopic = IntegrationTopic(0, integration.id, None, integrationGroupId, userId, integrationUserOption.get.integrationUserId, date, text, text)
+          topicId <- integrationTopicsDAO.insert(integrationTopic)
         } yield {
           mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq()))) //todo: add proper notification
-          MessagesActor.actorSelection(integration, system) ! SendMessage(userId, integrationGroupId, integrationTopicId, text, result)
+          MessagesActor.actorSelection(integration, system) ! CreateTopic(userId, integrationGroupId, text, topicId)
           Created("Good!")
         }).recover {
           case t: Throwable =>
             BadRequest(t.getMessage)
         }
       case None => Future(BadRequest("No integration for this id"))
-    }*/
-
-    //todo: implement me!!!
-    Future(BadRequest("NYI:("))
+    }
   }
 
   def httpHeaders() = Action.async { implicit request =>

@@ -355,8 +355,6 @@ var ChatStore = Reflux.createStore({
     onSelectIntegrationTopic: function (integration, group, topic) {
         if (topic) {
             this.groupPaneHistory().selectedIntegrationTopic = topic;
-        } else {
-            topic = this.groupPaneHistory().selectedIntegrationTopic;
         }
 
         this.nullifyExcept();
@@ -539,6 +537,22 @@ var ChatStore = Reflux.createStore({
             }
         } else if (select) {
             this.onSelectTopic(topic);
+        }
+    },
+
+    onNewIntegrationMessage: function (message) {
+        var trigger = false;
+        // TODO: Check if we may apply message twice
+        if (this.state.integrationMessages) {
+            //todo: unread?
+            if (this.state.selectedIntegrationTopic && this.state.selectedIntegrationTopic.id == message.integrationTopicId) {
+                // TODO: Preserve message order
+                this.state.integrationMessages.push(message);
+                trigger = true;
+            }
+        }
+        if (trigger == true) {
+            this.trigger(this.state);
         }
     },
 
