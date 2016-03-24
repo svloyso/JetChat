@@ -15,9 +15,7 @@ window.setInterval(function () {
         img.load(function () {
             img.hide();
             $(_a).replaceWith($("<a target='_blank'>").append($(img)).attr("href", _a.href));
-            img.fadeIn("fast", function () {
-                $("#message-roll").stop().animate({scrollTop: $("#message-roll").scrollTop() + Math.min(128, img[0].height)}, "fast");
-            });
+            $("#message-roll").scrollTop($("#message-roll").scrollTop() + Math.min(128, img[0].height));
         }).error(function () {
             if (window.process) {
                 var shell = window.require('remote').shell;

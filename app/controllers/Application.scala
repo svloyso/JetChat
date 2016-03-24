@@ -50,21 +50,6 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
       (JsPath \ "avatar").writeNullable[String]
     ) (unlift(User.unapply))
 
-  implicit val topicReads: Reads[Topic] = (
-    (JsPath \ "id").read[Long] and
-      (JsPath \ "groupId").read[Long] and
-      (JsPath \ "userId").read[Long] and
-      (JsPath \ "date").read[Timestamp] and
-      (JsPath \ "text").read[String]
-    ) (Topic.apply _)
-  implicit val topicWrites: Writes[Topic] = (
-    (JsPath \ "id").write[Long] and
-      (JsPath \ "groupId").write[Long] and
-      (JsPath \ "userId").write[Long] and
-      (JsPath \ "date").write[Timestamp] and
-      (JsPath \ "text").write[String]
-    ) (unlift(Topic.unapply))
-
   implicit val integrationTopicReads: Reads[IntegrationTopic] = (
     (JsPath \ "id").read[Long] and
     (JsPath \ "integrationId").read[String] and
@@ -141,7 +126,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
           "users" -> users,
           "groups" -> groups,
           "topic" -> (topic match {
-            case Some(value) => Json.toJson(value)
+            case Some(value) => getTopicJsValue(value, Group(value.groupId, ""), new User(value.userId, "", "", None)) // TODO: Fix me
             case None => JsNull
           }),
           "topics" -> topics,
@@ -246,9 +231,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     topics.flatMap { topicChats =>
       usersDAO.allWithCounts(userId, nonEmptyOnly = true, query).map { userTopics =>
         Json.toJson(JsArray((topicChats ++ userTopics).sortBy(-_.updateDate.getTime).map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
-          JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
-          (Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
-            "text" -> JsString(topic.text), "user" -> JsObject(Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name))))),
+          JsObject(Seq("topic" -> getTopicJsValue(topic, group, user),
             "updateDate" -> JsNumber(updateDate.getTime),
             "unread" -> JsBoolean(unread),
             "unreadCount" -> JsNumber(unreadCount)))
@@ -273,14 +256,18 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
 
     topics.map { topicChats =>
       Json.toJson(JsArray(topicChats.map { case TopicChat(topic, group, user, updateDate, unread, unreadCount) =>
-        JsObject(Seq("topic" -> JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
-        (Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
-          "text" -> JsString(topic.text), "user" -> JsObject(Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name))))),
+        JsObject(Seq("topic" -> getTopicJsValue(topic, group, user),
           "updateDate" -> JsNumber(updateDate.getTime),
           "unread" -> JsBoolean(unread),
           "unreadCount" -> JsNumber(unreadCount)))
       }))
     }
+  }
+
+  def getTopicJsValue(topic: Topic, group: Group, user: User): JsObject = {
+    JsObject(Seq("id" -> JsNumber(topic.id), "date" -> JsNumber(topic.date.getTime), "group" -> JsObject
+    (Seq("id" -> JsNumber(group.id), "name" -> JsString(group.name))),
+      "text" -> JsString(topic.text), "user" -> JsObject(Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name)))))
   }
 
   def getAllIntegrationTopics(userId: Long, query: Option[String]) = getIntegrationTopics(userId, None, None, query)

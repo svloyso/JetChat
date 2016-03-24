@@ -2,17 +2,15 @@ import Reflux from 'reflux';
 import ChatActions from './chat-actions';
 import { _topicsToMarkAsRead, _messagesToMarkAsRead, _directMessagesToMarkAsRead } from './../utils';
 var $ = require('jquery');
-/**
- * TODO: don't mutate state
- */
+
 var ChatStore = Reflux.createStore({
     listenables: [ChatActions],
 
     history: new Map(),
 
     groupPaneHash: function () {
-        var result = ""
-
+        var result = "";
+        this.beginStateTx();
         if (this.state.selectedIntegrationGroup) {
             result = "IG_" + this.state.selectedIntegrationGroup.integrationGroupId;
         } else if (this.state.selectedIntegration) {
@@ -55,7 +53,8 @@ var ChatStore = Reflux.createStore({
         } else {
             this.onSelectGroup(this.state.selectedGroup);
         }
-        this.updateState();
+        delete _global.topics;
+        this.commitStateTx();
         // var self = this;
         // TODO: Re-fetch groups, topics, etc
         /*window.addEventListener('popstate', function (e) {
@@ -63,7 +62,29 @@ var ChatStore = Reflux.createStore({
          }, false);*/
     },
 
+    _copy: function (obj) {
+        var copy = obj.constructor();
+        for (var attr in obj) {
+            if (obj.hasOwnProperty(attr)) {
+                if (Object.prototype.toString.call(obj[attr]) === '[object Array]') {
+                    copy[attr] = obj[attr].slice();
+                } else {
+                    copy[attr] = obj[attr];
+                }
+            }
+        }
+        return copy;
+    },
+
+    beginStateTx: function () {
+        if (!this.tx) {
+            this.state = this._copy(this.state);
+            this.tx = true;
+        }
+    },
+
     nullifyExcept: function () {
+        this.beginStateTx();
         var keys = new Set([
             "displaySettings",
             "selectedGroup",
@@ -108,66 +129,75 @@ var ChatStore = Reflux.createStore({
             };
     },
 
-    updateState: function () {
-        var keyValues = new Map();
+    commitStateTx: function (_state) {
+        var state = _state ? _state : this.state;
+        if (state) {
+            var keyValues = new Map();
 
-        if (this.state.selectedGroup)
-            keyValues.set("groupId", this.state.selectedGroup.id);
+            if (state.selectedGroup)
+                keyValues.set("groupId", state.selectedGroup.id);
 
-        if (this.state.displaySettings)
-            keyValues.set("displaySettings", "true");
+            if (state.displaySettings)
+                keyValues.set("displaySettings", "true");
 
-        if (this.state.selectedTopic)
-            keyValues.set("topicId", this.state.selectedTopic.id);
+            if (state.selectedTopic)
+                keyValues.set("topicId", state.selectedTopic.id);
 
-        if (this.state.selectedUserTopic)
-            keyValues.set("userTopicId", this.state.selectedUserTopic.id);
+            if (state.selectedUserTopic)
+                keyValues.set("userTopicId", state.selectedUserTopic.id);
 
-        if (this.state.selectedUser)
-            keyValues.set("userId", this.state.selectedUser.id);
+            if (state.selectedUser)
+                keyValues.set("userId", state.selectedUser.id);
 
-        if (this.state.selectedIntegration)
-            keyValues.set("integrationId", this.state.selectedIntegration.id);
+            if (state.selectedIntegration)
+                keyValues.set("integrationId", state.selectedIntegration.id);
 
-        if (this.state.selectedIntegrationGroup)
-            keyValues.set("integrationGroupId", this.state.selectedIntegrationGroup.integrationGroupId);
+            if (state.selectedIntegrationGroup)
+                keyValues.set("integrationGroupId", state.selectedIntegrationGroup.integrationGroupId);
 
-        if (this.state.selectedIntegrationTopic)
-            keyValues.set("integrationTopicId", this.state.selectedIntegrationTopic.integrationTopicId
-                ? this.state.selectedIntegrationTopic.integrationTopicId
-                : this.state.selectedIntegrationTopic.id);
+            if (state.selectedIntegrationTopic)
+                keyValues.set("integrationTopicId", state.selectedIntegrationTopic.integrationTopicId
+                    ? state.selectedIntegrationTopic.integrationTopicId
+                    : state.selectedIntegrationTopic.id);
 
-        if (this.state.selectedIntegrationTopic)
-            keyValues.set("integrationTopicGroupId", this.state.selectedIntegrationTopic.integrationGroupId
-                ? this.state.selectedIntegrationTopic.integrationGroupId
-                : this.state.selectedIntegrationTopic.id);
+            if (state.selectedIntegrationTopic)
+                keyValues.set("integrationTopicGroupId", state.selectedIntegrationTopic.integrationGroupId
+                    ? state.selectedIntegrationTopic.integrationGroupId
+                    : state.selectedIntegrationTopic.id);
 
-        if (this.state.query && this.state.query !== "")
-            keyValues.set("query", this.state.query);
+            if (state.query && state.query !== "")
+                keyValues.set("query", state.query);
 
-        var query = "?", separator = "";
+            var query = "?", separator = "";
 
-        for (var [key, value] of keyValues) {
-            if (!value) continue;
-            query += separator + key + "=" + value;
-            separator = "&";
+            for (var [key, value] of keyValues) {
+                if (!value) continue;
+                query += separator + key + "=" + value;
+                separator = "&";
+            }
+
+            window.history.replaceState(state, window.title, query);
+            // TODO: pushState
+
+            this.state = state;
+            delete this.tx;
+            this.trigger(state);
         }
-
-        window.history.replaceState(this.state, window.title, query);
-        // TODO: pushState
-        this.trigger(this.state);
     },
 
     formQueryRequest: function(prefix) {
+        this.beginStateTx();
         if (!prefix) { prefix = "?" }
         return this.state.query && this.state.query !== "" ? prefix + "query=" + this.state.query : "";
     },
 
     messagesURL: function () {
+        this.beginStateTx();
         return "/json/user/" + _global.user.id + "/messages/" + this.state.selectedTopic.id + this.formQueryRequest("?");
     },
 
     topicsURL: function () {
+        this.beginStateTx();
         return "/json/user/" + _global.user.id + "/topics" +
             (this.state.selectedGroup ? "/" + this.state.selectedGroup.id : "") + this.formQueryRequest("?");
     },
@@ -177,10 +207,12 @@ var ChatStore = Reflux.createStore({
     },
 
     userTopicURL: function () {
+        this.beginStateTx();
         return "/json/user/" + _global.user.id + "/direct/" + this.state.selectedUserTopic.id + this.formQueryRequest("?");
     },
 
     integrationTopicURL: function () {
+        this.beginStateTx();
         var integrationTopicId = this.state.selectedIntegrationTopic.integrationTopicId
             ? this.state.selectedIntegrationTopic.integrationTopicId
             : this.state.selectedIntegrationTopic.id;
@@ -200,10 +232,11 @@ var ChatStore = Reflux.createStore({
             type: "GET",
             url: this.groupsURL(),
             success: function (groups) {
-                this.state.groups = groups;
+                var state = this._copy(this.state);
+                state.groups = groups;
+                this.commitStateTx(state);
             }.bind(this),
             fail: function (e) {
-                this.state.groups = [];
                 console.error(e);
             }.bind(this)
         });
@@ -213,6 +246,7 @@ var ChatStore = Reflux.createStore({
         var self = this;
 
         function selectTopics(topics) {
+            self.beginStateTx();
             self.state.topics = topics;
             self.state.integrationTopics = undefined;
             if (self.state.selectedUserTopic && !self.state.selectedGroup) {
@@ -242,9 +276,7 @@ var ChatStore = Reflux.createStore({
         }
 
         if (_global.topics) {
-            var topics = _global.topics;
-            _global.topics = undefined;
-            selectTopics(topics);
+            selectTopics(_global.topics);
         } else {
             $.ajax({
                 context: this,
@@ -262,15 +294,17 @@ var ChatStore = Reflux.createStore({
 
     updateMessages: function () {
         var self = this;
+        this.beginStateTx();
         if (this.state.selectedTopic) {
             $.ajax({
                 context: this,
                 type: "GET",
                 url: this.messagesURL(),
                 success: function (messages) {
-                    self.state.messages = messages;
-                    self.state.integrationMessages = undefined;
-                    self.updateState();
+                    var state = self._copy(self.state);
+                    state.messages = messages;
+                    state.integrationMessages = undefined;
+                    self.commitStateTx(state);
                 },
                 fail: function (e) {
                     console.error(e);
@@ -282,9 +316,10 @@ var ChatStore = Reflux.createStore({
                 type: "GET",
                 url: this.integrationTopicURL(),
                 success: function (messages) {
-                    self.state.messages = undefined;
-                    self.state.integrationMessages = messages;
-                    self.updateState();
+                    var state = self._copy(self.state);
+                    state.messages = undefined;
+                    state.integrationMessages = messages;
+                    self.commitStateTx(state);
                 },
                 fail: function (e) {
                     console.error(e);
@@ -293,27 +328,30 @@ var ChatStore = Reflux.createStore({
         } else if (this.state.selectedIntegration) {
             this.state.integrationMessages = [];
             this.state.messages = undefined;
-            self.updateState();
+            self.commitStateTx();
         } else {
             this.state.integrationMessages = undefined;
             this.state.messages = [];
-            self.updateState();
+            self.commitStateTx();
         }
     },
 
     filterUsers: function () {
+        this.beginStateTx();
         this.state.users = _global.users.filter(function (u) {
             return u.id !== _global.user.id && (!this.state.query || u.name.indexOf(this.state.query) > -1);
         }.bind(this));
     },
 
     onSelectGroup: function (group) {
+        this.beginStateTx();
         this.nullifyExcept('selectedTopic', 'selectedUserTopic');
         this.state.selectedGroup = group;
         this.updateTopics();
     },
 
     onSelectTopic: function (topic) {
+        this.beginStateTx();
         this.nullifyExcept("selectedGroup");
         if (topic) {
             var history = this.groupPaneHistory();
@@ -323,11 +361,12 @@ var ChatStore = Reflux.createStore({
 
         this.state.selectedTopic = topic;
         this.updateMessages();
-        this.updateState();
+        this.commitStateTx();
     },
 
     onSelectUserTopic: function (userTopic) {
         var self = this;
+        this.beginStateTx();
         this.nullifyExcept();
 
         if (userTopic) {
@@ -337,14 +376,16 @@ var ChatStore = Reflux.createStore({
         }
 
         this.state.selectedUserTopic = userTopic;
+        this.commitStateTx();
         $.ajax({
             context: this,
             type: "GET",
             url: this.userTopicURL(),
             success: function (messages) {
-                self.state.messages = messages;
-                self.state.integrationMessages = undefined;
-                self.updateState();
+                var state = self._copy(self.state);
+                state.messages = messages;
+                state.integrationMessages = undefined;
+                self.commitStateTx(state);
             },
             fail: function (e) {
                 console.error(e);
@@ -353,6 +394,7 @@ var ChatStore = Reflux.createStore({
     },
 
     onSelectIntegrationTopic: function (integration, group, topic) {
+        this.beginStateTx();
         if (topic) {
             this.groupPaneHistory().selectedIntegrationTopic = topic;
         }
@@ -365,10 +407,11 @@ var ChatStore = Reflux.createStore({
         //todo: selected topic history
 
         this.updateMessages();
-        this.trigger(this.state);
+        this.commitStateTx();
     },
 
     onSelectUser: function (user) {
+        this.beginStateTx();
         var self = this;
         if (this.state.query) {
             this.state.query = undefined;
@@ -377,15 +420,16 @@ var ChatStore = Reflux.createStore({
         }
         this.nullifyExcept();
         this.state.selectedUser = user;
-        this.updateState();
+        this.commitStateTx();
         $.ajax({
             context: this,
             type: "GET",
             url: "/json/user/" + _global.user.id + "/direct/" + user.id,
             success: function (messages) {
-                self.state.messages = messages;
-                self.state.integrationMessages = undefined;
-                self.updateState();
+                var state = self._copy(self.state);
+                state.messages = messages;
+                state.integrationMessages = undefined;
+                self.commitStateTx(state);
             },
             fail: function (e) {
                 console.error(e);
@@ -395,6 +439,7 @@ var ChatStore = Reflux.createStore({
 
     onSelectIntegration: function (integration) {
         var self = this;
+        this.beginStateTx();
         this.nullifyExcept("selectedIntegrationTopic");
         this.state.selectedIntegration = integration;
         $.ajax({
@@ -409,7 +454,6 @@ var ChatStore = Reflux.createStore({
                     if (!history.selectedIntegrationTopic) {
                         history.selectedIntegrationTopic = topics[0].topic;
                     }
-
                     self.onSelectIntegrationTopic(integration, undefined, history.selectedIntegrationTopic);
                 } else {
                     self.onSelectIntegrationTopic(integration);
@@ -423,6 +467,7 @@ var ChatStore = Reflux.createStore({
 
     onSelectIntegrationGroup: function (integration, group) {
         var self = this;
+        this.beginStateTx();
         this.nullifyExcept("selectedIntegrationTopic");
         this.state.selectedIntegration = integration;
         this.state.selectedIntegrationGroup = group;
@@ -452,6 +497,7 @@ var ChatStore = Reflux.createStore({
     },
 
     onNewGroup: function (group, select) {
+        this.beginStateTx();
         if (this.state.groups.filter(function (g) {
                 return g.id == group.id
             }).length == 0) {
@@ -459,7 +505,7 @@ var ChatStore = Reflux.createStore({
             if (select) {
                 this.onSelectGroup(group);
             } else {
-                this.trigger(this.state);
+                this.commitStateTx();
             }
         } else if (select) {
             this.onSelectGroup(group);
@@ -467,56 +513,63 @@ var ChatStore = Reflux.createStore({
     },
 
     onNewUser: function (user) {
+        this.beginStateTx();
         this.state.users.push(user);
-        this.trigger(this.state);
+        this.commitStateTx();
     },
 
     onUserOffline: function (id) {
+        this.beginStateTx();
         var i = this.state.users.findIndex(u => u.id == id);
         if (i > -1) {
             this.state.users[i].online = false;
-            this.trigger(this.state);
+            this.commitStateTx();
         }
     },
 
     onUserOnline: function (id) {
+        this.beginStateTx();
         var i = this.state.users.findIndex(u => u.id == id);
         if (i > -1) {
             this.state.users[i].online = true;
-            this.trigger(this.state);
+            this.commitStateTx();
         }
     },
 
     onEnableIntegration: function (integrationId, integration) {
+        this.beginStateTx();
         var i = this.state.integrations.findIndex(ii => ii.id == integrationId);
         if (i > -1) {
             this.state.integrations[i].enabled = true;
-            this.trigger(this.state);
+            this.commitStateTx();
         } else if (integration) {
             integration.enabled = true;
             this.state.integrations.push(integration);
-            this.trigger(this.state);
+            this.commitStateTx();
         }
     },
 
     onDisableIntegration: function (integrationId) {
+        this.beginStateTx();
         var i = this.state.integrations.findIndex(ii => ii.id == integrationId);
         if (i > -1) {
             this.state.integrations[i].enabled = false;
-            this.trigger(this.state);
+            this.commitStateTx();
         }
     },
 
     onShowIntegrations: function (initial) {
+        this.beginStateTx();
         this.nullifyExcept();
         this.state.displaySettings = true;
         if (!initial) {
-            this.trigger(this.state);
+            this.commitStateTx();
             window.history.replaceState(this.state, window.title, "?settings=true");
         }
     },
 
     onNewTopic: function (topic, select) {
+        this.beginStateTx();
         if ((!this.state.selectedGroup || this.state.selectedGroup.id ==
             topic.group.id) && this.state.topics.filter(function (m) {
                 return m.topic.id == topic.id
@@ -533,7 +586,7 @@ var ChatStore = Reflux.createStore({
             if (select) {
                 this.onSelectTopic(topic);
             } else {
-                this.trigger(this.state);
+                this.commitStateTx();
             }
         } else if (select) {
             this.onSelectTopic(topic);
@@ -541,6 +594,7 @@ var ChatStore = Reflux.createStore({
     },
 
     onNewIntegrationMessage: function (message) {
+        this.beginStateTx();
         var trigger = false;
         // TODO: Check if we may apply message twice
         if (this.state.integrationMessages) {
@@ -552,11 +606,12 @@ var ChatStore = Reflux.createStore({
             }
         }
         if (trigger == true) {
-            this.trigger(this.state);
+            this.commitStateTx();
         }
     },
 
     onNewMessage: function (message) {
+        this.beginStateTx();
         var trigger = false;
         // TODO: Check if we may apply message twice
         if (this.state.messages && !this.state.messages.find(m => m.text == message.text)) {
@@ -627,11 +682,12 @@ var ChatStore = Reflux.createStore({
 
         }
         if (trigger == true) {
-            this.trigger(this.state);
+            this.commitStateTx();
         }
     },
 
     onMarkTopicAsRead: function(topic) {
+        this.beginStateTx();
         var trigger = false;
         if (this.state.topics) {
             var tt = this.state.topics.find(t => t.topic && t.topic.id == topic.id);
@@ -649,11 +705,12 @@ var ChatStore = Reflux.createStore({
             }
         }
         if (trigger) {
-            this.trigger(this.state);
+            this.commitStateTx();
         }
     },
 
     onMarkDirectMessageAsRead: function(message) {
+        this.beginStateTx();
         var trigger = false;
         if (this.state.topics) {
             var tt = this.state.topics.find(t => t.userTopic && t.userTopic.id == message.user.id);
@@ -678,11 +735,12 @@ var ChatStore = Reflux.createStore({
             }
         }
         if (trigger) {
-            this.trigger(this.state);
+            this.commitStateTx();
         }
     },
 
     onMarkMessageAsRead: function(message) {
+        this.beginStateTx();
         var trigger = false;
         if (this.state.messages) {
             var mm = this.state.messages.find(m => m.id == message.id && m.topicId);
@@ -707,17 +765,18 @@ var ChatStore = Reflux.createStore({
             }
         }
         if (trigger) {
-            this.trigger(this.state);
+            this.commitStateTx();
         }
     },
 
     onAlertQuery: function(newQuery) {
+        this.beginStateTx();
         if (this.state.query !== newQuery) {
             this.state.query = newQuery;
             this.filterUsers();
             this.updateGroups();
             this.updateTopics();
-            this.updateState();
+            this.commitStateTx();
         }
     }
 });

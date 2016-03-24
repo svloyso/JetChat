@@ -5,11 +5,16 @@ import MessageItem from './message-item';
 import IntegrationMessageItem from './integration-message-item';
 import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
+import {deepEqual} from '../events/chat-store-utils';
 import classNames from 'classnames';
 var $ = require('jquery');
 
 var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
+
+    shouldComponentUpdate: function(nextProps, nextState) {
+        return !deepEqual(this.state.store, nextState.store, ["selectedUser.id", "displaySettings", "query", "selectedIntegrationTopic.id", "selectedUserTopic.id", "selectedTopic.id", "messages.id", "integrationMessages.id"]);
+    },
 
     componentDidUpdate: function () {
         var self = this;
@@ -19,7 +24,7 @@ var MessageBar = React.createClass({
             ReactDOM.findDOMNode(self.refs.input).focus();
 
         window.setTimeout(function () {
-            messageRoll.stop().animate({ scrollTop: messageRoll[0].scrollHeight }, "fast");
+            messageRoll.scrollTop(messageRoll[0].scrollHeight);
         }, 0);
     },
 
