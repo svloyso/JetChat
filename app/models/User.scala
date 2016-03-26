@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 // TODO: Make User.name Option[String]
-case class User(id: Long = 0, login: String, name: String, avatar: Option[String])
+case class User(id: Long = 0, login: String, name: String, avatar: Option[String], email: Option[String])
 
 case class UserChat(user: User, text: String, updateDate: Timestamp, unreadCount: Int) extends AbstractChat
 
@@ -23,8 +23,9 @@ trait UsersComponent extends HasDatabaseConfigProvider[JdbcProfile] {
     def login = column[String]("login")
     def name = column[String]("name")
     def avatar = column[Option[String]]("avatar")
+    def email = column[Option[String]]("email")
     def loginIndex = index("user_login_index", login, unique = true)
-    def * = (id, login, name, avatar) <> (User.tupled, User.unapply)
+    def * = (id, login, name, avatar, email) <> (User.tupled, User.unapply)
   }
 
   val allUsers = TableQuery[UsersTable]
@@ -45,6 +46,10 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
 
   def insert(user: User): Future[Long] = {
     db.run((allUsers returning allUsers.map(_.id)) += user)
+  }
+
+  def update(user: User): Future[Boolean] = {
+    db.run(allUsers.filter(_.id === user.id).map(u => (u.avatar, u.email)).update(user.avatar, user.email)).map(_ > 0)
   }
 
   def all: Future[Seq[User]] = {
@@ -85,7 +90,7 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
         sqlQuery.as[(Long, String, String, Option[String], Timestamp, String, Int, Int)]
       ).map { case results =>
         val myMessages = results.map { case (id, login, name, avatar, updateDate, text, readCount, totalCount) =>
-          User(id, login, name, avatar) ->(text, updateDate, readCount, totalCount)
+          User(id, login, name, avatar, None) ->(text, updateDate, readCount, totalCount)
         }.toMap
         (allUsers ++ myMessages).toSeq.sortBy(-_._2._2.getTime).map { case (user, (text, updateDate, readCount, totalCount)) =>
           UserChat(user, text, updateDate, totalCount - readCount)

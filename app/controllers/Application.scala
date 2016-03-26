@@ -41,13 +41,15 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     (JsPath \ "id").read[Long] and
       (JsPath \ "login").read[String] and
       (JsPath \ "name").read[String] and
-      (JsPath \ "avatar").readNullable[String]
+      (JsPath \ "avatar").readNullable[String] and
+      (JsPath \ "email").readNullable[String]
     ) (User.apply _)
   implicit val userWrites: Writes[User] = (
     (JsPath \ "id").write[Long] and
       (JsPath \ "login").write[String] and
       (JsPath \ "name").write[String] and
-      (JsPath \ "avatar").writeNullable[String]
+      (JsPath \ "avatar").writeNullable[String] and
+      (JsPath \ "email").writeNullable[String]
     ) (unlift(User.unapply))
 
   implicit val integrationTopicReads: Reads[IntegrationTopic] = (
@@ -126,7 +128,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
           "users" -> users,
           "groups" -> groups,
           "topic" -> (topic match {
-            case Some(value) => getTopicJsValue(value, Group(value.groupId, ""), new User(value.userId, "", "", None)) // TODO: Fix me
+            case Some(value) => getTopicJsValue(value, Group(value.groupId, ""), new User(value.userId, "", "", None, None)) // TODO: Fix me
             case None => JsNull
           }),
           "topics" -> topics,

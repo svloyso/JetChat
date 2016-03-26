@@ -144,7 +144,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
        sql.as[(Long, String, Timestamp, Long, String, Option[String], Long, String, Option[Timestamp], Boolean, Int, Int)]
      ).map { case results =>
        results.map { case (topicId, topicText, topicDate, uId, userName, userAvatar, gId, groupName, updateDate, topicRead, readCount, totalCount) =>
-         TopicChat(Topic(topicId, gId, uId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName, userAvatar), updateDate.getOrElse(topicDate), !topicRead, totalCount - readCount)
+         TopicChat(Topic(topicId, gId, uId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName, userAvatar, None), updateDate.getOrElse(topicDate), !topicRead, totalCount - readCount)
        }.sortBy(-_.updateDate.getTime)
      }
    }
@@ -199,7 +199,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
           val total = (userTopics ++ commentedTopics).toSeq.sortBy(-_._2._1.getTime)
 
           total.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (updateDate, readStatus, readCount, totalCount)) =>
-            TopicChat(Topic(topicId, gId, userId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName,  null), updateDate, !readStatus, totalCount - readCount)
+            TopicChat(Topic(topicId, gId, userId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName,  null, None), updateDate, !readStatus, totalCount - readCount)
           }
         }
       }

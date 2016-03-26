@@ -11,7 +11,7 @@ import models.api.IntegrationToken
 import models.{IntegrationTopic, IntegrationUpdate}
 import org.apache.commons.lang3.StringEscapeUtils
 import play.api.http.{HeaderNames, MimeTypes}
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsArray, JsValue}
 import play.api.libs.ws.WSAuthScheme.BASIC
 import play.api.libs.ws.{WS, WSResponse}
 import play.api.mvc.Results._
@@ -74,8 +74,25 @@ class GitHubIntegration extends Integration {
 
     override def avatarUrl(token: String, login: Option[String] = None): Future[Option[String]] =
       info(token, "avatar_url", login)
+
+    override def email(token: String, login: Option[String] = None): Future[Option[String]] =
+      GitHubIntegration.askAPI("https://api.github.com/user/emails", token).map { result =>
+        result.response.json match {
+          case array: JsArray =>
+            array.value.find(v => (v \ "primary").as[Boolean]) match {
+              case Some(v) =>
+                Some((v \ "email").as[String])
+              case _ =>
+                None
+            }
+          case _ =>
+            None
+        }
+      }
+
     override def name(token: String, login: Option[String] = None): Future[Option[String]] =
       info(token, "name", login)
+
     override def login(token: String): Future[String] =
       info(token, "login").map(_.get)
 
