@@ -83,6 +83,10 @@ var ChatStore = Reflux.createStore({
     setGroupId: function (groupId) {
         this.state.groupId = groupId;
     },
+    
+    extractUserId: function (userId, topicId) {
+        return userId || parseInt(topicId.substring(this.state.USER.length + this.state.SEP.length));
+    },
 
     extractTopicId: function (topicWrapper) {
         if (topicWrapper.topic)
@@ -161,11 +165,8 @@ var ChatStore = Reflux.createStore({
     },
 
     userMessagesURL: function () {
-        var toUserId = this.state.userId
-            ? this.state.userId
-            : this.state.topicId.substring(this.state.USER.length + this.state.SEP.length);
-
-        return "/json/user/" + _global.user.id + "/direct/" + toUserId + this.formQueryRequest("?");
+        return "/json/user/" + _global.user.id + "/direct/" 
+            + this.extractUserId(this.state.userId, this.state.topicId) + this.formQueryRequest("?");
     },
 
     integrationURL: function () {
@@ -388,10 +389,12 @@ var ChatStore = Reflux.createStore({
         console.log("onNewMessage: " + JSON.stringify(message));
         var trigger = false;
 
-        function messageFitTopic(message, selected) {
-            if (message.toUser && message.user && selected.userId)
-                return (_global.user.id === message.user.id && selected.userId === message.toUser.id) ||
-                    (_global.user.id === message.toUser.id && selected.userId === message.user.id);
+        function messageFitBar(message, userId, topicId) {
+            if (message.toUser && message.user) {
+                var toId = this.extractUserId(userId, topicId);
+                return (_global.user.id === message.user.id && toId === message.toUser.id) ||
+                    (_global.user.id === message.toUser.id && toId === message.user.id);
+            }
 
             if (message.topicId)
                 return selected.topicId === message.topicId;
@@ -436,7 +439,7 @@ var ChatStore = Reflux.createStore({
                     }
                 }
             }
-            if (messageFitTopic(message, this.state.selected)) {
+            if (messageFitBar.call(this, message, this.state.userId, this.state.topicId)) {
                 // TODO: Preserve message order
                 this.state.messages.push(message);
                 trigger = true;

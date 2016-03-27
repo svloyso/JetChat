@@ -35,7 +35,8 @@ var MessageBar = React.createClass({
         var inputNode = ReactDOM.findDOMNode(self.refs.input);
         var text = inputNode.value.trim();
         if (event.which == 13 && input && !event.shiftKey) {
-            var selectedUserId = self.state.store.userId;
+            var selectedUserId = self.state.store.userId ||
+                parseInt(self.state.store.topicId.substring((self.state.store.USER + self.state.store.SEP).length));
             if (selectedUserId) {
                 var toUser = self.state.store.users.find(u => u.id === selectedUserId);
                 var newDirectMessage = {
