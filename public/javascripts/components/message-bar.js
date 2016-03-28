@@ -1,12 +1,15 @@
+import classNames from 'classnames';
+import nanoScroller from 'nanoscroller';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Reflux from 'reflux';
-import MessageItem from './message-item';
-import IntegrationMessageItem from './integration-message-item';
-import ChatStore from '../events/chat-store';
+
 import ChatActions from '../events/chat-actions';
+import ChatStore from '../events/chat-store';
+import IntegrationMessageItem from './integration-message-item';
+import MessageItem from './message-item';
 import {deepEqual} from '../events/chat-store-utils';
-import classNames from 'classnames';
+
 var $ = require('jquery');
 
 var MessageBar = React.createClass({
@@ -23,9 +26,13 @@ var MessageBar = React.createClass({
         if (!this.state.store.query || this.state.store.query.length === 0)
             ReactDOM.findDOMNode(self.refs.input).focus();
 
-        window.setTimeout(function () {
-            messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        }, 0);
+        var roll = $("#message-roll");
+        roll.nanoScroller();
+        roll.nanoScroller({scroll: "bottom"});
+    },
+
+    componentWillUnmount: function () {
+        $("#message-roll").nanoScroller({destroy: true});
     },
 
     onInputKeyPress: function (event) {
@@ -190,8 +197,10 @@ var MessageBar = React.createClass({
         return (
             <div id="message-bar" className={className}>
                 <div id="message-pane">
-                    <div id="message-roll" ref="messageRoll">
-                        {messageItems}
+                    <div id="message-roll" className="nano" ref="messageRoll">
+                        <div className="nano-content">
+                            {messageItems}
+                        </div>
                     </div>
                     {userHeader}
                 </div>

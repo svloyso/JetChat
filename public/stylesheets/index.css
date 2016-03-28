@@ -107,7 +107,7 @@ input, textarea, #settings-dropdown:focus {
     overflow: scroll;
 }
 
-#group-pane, #message-roll {
+#group-pane {
     overflow: scroll;
 }
 
@@ -265,9 +265,10 @@ input.search-query {
 }
 
 #message-pane {
-    width: 100%;
-    padding: 15px 12px 15px 25px;
-    overflow: scroll;
+    width: calc(100% - 25px);
+    height: 100% !important;
+    padding: 15px 0px 15px 25px;
+    overflow: hidden;
 }
 
 #message-pane .avatar {
@@ -335,7 +336,9 @@ input.search-query {
 #message-roll {
     position: absolute;
     bottom: 70px;
-    padding-right: 30px;
+    height: calc(100% - 70px);
+    width: calc(100% - 25px);
+    padding-right: 25px;
 }
 
 #message-pane li .info .user {
@@ -434,3 +437,64 @@ input.search-query {
     bottom: 10px;
     width: 621px;
 }
+
+/** initial setup **/
+
+.nano {
+    overflow: hidden;
+}
+
+.nano-content {
+    position      : absolute;
+    overflow      : scroll;
+    overflow-x    : hidden;
+    top           : 50px;
+    right         : 0;
+    bottom        : 0;
+    left          : 0;
+}
+
+.nano-content:focus {
+    outline: thin dotted;
+}
+
+.nano-content::-webkit-scrollbar {
+    visibility: hidden;
+}
+
+.has-scrollbar .nano-content::-webkit-scrollbar {
+    visibility: visible;
+}
+
+.nano > .nano-pane {
+    background : rgba(0,0,0,.25);
+    position   : absolute;
+    width      : 8px;
+    top        : 50px;
+    right      : 0;
+    bottom     : 0;
+    visibility : hidden\9; /* Target only IE7 and IE8 with this hack */
+    opacity    : .01;
+    -webkit-transition    : .2s;
+    -moz-transition       : .2s;
+    -o-transition         : .2s;
+    transition            : .2s;
+}
+
+.nano > .nano-pane > .nano-slider {
+    background: #444;
+    background: rgba(0,0,0,.5);
+    position              : relative;
+    -moz-border-radius    : 2px;
+    -webkit-border-radius : 2px;
+    border-radius         : 2px;
+}
+
+.nano:hover > .nano-pane, .nano-pane.active, .nano-pane.flashed {
+    visibility : visible\9; /* Target only IE7 and IE8 with this hack */
+    opacity    : 0.99;
+}
+
+.nano .nano-content { padding: 0 0 0 0; }
+.nano .nano-pane   { background: #bbb; }
+.nano .nano-slider { background: #8c8c8c; }
