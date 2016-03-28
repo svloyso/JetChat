@@ -4,6 +4,7 @@ import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
+import akka.actor.Cancellable
 import models._
 import play.api.Application
 import play.api.libs.mailer.{Email, MailerClient}
@@ -26,12 +27,24 @@ class EmailActor(val topicsDAO: TopicsDAO, val commentsDAO: CommentsDAO,
 
   var lastSince = 0L
 
+  var task: Option[Cancellable] = None
+
   override def preStart(): Unit = {
     super.preStart()
   }
 
   override def turningMaster(): Unit = {
-    context.system.scheduler.schedule(0L.millisecond, INTERVAL.millisecond, self, EmailEvent)
+    if (task.isEmpty || task.get.isCancelled) {
+      task = Some(context.system.scheduler.schedule(0L.millisecond, INTERVAL.millisecond, self, EmailEvent))
+    }
+  }
+
+
+  override def turningSlave(): Unit = {
+    if (task.isDefined) {
+      task.get.cancel()
+      task = None
+    }
   }
 
   override def receiveAsMaster: Receive = {
@@ -41,12 +54,14 @@ class EmailActor(val topicsDAO: TopicsDAO, val commentsDAO: CommentsDAO,
       val since = Math.max(lastSince, date.getTimeInMillis)
       date.add(Calendar.MINUTE, INTERVAL.milliseconds.toMinutes.toInt)
       val to = date.getTimeInMillis
+      val sinceDate = new Timestamp(since)
+      val toDate = new Timestamp(to)
+      log.debug("Sending out unread messages from " + TIME_FORMAT.format(sinceDate) + " to " + TIME_FORMAT.format(toDate))
       lastSince = to
-      val toDate = new Date(to)
       usersDAO.all.map { case users =>
           users.map { case user =>
             if (user.email.isDefined) {
-              directMessagesDAO.getUnreadMessages(user.id, new Timestamp(since), new Timestamp(to)).map { case um =>
+              directMessagesDAO.getUnreadMessages(user.id, sinceDate, toDate).map { case um =>
                 if (um.nonEmpty) {
                   val allMessagesBlock = (um.groupBy { case (u, m) => u } map { case (fromUser, messages) =>
                     val userMessagesBlock = messages.map { case (u, m) =>
