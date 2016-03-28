@@ -19,13 +19,14 @@ class Global @Inject()(val system: ActorSystem, val application: Application,
                        val integrationGroupsDAO: IntegrationGroupsDAO,
                        val topicsDAO: TopicsDAO, val commentsDAO: CommentsDAO,
                        val directMessagesDAO: DirectMessagesDAO,
+                       val usersDAO: UsersDAO,
                        val onlineUserRegistry: OnlineUserRegistry,
                        val mailerClient: MailerClient) {
   if (!play.api.Play.isTest(application)) {
     system.actorOf(Props(new OnlineUserRegistryActor(onlineUserRegistry)), "online-user-registry")
-    system.actorOf(Props[ClusterListener], "cluster-listener")
+    system.actorOf(Props(new ClusterListener(application)), "cluster-listener")
     system.actorOf(IntegrationActor.props(integrations, integrationTokensDAO), "integration-actor")
-    system.actorOf(Props(new EmailActor(topicsDAO, commentsDAO, directMessagesDAO, mailerClient, application)), "email-actor")
+    system.actorOf(Props(new EmailActor(topicsDAO, commentsDAO, directMessagesDAO, usersDAO, mailerClient, application)), "email-actor")
 
     for (integration <- integrations) {
       val integrationRef: ActorRef = MessagesActor.actorOf(integration, system, integrationTokensDAO, integrationTopicsDAO,

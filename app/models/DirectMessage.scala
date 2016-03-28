@@ -89,6 +89,14 @@ class DirectMessagesDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     } yield (m, status.map(_.directMessageId).isDefined, fromUser, toUser)).sortBy(_._1.date).result)
   }
 
+  def getUnreadMessages(userId: Long, since: Timestamp, to: Timestamp): Future[Seq[(User, DirectMessage)]] = {
+    db.run(
+      (for {
+        ((m, s), u) <- allDirectMessages joinLeft allDirectMessageReadStatuses on { case (m, s) => m.id === s.directMessageId } join allUsers on { case ((m, s), u) => m.fromUserId === u.id } filter { case ((m, s), u) => m.toUserId === userId && m.date >= since && m.date < to && s.map(_.directMessageId).isEmpty }
+      } yield (u, m)).result
+    )
+  }
+
   def markAsRead(directMessageIds: Seq[Long]): Future[Option[Int]] = {
     db.run(allDirectMessageReadStatuses ++= directMessageIds.map(DirectMessageReadStatus))
   }
