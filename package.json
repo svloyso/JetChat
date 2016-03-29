@@ -12,7 +12,8 @@
     "jquery": "~2.2.0",
     "react-bootstrap": "~0.28.3",
     "react-bootstrap-switch": "~3.4.2",
-    "is-electron-renderer": "~2.0.0"
+    "is-electron-renderer": "~2.0.0",
+    "nanoscroller": "~0.8.7"
   },
   "devDependencies": {
     "babel-core": "^5.8.25",
