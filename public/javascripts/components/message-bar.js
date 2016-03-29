@@ -8,6 +8,7 @@ import ChatActions from '../events/chat-actions';
 import ChatStore from '../events/chat-store';
 import IntegrationMessageItem from './integration-message-item';
 import MessageItem from './message-item';
+import Loader from './loader'
 import {deepEqual} from '../events/chat-store-utils';
 
 var $ = require('jquery');
@@ -20,19 +21,24 @@ var MessageBar = React.createClass({
     },
 
     componentDidUpdate: function () {
-        var self = this;
-        var messageRoll = $(ReactDOM.findDOMNode(self.refs.messageRoll));
-        messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        if (!this.state.store.query || this.state.store.query.length === 0)
-            ReactDOM.findDOMNode(self.refs.input).focus();
-
         var roll = $("#message-roll");
-        roll.nanoScroller();
-        roll.nanoScroller({scroll: "bottom"});
+        if (roll) {
+            if (!this.state.store.query || this.state.store.query.length === 0) {
+                var input = $("#input");
+                if (input)
+                    input.focus();
+            }
+
+
+            roll.nanoScroller();
+            roll.nanoScroller({scroll: "bottom"});
+        }
     },
 
     componentWillUnmount: function () {
-        $("#message-roll").nanoScroller({destroy: true});
+        var roll = $("#message-roll");
+        if (roll)
+            roll.nanoScroller({destroy: true});
     },
 
     onInputKeyPress: function (event) {
@@ -147,6 +153,17 @@ var MessageBar = React.createClass({
         var topic = self.state.store.selectedUser === undefined;
         var sameUser = false;
         var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
+
+        var className = classNames({
+                ['wide']: this.state.store.selectedUser,
+                ['narrow']: !this.state.store.selectedUser,
+                ['hidden']: this.state.store.displaySettings
+            }
+        );
+
+        if (!messages)
+            return (<Loader id="message-bar" className={className} />);
+
         var messageItems = messages.map(function (message, index) {
             var user = message.user ? message.user : message.integrationUser;
             if (index == 0) {
@@ -188,12 +205,7 @@ var MessageBar = React.createClass({
                 </li>
             </div>
         }
-        var className = classNames({
-                ['wide']: this.state.store.selectedUser,
-                ['narrow']: !this.state.store.selectedUser,
-                ['hidden']: this.state.store.displaySettings
-            }
-        );
+
         return (
             <div id="message-bar" className={className}>
                 <div id="message-pane">
