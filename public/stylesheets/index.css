@@ -342,9 +342,17 @@ input.search-query {
 #message-roll {
     position: absolute;
     bottom: 70px;
-    height: calc(100% - 70px);
     width: calc(100% - 25px);
     padding-right: 25px;
+}
+
+#message-roll.nano {
+    height: calc(100% - 70px);
+}
+
+#message-roll-parent {
+    position: absolute;
+    bottom: 70px;
 }
 
 #message-pane li .info .user {

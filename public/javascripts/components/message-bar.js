@@ -29,9 +29,17 @@ var MessageBar = React.createClass({
                     input.focus();
             }
 
-
-            roll.nanoScroller();
-            roll.nanoScroller({scroll: "bottom"});
+            var contentHeight = 0;
+            $(".nano-content").children().each(function(){
+                contentHeight = contentHeight + $(this).outerHeight(true);
+            });
+            if (contentHeight < $(".nano-content").height()) {
+                $(".nano-content").removeClass("nano-content");
+                $(".nano").removeClass("nano");
+            } else {
+                roll.nanoScroller();
+                roll.nanoScroller({scroll: "bottom"});
+            }
         }
     },
 
