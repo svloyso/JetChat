@@ -29,13 +29,17 @@ var MessageBar = React.createClass({
             }
 
             var contentHeight = 0;
-            $(".nano-content").children().each(function(){
+            $("#message-roll-content").children().each(function(){
                 contentHeight = contentHeight + $(this).outerHeight(true);
             });
-            if (contentHeight < $(".nano-content").height()) {
-                $(".nano-content").removeClass("nano-content");
-                $(".nano").removeClass("nano");
+            if (contentHeight < $("#message-roll-content").height()) {
+                $("#message-roll-content").removeClass("nano-content");
+                $("#message-roll").removeClass("nano");
+                roll.nanoScroller({destroy: true});
+                $("#message-roll")[0].style.height = null
             } else {
+                $("#message-roll-content").addClass("nano-content");
+                $("#message-roll").addClass("nano");
                 roll.nanoScroller();
                 roll.nanoScroller({scroll: "bottom"});
             }
@@ -209,7 +213,7 @@ var MessageBar = React.createClass({
             <div id="message-bar" className={className}>
                 <div id="message-pane">
                     <div id="message-roll" className="nano" ref="messageRoll">
-                        <div className="nano-content">
+                        <div id="message-roll-content" className="nano-content">
                             {messageItems}
                         </div>
                     </div>
