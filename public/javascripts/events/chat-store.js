@@ -294,10 +294,7 @@ var ChatStore = Reflux.createStore({
 
     updateMessages: function () {
         var self = this;
-        this.state.messages = undefined;
-        this.state.integrationMessages = undefined;
         this.beginStateTx();
-
         if (this.state.selectedTopic) {
             $.ajax({
                 context: this,
@@ -306,6 +303,7 @@ var ChatStore = Reflux.createStore({
                 success: function (messages) {
                     var state = self._copy(self.state);
                     state.messages = messages;
+                    state.integrationMessages = undefined;
                     self.commitStateTx(state);
                 },
                 fail: function (e) {
@@ -319,6 +317,7 @@ var ChatStore = Reflux.createStore({
                 url: this.integrationTopicURL(),
                 success: function (messages) {
                     var state = self._copy(self.state);
+                    state.messages = undefined;
                     state.integrationMessages = messages;
                     self.commitStateTx(state);
                 },
@@ -376,9 +375,6 @@ var ChatStore = Reflux.createStore({
             history.selectedUserTopic = userTopic;
         }
 
-        this.state.messages = undefined;
-        this.state.integrationMessages = undefined;
-
         this.state.selectedUserTopic = userTopic;
         this.commitStateTx();
         $.ajax({
@@ -388,6 +384,7 @@ var ChatStore = Reflux.createStore({
             success: function (messages) {
                 var state = self._copy(self.state);
                 state.messages = messages;
+                state.integrationMessages = undefined;
                 self.commitStateTx(state);
             },
             fail: function (e) {
@@ -422,8 +419,6 @@ var ChatStore = Reflux.createStore({
             this.updateGroups();
         }
         this.nullifyExcept();
-        this.state.messages = undefined;
-        this.state.integrationMessages = undefined;
         this.state.selectedUser = user;
         this.commitStateTx();
         $.ajax({
@@ -433,6 +428,7 @@ var ChatStore = Reflux.createStore({
             success: function (messages) {
                 var state = self._copy(self.state);
                 state.messages = messages;
+                state.integrationMessages = undefined;
                 self.commitStateTx(state);
             },
             fail: function (e) {

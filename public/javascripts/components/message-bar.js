@@ -8,7 +8,6 @@ import ChatActions from '../events/chat-actions';
 import ChatStore from '../events/chat-store';
 import IntegrationMessageItem from './integration-message-item';
 import MessageItem from './message-item';
-import Loader from './loader'
 import {deepEqual} from '../events/chat-store-utils';
 
 var $ = require('jquery');
@@ -44,9 +43,7 @@ var MessageBar = React.createClass({
     },
 
     componentWillUnmount: function () {
-        var roll = $("#message-roll");
-        if (roll)
-            roll.nanoScroller({destroy: true});
+        $("#message-roll").nanoScroller({destroy: true});
     },
 
     onInputKeyPress: function (event) {
@@ -161,17 +158,6 @@ var MessageBar = React.createClass({
         var topic = self.state.store.selectedUser === undefined;
         var sameUser = false;
         var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
-
-        var className = classNames({
-                ['wide']: this.state.store.selectedUser,
-                ['narrow']: !this.state.store.selectedUser,
-                ['hidden']: this.state.store.displaySettings
-            }
-        );
-
-        if (!messages)
-            return (<Loader id="message-bar" className={className} />);
-
         var messageItems = messages.map(function (message, index) {
             var user = message.user ? message.user : message.integrationUser;
             if (index == 0) {
@@ -213,7 +199,12 @@ var MessageBar = React.createClass({
                 </li>
             </div>
         }
-
+        var className = classNames({
+                ['wide']: this.state.store.selectedUser,
+                ['narrow']: !this.state.store.selectedUser,
+                ['hidden']: this.state.store.displaySettings
+            }
+        );
         return (
             <div id="message-bar" className={className}>
                 <div id="message-pane">
