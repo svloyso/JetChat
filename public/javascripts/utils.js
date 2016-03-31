@@ -13,9 +13,8 @@ window.setInterval(function () {
         $(_a).removeClass("imagify");
         var img = $("<img>");
         img.load(function () {
-            img.hide();
             $(_a).replaceWith($("<a target='_blank'>").append($(img)).attr("href", _a.href));
-            $("#message-roll").scrollTop($("#message-roll").scrollTop() + Math.min(128, img[0].height));
+            $("#message-roll").nanoScroller({scrollTop: $("#message-roll")[0].nanoscroller.contentScrollTop + Math.min(128, img[0].height)})
         }).error(function () {
             if (window.process) {
                 var shell = window.require('remote').shell;
