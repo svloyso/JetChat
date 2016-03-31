@@ -32,7 +32,7 @@ var MessageBar = React.createClass({
             $("#message-roll-content").children().each(function(){
                 contentHeight = contentHeight + $(this).outerHeight(true);
             });
-            if (contentHeight < $("#message-roll-content").height()) {
+            if (contentHeight < $("#message-pane").height() - 70) {
                 $("#message-roll-content").removeClass("nano-content");
                 $("#message-roll").removeClass("nano");
                 roll.nanoScroller({destroy: true});
