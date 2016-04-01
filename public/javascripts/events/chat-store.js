@@ -206,7 +206,7 @@ var ChatStore = Reflux.createStore({
         return (this.state.query && this.state.query !== "" ? "&" : "?") + "length=25" + (this.state.messagesOffset ? "&offset=" + this.state.messagesOffset : "");
     },
 
-    messagesURL: function () {
+    topicMessagesURL: function () {
         this.beginStateTx();
         return "/json/user/" + _global.user.id + "/messages/" + this.state.selectedTopic.id + this.formQueryRequest("?") + this.offsetAndLengthParams();
     },
@@ -221,7 +221,7 @@ var ChatStore = Reflux.createStore({
         return "/json/user/" + _global.user.id + "/direct/" + this.state.selectedUser.id +  this.formQueryRequest("?") + this.offsetAndLengthParams();
     },
 
-    integrationTopicURL: function () {
+    integrationTopicMessagesURL: function () {
         this.beginStateTx();
         var integrationTopicId = this.state.selectedIntegrationTopic.integrationTopicId
             ? this.state.selectedIntegrationTopic.integrationTopicId
@@ -305,15 +305,15 @@ var ChatStore = Reflux.createStore({
     updateMessages: function () {
         var self = this;
         this.beginStateTx();
+        self.state.messagesOffset = 0;
         if (this.state.selectedTopic) {
             $.ajax({
                 context: this,
                 type: "GET",
-                url: this.messagesURL(),
+                url: this.topicMessagesURL(),
                 success: function (messages) {
                     var state = self._copy(self.state);
                     state.messages = messages;
-                    state.messagesOffset = 0;
                     state.integrationMessages = undefined;
                     self.commitStateTx(state);
                 },
@@ -325,11 +325,10 @@ var ChatStore = Reflux.createStore({
             $.ajax({
                 context: this,
                 type: "GET",
-                url: this.integrationTopicURL(),
+                url: this.integrationTopicMessagesURL(),
                 success: function (messages) {
                     var state = self._copy(self.state);
                     state.messages = undefined;
-                    state.messagesOffset = 0;
                     state.integrationMessages = messages;
                     self.commitStateTx(state);
                 },
@@ -351,8 +350,55 @@ var ChatStore = Reflux.createStore({
     },
 
     onLoadNextPage: function () {
-        var self = this;
-        this.beginStateTx();
+        if (!window._minChatMessageId) {
+            window._minChatMessageId = {};
+        }
+        if (!this.state.displaySettings && !window._loadNextPageIsInProgress){
+            var self = this;
+            var url;
+            var chatId;
+            if (this.state.selectedUserTopic) {
+                url = this.userTopicMessagesURL();
+                chatId = this.state.selectedUserTopic.id;
+            } else if (this.state.selectedUser) {
+                url = this.userMessagesURL();
+                chatId = this.state.selectedUser.id;
+            } else if (this.state.selectedTopic) {
+                url = this.topicMessagesURL();
+                chatId = this.state.selectedTopic.id;
+            } else {
+                console.error("Illegal state");
+            }
+            if (!window._minChatMessageId.hasOwnProperty(chatId)
+                || self.state.messages.length == 0 || self.state.messages[0].id > window._minChatMessageId[chatId]) {
+                self.beginStateTx();
+                self.state.messagesOffset += 25;
+                window._loadNextPageIsInProgress = true;
+                $.ajax({
+                    context: self,
+                    type: "GET",
+                    url: url,
+                    success: function (messages) {
+                        if (messages.length > 0 && (self.state.messages.length == 0 || messages.length != 1 || self.state.messages[0].id != messages[0].id)) {
+                            var state = self._copy(self.state);
+                            state.messages = messages.concat(state.messages);
+                            var roll = $("#message-roll");
+                            window._oldScrollTop = roll[0].nanoscroller.content.scrollTop;
+                            window._oldScrollHeight = roll[0].nanoscroller.content.scrollHeight;
+                            self.commitStateTx(state);
+                        } else {
+                            if (self.state.messages.length > 0) {
+                                window._minChatMessageId[chatId] = self.state.messages[0].id;
+                            }
+                        }
+                        window._loadNextPageIsInProgress = false;
+                    },
+                    fail: function (e) {
+                        console.error(e);
+                    }
+                })
+            }
+        }
     },
 
     filterUsers: function () {
@@ -395,6 +441,7 @@ var ChatStore = Reflux.createStore({
         }
 
         this.state.selectedUserTopic = userTopic;
+        this.state.messagesOffset = 0;
         this.commitStateTx();
         $.ajax({
             context: this,
@@ -403,7 +450,6 @@ var ChatStore = Reflux.createStore({
             success: function (messages) {
                 var state = self._copy(self.state);
                 state.messages = messages;
-                state.messagesOffset = 0;
                 state.integrationMessages = undefined;
                 self.commitStateTx(state);
             },
@@ -440,6 +486,7 @@ var ChatStore = Reflux.createStore({
         }
         this.nullifyExcept();
         this.state.selectedUser = user;
+        this.state.messagesOffset = 0;
         this.commitStateTx();
         $.ajax({
             context: this,
@@ -448,7 +495,6 @@ var ChatStore = Reflux.createStore({
             success: function (messages) {
                 var state = self._copy(self.state);
                 state.messages = messages;
-                state.messagesOffset = 0;
                 state.integrationMessages = undefined;
                 self.commitStateTx(state);
             },

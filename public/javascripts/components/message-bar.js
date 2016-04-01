@@ -42,12 +42,22 @@ var MessageBar = React.createClass({
                 $("#message-roll-content").addClass("nano-content");
                 $("#message-roll").addClass("nano");
                 roll.nanoScroller();
-                roll.nanoScroller({scroll: "bottom"});
-                roll.unbind("update").bind("update", function(event, values){
-                    if (values.direction === "up" && values.position < 200) {
-                        ChatActions.loadNextPage();
-                    }
-                });
+                if (window._oldScrollHeight && window._oldScrollTop) {
+                    var newScrollTop = roll[0].nanoscroller.content.scrollHeight - window._oldScrollHeight + window._oldScrollTop;
+                    roll.nanoScroller({scrollTop: newScrollTop});
+                    delete window._oldScrollHeight;
+                    delete window._oldScrollTop;
+                } else {
+                    roll.nanoScroller({scroll: "bottom"});
+                }
+                roll.unbind("update");
+                if (this.state.store.messages) {
+                    roll.bind("update", function(event, values){
+                        if (values.direction === "up" && values.position < 200) {
+                            ChatActions.loadNextPage();
+                        }
+                    });
+                }
             }
         }
     },
