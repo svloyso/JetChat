@@ -35,13 +35,19 @@ var MessageBar = React.createClass({
             if (contentHeight < $("#message-pane").height() - 70) {
                 $("#message-roll-content").removeClass("nano-content");
                 $("#message-roll").removeClass("nano");
-                roll.nanoScroller({destroy: true});
+                if (roll[0].nanoscroller && roll[0].nanoscroller.content)
+                    roll.nanoScroller({destroy: true});
                 $("#message-roll")[0].style.height = null
             } else {
                 $("#message-roll-content").addClass("nano-content");
                 $("#message-roll").addClass("nano");
                 roll.nanoScroller();
                 roll.nanoScroller({scroll: "bottom"});
+                roll.unbind("update").bind("update", function(event, values){
+                    if (values.direction === "up" && values.position < 200) {
+                        ChatActions.loadNextPage();
+                    }
+                });
             }
         }
     },
@@ -159,7 +165,8 @@ var MessageBar = React.createClass({
     render: function () {
         var self = this;
         var userId;
-        var topic = self.state.store.selectedUser === undefined;
+        var topic = self.state.store.selectedUser === undefined && self.state.store.selectedUserTopic === undefined &&
+            self.state.store.messages.length > 0 && !self.state.store.messages[0].topicId;
         var sameUser = false;
         var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
         var messageItems = messages.map(function (message, index) {

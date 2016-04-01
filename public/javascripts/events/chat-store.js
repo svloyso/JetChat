@@ -191,11 +191,6 @@ var ChatStore = Reflux.createStore({
         return this.state.query && this.state.query !== "" ? prefix + "query=" + this.state.query : "";
     },
 
-    messagesURL: function () {
-        this.beginStateTx();
-        return "/json/user/" + _global.user.id + "/messages/" + this.state.selectedTopic.id + this.formQueryRequest("?");
-    },
-
     topicsURL: function () {
         this.beginStateTx();
         return "/json/user/" + _global.user.id + "/topics" +
@@ -206,9 +201,24 @@ var ChatStore = Reflux.createStore({
         return "/json/user/" + _global.user.id + "/groups" + this.formQueryRequest("?");
     },
 
-    userTopicURL: function () {
+    offsetAndLengthParams: function() {
         this.beginStateTx();
-        return "/json/user/" + _global.user.id + "/direct/" + this.state.selectedUserTopic.id + this.formQueryRequest("?");
+        return (this.state.query && this.state.query !== "" ? "&" : "?") + "length=25" + (this.state.messagesOffset ? "&offset=" + this.state.messagesOffset : "");
+    },
+
+    messagesURL: function () {
+        this.beginStateTx();
+        return "/json/user/" + _global.user.id + "/messages/" + this.state.selectedTopic.id + this.formQueryRequest("?") + this.offsetAndLengthParams();
+    },
+
+    userTopicMessagesURL: function () {
+        this.beginStateTx();
+        return "/json/user/" + _global.user.id + "/direct/" + this.state.selectedUserTopic.id + this.formQueryRequest("?") + this.offsetAndLengthParams();
+    },
+
+    userMessagesURL: function () {
+        this.beginStateTx();
+        return "/json/user/" + _global.user.id + "/direct/" + this.state.selectedUser.id +  this.formQueryRequest("?") + this.offsetAndLengthParams();
     },
 
     integrationTopicURL: function () {
@@ -303,6 +313,7 @@ var ChatStore = Reflux.createStore({
                 success: function (messages) {
                     var state = self._copy(self.state);
                     state.messages = messages;
+                    state.messagesOffset = 0;
                     state.integrationMessages = undefined;
                     self.commitStateTx(state);
                 },
@@ -318,6 +329,7 @@ var ChatStore = Reflux.createStore({
                 success: function (messages) {
                     var state = self._copy(self.state);
                     state.messages = undefined;
+                    state.messagesOffset = 0;
                     state.integrationMessages = messages;
                     self.commitStateTx(state);
                 },
@@ -328,12 +340,19 @@ var ChatStore = Reflux.createStore({
         } else if (this.state.selectedIntegration) {
             this.state.integrationMessages = [];
             this.state.messages = undefined;
+            this.state.messagesOffset = 0;
             self.commitStateTx();
         } else {
             this.state.integrationMessages = undefined;
             this.state.messages = [];
+            this.state.messagesOffset = 0;
             self.commitStateTx();
         }
+    },
+
+    onLoadNextPage: function () {
+        var self = this;
+        this.beginStateTx();
     },
 
     filterUsers: function () {
@@ -380,10 +399,11 @@ var ChatStore = Reflux.createStore({
         $.ajax({
             context: this,
             type: "GET",
-            url: this.userTopicURL(),
+            url: this.userTopicMessagesURL(),
             success: function (messages) {
                 var state = self._copy(self.state);
                 state.messages = messages;
+                state.messagesOffset = 0;
                 state.integrationMessages = undefined;
                 self.commitStateTx(state);
             },
@@ -424,10 +444,11 @@ var ChatStore = Reflux.createStore({
         $.ajax({
             context: this,
             type: "GET",
-            url: "/json/user/" + _global.user.id + "/direct/" + user.id,
+            url: self.userMessagesURL(),
             success: function (messages) {
                 var state = self._copy(self.state);
                 state.messages = messages;
+                state.messagesOffset = 0;
                 state.integrationMessages = undefined;
                 self.commitStateTx(state);
             },

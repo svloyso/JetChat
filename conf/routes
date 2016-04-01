@@ -7,14 +7,14 @@ GET         /json/user/:userId/users                                     control
 GET         /json/user/:userId/groups                                    controllers.Application.getGroups(userId: Long, query: Option[String])
 GET         /json/user/:userId/topics                                    controllers.Application.getAllTopics(userId: Long, query: Option[String])
 GET         /json/user/:userId/topics/:groupId                           controllers.Application.getGroupTopics(userId: Long, groupId: Long, query: Option[String])
-GET         /json/user/:userId/messages/:topicId                         controllers.Application.getMessages(userId: Long, topicId: Long, query: Option[String])
+GET         /json/user/:userId/messages/:topicId                         controllers.Application.getMessages(userId: Long, topicId: Long, query: Option[String], offset: Long ?= 0, length: Long ?= 25)
 
 GET         /json/user/:userId/integration/groups                        controllers.Application.getIntegrationGroups(userId: Long, query: Option[String])
 GET         /json/user/:userId/integration/topics                        controllers.Application.getAllIntegrationTopics(userId: Long, query: Option[String])
 GET         /json/user/:userId/integration/:integrationId/topics         controllers.Application.getIntegrationGroupTopics(userId: Long, integrationId:String, groupId: Option[String], query: Option[String])
 GET         /json/user/:userId/integration/:integrationId/messages       controllers.Application.getIntegrationMessages(userId: Long, integrationId: String, integrationGroupId: String, integrationTopicId: String, query: Option[String])
 
-GET         /json/user/:fromUserId/direct/:toUserId                      controllers.Application.getDirectMessages(fromUserId: Long, toUserId: Long, query: Option[String])
+GET         /json/user/:fromUserId/direct/:toUserId                      controllers.Application.getDirectMessages(fromUserId: Long, toUserId: Long, query: Option[String], offset: Long ?= 0, length: Long ?= 25)
 
 POST        /json/topic/add                                              controllers.Application.addTopic
 POST        /json/comment/add                                            controllers.Application.addComment

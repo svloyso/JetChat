@@ -300,8 +300,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
      groupId: Option[String],
      query: Option[String]) = getIntegrationTopics(userId, Some(integrationId), groupId, query)
 
-  def getMessages(userId: Long, topicId: Long, query: Option[String]) = Action.async { implicit request =>
-    topicsDAO.messages(userId, topicId, query).map { f =>
+  def getMessages(userId: Long, topicId: Long, query: Option[String], offset: Long, length: Long) = Action.async { implicit request =>
+    topicsDAO.messages(userId, topicId, query, offset, length).map { f =>
       Ok(Json.toJson(JsArray(f.map { case (message, user, group, read) =>
         val userJson = Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++
           (user.avatar match {
@@ -434,8 +434,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
-  def getDirectMessages(fromUserId: Long, toUserId: Long, query: Option[String]) = Action.async { implicit request =>
-    directMessagesDAO.messages(fromUserId, toUserId, query).map { case seq =>
+  def getDirectMessages(fromUserId: Long, toUserId: Long, query: Option[String], offset: Long, length: Long) = Action.async { implicit request =>
+    directMessagesDAO.messages(fromUserId, toUserId, query, offset, length).map { case seq =>
       Ok(Json.toJson(JsArray(seq.map { case (message, readStatus, fromUser, toUser) =>
         val fromUserJson = Seq("id" -> JsNumber(fromUser.id), "name" -> JsString(fromUser.name), "login" -> JsString(fromUser.login)) ++
           (fromUser.avatar match {

@@ -21,7 +21,8 @@ var ChatActions = Reflux.createActions([
     'disableIntegration',
     'alertQuery',
     'userOnline',
-    'userOffline'
+    'userOffline',
+    'loadNextPage'
 ]);
 
 export default ChatActions;
