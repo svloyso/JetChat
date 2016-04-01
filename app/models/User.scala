@@ -61,7 +61,7 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       val allUsers = if (!nonEmptyOnly) u.map(_ ->("", new Timestamp(0), 0, 0)).toMap else Seq().toMap
       val sqlQuery = query match {
         case None =>
-          sql"""SELECT u.id, u.login, u.name, u.avatar, ld.date, ld.text,
+          sql"""SELECT u.id, u.login, u.name, u.avatar, u.email, ld.date, ld.text,
             sum(CASE WHEN ds.direct_message_id IS NOT NULL AND d.to_user_id = $userId THEN 1 ELSE 0 END) read_count,
             sum(CASE WHEN d.to_user_id = $userId THEN 1 ELSE 0 END) count
             FROM direct_messages d
@@ -72,7 +72,7 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
             GROUP BY u.id, u.login, u.name, u.avatar, ld.date, ld.text
             ORDER BY date DESC"""
         case Some(words) =>
-          sql"""SELECT u.id, u.login, u.name, u.avatar, ld.date, ld.text,
+          sql"""SELECT u.id, u.login, u.name, u.avatar, u.email, ld.date, ld.text,
             sum(CASE WHEN ds.direct_message_id IS NOT NULL AND d.to_user_id = $userId THEN 1 ELSE 0 END) read_count,
             sum(CASE WHEN d.to_user_id = $userId THEN 1 ELSE 0 END) count
             FROM direct_messages d
@@ -87,10 +87,10 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       }
 
       db.run(
-        sqlQuery.as[(Long, String, String, Option[String], Timestamp, String, Int, Int)]
+        sqlQuery.as[(Long, String, String, Option[String], Option[String], Timestamp, String, Int, Int)]
       ).map { case results =>
-        val myMessages = results.map { case (id, login, name, avatar, updateDate, text, readCount, totalCount) =>
-          User(id, login, name, avatar, None) ->(text, updateDate, readCount, totalCount)
+        val myMessages = results.map { case (id, login, name, avatar, email, updateDate, text, readCount, totalCount) =>
+          User(id, login, name, avatar, email) ->(text, updateDate, readCount, totalCount)
         }.toMap
         (allUsers ++ myMessages).toSeq.sortBy(-_._2._2.getTime).map { case (user, (text, updateDate, readCount, totalCount)) =>
           UserChat(user, text, updateDate, totalCount - readCount)

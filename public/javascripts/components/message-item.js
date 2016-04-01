@@ -37,6 +37,7 @@ var MessageItem = React.createClass({
             </div>;
         }
         // TODO: Refactor me
+        var keyCounter = 1;
         return (
             <li className={className} data-user={self.props.message.user.id}>
                 <VisibilitySensor onChange={self.onChange} />
@@ -50,14 +51,14 @@ var MessageItem = React.createClass({
                                         var tokens = el.split("\n");
                                         return tokens.map(function(item) {
                                             return (
-                                                <div className="text">
+                                                <div className="text" key={keyCounter++}>
                                                     {item}
                                                 </div>
                                             )
                                         })
                                     } else {
                                         return (
-                                            <div className="text">
+                                            <div className="text" key={keyCounter++}>
                                                 {el}
                                             </div>
                                         );
@@ -65,7 +66,7 @@ var MessageItem = React.createClass({
                                 });
                         } else {
                             if ((typeof el !== "string") || el.trim().length) return (
-                                <div className="text">
+                                <div className="text" key={keyCounter++}>
                                     {el}
                                 </div>
                             ); else return null;

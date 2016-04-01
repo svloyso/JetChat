@@ -78,8 +78,18 @@ var ChatStore = Reflux.createStore({
 
     beginStateTx: function () {
         if (!this.tx) {
+            this.previousState = this.state;
             this.state = this._copy(this.state);
             this.tx = true;
+        }
+    },
+
+    rollbackStateTx: function () {
+        if (this.tx) {
+            delete this.tx;
+        }
+        if (this.previousState) {
+            this.state = this.previousState;
         }
     },
 
@@ -355,6 +365,8 @@ var ChatStore = Reflux.createStore({
         }
         if (!this.state.displaySettings && !window._loadNextPageIsInProgress){
             var self = this;
+            self.beginStateTx();
+            self.state.messagesOffset += 25;
             var url;
             var chatId;
             if (this.state.selectedUserTopic) {
@@ -371,8 +383,6 @@ var ChatStore = Reflux.createStore({
             }
             if (!window._minChatMessageId.hasOwnProperty(chatId)
                 || self.state.messages.length == 0 || self.state.messages[0].id > window._minChatMessageId[chatId]) {
-                self.beginStateTx();
-                self.state.messagesOffset += 25;
                 window._loadNextPageIsInProgress = true;
                 $.ajax({
                     context: self,
@@ -397,6 +407,8 @@ var ChatStore = Reflux.createStore({
                         console.error(e);
                     }
                 })
+            } else {
+                self.rollbackStateTx();
             }
         }
     },
