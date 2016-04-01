@@ -42,7 +42,7 @@ var MessageBar = React.createClass({
                 $("#message-roll-content").addClass("nano-content");
                 $("#message-roll").addClass("nano");
                 roll.nanoScroller();
-                if (window._oldScrollHeight && window._oldScrollTop) {
+                if (window._oldScrollHeight !== undefined && window._oldScrollTop !== undefined) {
                     var newScrollTop = roll[0].nanoscroller.content.scrollHeight - window._oldScrollHeight + window._oldScrollTop;
                     roll.nanoScroller({scrollTop: newScrollTop});
                     delete window._oldScrollHeight;
