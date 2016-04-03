@@ -176,7 +176,8 @@ var MessageBar = React.createClass({
         var self = this;
         var userId;
         var topic = self.state.store.selectedUser === undefined && self.state.store.selectedUserTopic === undefined &&
-            self.state.store.messages.length > 0 && !self.state.store.messages[0].topicId;
+            (self.state.store.messages && self.state.store.messages.length > 0 && !self.state.store.messages[0].topicId ||
+            self.state.store.integrationMessages && self.state.store.integrationMessages.length > 0);
         var sameUser = false;
         var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
         var messageItems = messages.map(function (message, index) {
