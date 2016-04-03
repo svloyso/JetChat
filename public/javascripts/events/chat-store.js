@@ -494,6 +494,7 @@ var ChatStore = Reflux.createStore({
         var self = this;
         if (this.state.query) {
             this.state.query = undefined;
+            this.state.lastFocused = undefined;
             this.filterUsers();
             this.updateGroups();
         }
@@ -851,6 +852,9 @@ var ChatStore = Reflux.createStore({
 
     onAlertQuery: function(newQuery) {
         this.beginStateTx();
+        if (!newQuery)
+            this.state.lastFocused = undefined;
+
         if (this.state.query !== newQuery) {
             this.state.query = newQuery;
             this.filterUsers();
