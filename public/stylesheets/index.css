@@ -104,6 +104,7 @@ input, textarea, #settings-dropdown:focus {
 
 #topic-pane {
     padding: 0;
+    margin-bottom: 0;
     overflow: scroll;
 }
 
