@@ -22,10 +22,9 @@ var MessageBar = React.createClass({
     componentDidUpdate: function () {
         var roll = $("#message-roll");
         if (roll) {
-            if (!this.state.store.query || this.state.store.query.length === 0) {
-                var input = $("#input");
-                if (input)
-                    input.focus();
+            if (!this.state.store.lastFocused || this.state.store.lastFocused === "input") {
+                var input = $("#input").focus();
+                this.state.store.lastFocused = "input";
             }
 
             var contentHeight = 0;
@@ -68,6 +67,7 @@ var MessageBar = React.createClass({
 
     onInputKeyPress: function (event) {
         var self = this;
+        this.state.store.lastFocused = "messages";
         var input = ReactDOM.findDOMNode(self.refs.input);
         if (event.which == 13 && input.value.trim() && !event.shiftKey) {
             var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;

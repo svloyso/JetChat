@@ -3,6 +3,7 @@ import Reflux from 'reflux';
 import ReactDOM from 'react-dom';
 import ChatStore from '../events/chat-store';
 import ChatActions from '../events/chat-actions';
+var $ = require('jquery');
 
 var SearchPane = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
@@ -10,6 +11,12 @@ var SearchPane = React.createClass({
     componentWillUpdate: function () {
         if (!this.state.store.query && this.state.value)
             this.state.value = '';
+    },
+
+    componentDidUpdate: function () {
+        if (this.state.store.lastFocused === "search") {
+            var input = $("#search").focus();
+        }
     },
 
     getInitialState: function() {
@@ -25,6 +32,7 @@ var SearchPane = React.createClass({
 
     onChange: function (event) {
         var self = this;
+        this.state.store.lastFocused = "search";
         this.setState({value: event.target.value});
         if (this.state.timeoutRef) clearTimeout(this.state.timeoutRef);
         this.state.timeoutRef = setTimeout(
