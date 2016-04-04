@@ -22,11 +22,6 @@ var MessageBar = React.createClass({
     componentDidUpdate: function () {
         var roll = $("#message-roll");
         if (roll) {
-            if (!this.state.store.lastFocused || this.state.store.lastFocused === "input") {
-                var input = $("#input").focus();
-                this.state.store.lastFocused = "input";
-            }
-
             var contentHeight = 0;
             $("#message-roll-content").children().each(function(){
                 contentHeight = contentHeight + $(this).outerHeight(true);
