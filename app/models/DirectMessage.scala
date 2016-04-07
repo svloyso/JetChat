@@ -75,13 +75,26 @@ class DirectMessagesDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     )
   }
 
-  def messages(fromUserId: Long, toUserId: Long): Future[Seq[(DirectMessage, Boolean, User, User)]] = {
+  def messages(fromUserId: Long, toUserId: Long, query: Option[String], offset: Long, length: Long): Future[Seq[(DirectMessage, Boolean, User, User)]] = {
     // TODO: Change to Seq[DirectMessage]
+    val messages = query match {
+      case None => allDirectMessages
+      case Some(words) => allDirectMessages.filter(_.text.indexOf(words) >= 0)
+    }
+
     db.run((for {
-      (((m, status), fromUser), toUser) <- allDirectMessages.filter(m =>
+      (((m, status), fromUser), toUser) <- messages.filter(m =>
         (m.fromUserId === fromUserId && m.toUserId === toUserId) ||
           (m.fromUserId === toUserId && m.toUserId === fromUserId)) joinLeft allDirectMessageReadStatuses on { case (message, status) => message.id === status.directMessageId } join allUsers on { case ((m, status), fromUser) => m.fromUserId === fromUser.id } join allUsers on { case (((m, status), fromUser), toUser) => m.toUserId === toUser.id }
-    } yield (m, status.map(_.directMessageId).isDefined, fromUser, toUser)).sortBy(_._1.date).result)
+    } yield (m, status.map(_.directMessageId).isDefined, fromUser, toUser)).sortBy(_._1.date desc).drop(offset).take(length).result).map(_.sortBy(_._1.date.getTime))
+  }
+
+  def getUnreadMessages(userId: Long, since: Timestamp, to: Timestamp): Future[Seq[(User, DirectMessage)]] = {
+    db.run(
+      (for {
+        ((m, s), u) <- allDirectMessages joinLeft allDirectMessageReadStatuses on { case (m, s) => m.id === s.directMessageId } join allUsers on { case ((m, s), u) => m.fromUserId === u.id } filter { case ((m, s), u) => m.toUserId === userId && m.date >= since && m.date < to && s.map(_.directMessageId).isEmpty }
+      } yield (u, m)).result
+    )
   }
 
   def markAsRead(directMessageIds: Seq[Long]): Future[Option[Int]] = {

@@ -35,8 +35,7 @@ var GroupPane = React.createClass({
             return (
                 <li data-group={group.id} className={groupClass}
                     onClick={self.onGroupClick.bind(self, group)} key={group.id}>
-                    <span className="group-header">#</span>
-                    <span>{group.name}</span>
+                    <span className="group-header">#</span> <span>{group.name}</span>
                 </li>
             );
         });
@@ -44,13 +43,14 @@ var GroupPane = React.createClass({
         var userItems = self.state.store.users.map(function (user) {
             var userClass = classNames({
                     ['selected']: self.state.store.selectedUser && self.state.store.selectedUser.id == user.id,
-                    ['unread']: user.unreadCount > 0
+                    ['unread']: user.unreadCount > 0,
+                    ['online']: user.online
                 }
             );
             return (
                 <li data-user={user.id} className={userClass}
                     onClick={self.onUserClick.bind(self, user)} key={user.id}>
-                    <span>{user.name}</span>
+                    <span className="user-header"></span> <span>{user.name}</span>
                 </li>
             );
         });

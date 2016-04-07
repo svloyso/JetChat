@@ -8,6 +8,8 @@ import TopicBar from './components/topic-bar';
 import MessageBar from './components/message-bar';
 import utils from './utils';
 
+var $ = require('jquery');
+
 var App = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
@@ -21,6 +23,10 @@ var App = React.createClass({
                     ChatActions.newMessage(data);
                 } else if (data.newGroup) {
                     ChatActions.newGroup(data.newGroup);
+                } else if (data.userOffline) {
+                    ChatActions.userOffline(data.userOffline);
+                } else if (data.userOnline) {
+                    ChatActions.userOnline(data.userOnline);
                 } else if (data.newUser) {
                     // TODO newUser
                     ChatActions.newUser(data.newUser);
@@ -65,6 +71,11 @@ var App = React.createClass({
             var unreadUserCount = this.state.store.users.length > 0 ? this.state.store.users.map(u => u.unreadCount).reduce((a, b) => a + b) : 0;
             var unreadCount = unreadGroupCount + unreadUserCount;
             app.dock.setBadge(unreadCount ? unreadCount.toString() : "");
+        }
+
+        if (!this.state.store.lastFocused || this.state.store.lastFocused === "input") {
+            var input = $("#input").focus();
+            this.state.store.lastFocused = "input";
         }
 
         return (

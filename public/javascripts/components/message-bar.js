@@ -1,28 +1,68 @@
+import classNames from 'classnames';
+import nanoScroller from 'nanoscroller';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Reflux from 'reflux';
-import MessageItem from './message-item';
-import IntegrationMessageItem from './integration-message-item';
-import ChatStore from '../events/chat-store';
+
 import ChatActions from '../events/chat-actions';
-import classNames from 'classnames';
+import ChatStore from '../events/chat-store';
+import IntegrationMessageItem from './integration-message-item';
+import MessageItem from './message-item';
+import {deepEqual} from '../events/chat-store-utils';
+
 var $ = require('jquery');
 
 var MessageBar = React.createClass({
     mixins: [Reflux.connect(ChatStore, 'store')],
 
+    shouldComponentUpdate: function(nextProps, nextState) {
+        return !deepEqual(this.state.store, nextState.store, ["selectedUser.id", "displaySettings", "query", "selectedIntegrationTopic.id", "selectedUserTopic.id", "selectedTopic.id", "messages.id", "integrationMessages.id"]);
+    },
+
     componentDidUpdate: function () {
-        var self = this;
-        var messageRoll = $(ReactDOM.findDOMNode(self.refs.messageRoll));
-        messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        ReactDOM.findDOMNode(self.refs.input).focus();
-        window.setTimeout(function () {
-            messageRoll.scrollTop(messageRoll[0].scrollHeight);
-        }, 0);
+        var roll = $("#message-roll");
+        if (roll) {
+            var contentHeight = 0;
+            $("#message-roll-content").children().each(function(){
+                contentHeight = contentHeight + $(this).outerHeight(true);
+            });
+            if (contentHeight < $("#message-pane").height() - 70) {
+                $("#message-roll-content").removeClass("nano-content");
+                $("#message-roll").removeClass("nano");
+                if (roll[0].nanoscroller && roll[0].nanoscroller.content)
+                    roll.nanoScroller({destroy: true});
+                $("#message-roll")[0].style.height = null
+            } else {
+                $("#message-roll-content").addClass("nano-content");
+                $("#message-roll").addClass("nano");
+                roll.nanoScroller();
+                if (window._oldScrollHeight !== undefined && window._oldScrollTop !== undefined) {
+                    var newScrollTop = roll[0].nanoscroller.content.scrollHeight - window._oldScrollHeight + window._oldScrollTop;
+                    roll.nanoScroller({scrollTop: newScrollTop});
+                    delete window._oldScrollHeight;
+                    delete window._oldScrollTop;
+                } else {
+                    roll.nanoScroller({scroll: "bottom"});
+                }
+                roll.unbind("update");
+                if (this.state.store.messages) {
+                    roll.bind("update", function(event, values){
+                        if (values.direction === "up" && values.position < 200) {
+                            ChatActions.loadNextPage();
+                        }
+                    });
+                }
+            }
+        }
+    },
+
+    componentWillUnmount: function () {
+        $("#message-roll").nanoScroller({destroy: true});
     },
 
     onInputKeyPress: function (event) {
         var self = this;
+        this.state.store.lastFocused = "messages";
         var input = ReactDOM.findDOMNode(self.refs.input);
         if (event.which == 13 && input.value.trim() && !event.shiftKey) {
             var selectedUser = self.state.store.selectedUser ? self.state.store.selectedUser : self.state.store.selectedUserTopic;
@@ -96,7 +136,7 @@ var MessageBar = React.createClass({
                 if (self.state.store.selectedIntegrationTopic) {
                     newIntegrationMessage.integrationTopicId = self.state.store.selectedIntegrationTopic.integrationTopicId ?
                         self.state.store.selectedIntegrationTopic.integrationTopicId :
-                        self.state.store.selectedIntegrationTopic
+                        self.state.store.selectedIntegrationTopic.id
                 }
 
                 //todo: add new topic case
@@ -110,9 +150,12 @@ var MessageBar = React.createClass({
                     url: url,
                     data: JSON.stringify(newIntegrationMessage),
                     contentType: "application/json",
-                    success: function (id) {
-                        // TODO: Send full object from server
-                        //todo: update integration messages, onNewIntegrationMessage
+                    success: function (m) {
+                        if (m.integrationTopicId) {
+                            ChatActions.newIntegrationMessage(m);
+                        } else {
+                            //todo: onNewIntegrationTopic
+                        }
                     },
                     fail: function (e) {
                         console.error(e);
@@ -127,7 +170,9 @@ var MessageBar = React.createClass({
     render: function () {
         var self = this;
         var userId;
-        var topic = self.state.store.selectedUser === undefined;
+        var topic = self.state.store.selectedUser === undefined && self.state.store.selectedUserTopic === undefined &&
+            (self.state.store.messages && self.state.store.messages.length > 0 && !self.state.store.messages[0].topicId ||
+            self.state.store.integrationMessages && self.state.store.integrationMessages.length > 0);
         var sameUser = false;
         var messages = self.state.store.messages ? self.state.store.messages : self.state.store.integrationMessages;
         var messageItems = messages.map(function (message, index) {
@@ -180,8 +225,10 @@ var MessageBar = React.createClass({
         return (
             <div id="message-bar" className={className}>
                 <div id="message-pane">
-                    <div id="message-roll" ref="messageRoll">
-                        {messageItems}
+                    <div id="message-roll" className="nano" ref="messageRoll">
+                        <div id="message-roll-content" className="nano-content">
+                            {messageItems}
+                        </div>
                     </div>
                     {userHeader}
                 </div>

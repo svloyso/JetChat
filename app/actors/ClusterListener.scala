@@ -2,22 +2,22 @@ package actors
 
 import java.net.URI
 
-import akka.actor.{AddressFromURIString, Actor, ActorLogging}
+import akka.actor.{Actor, ActorLogging, AddressFromURIString}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.cluster.pubsub.{DistributedPubSub, DistributedPubSubMediator}
 import mousio.etcd4j.EtcdClient
 import mousio.etcd4j.responses.EtcdException
-import play.api.Play.current
+import play.api.Application
 import play.twirl.api.TemplateMagic.javaCollectionToScala
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
-class ClusterListener extends Actor with ActorLogging {
-  lazy val NODES_DISCOVER_INTERVAL = current.configuration.getLong("cluster.seed-nodes.discover-interval").getOrElse(System.getProperty("cluster.seed-nodes.discover-interval", "6000").toLong)
-  lazy val NODES_TTL = current.configuration.getLong("cluster.seed-nodes.ttl").getOrElse(System.getProperty("cluster.seed-nodes.ttl", "12000").toLong)
-  lazy val MASTER_TTL = current.configuration.getLong("cluster.seed-nodes.master-ttl").getOrElse(System.getProperty("cluster.seed-nodes.master-ttl", "24000").toLong)
+class ClusterListener(application: Application) extends Actor with ActorLogging {
+  val NODES_DISCOVER_INTERVAL = application.configuration.getLong("cluster.seed-nodes.discover-interval").getOrElse(System.getProperty("cluster.seed-nodes.discover-interval", "6000").toLong)
+  val NODES_TTL = application.configuration.getLong("cluster.seed-nodes.ttl").getOrElse(System.getProperty("cluster.seed-nodes.ttl", "12000").toLong)
+  val MASTER_TTL = application.configuration.getLong("cluster.seed-nodes.master-ttl").getOrElse(System.getProperty("cluster.seed-nodes.master-ttl", "24000").toLong)
 
   import DistributedPubSubMediator.Subscribe
 

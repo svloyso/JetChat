@@ -84,7 +84,8 @@ class Auth @Inject()(val system: ActorSystem,
     // TODO: Chain futures
     usersDAO.findByLogin(hubUser.getLogin).map {
       case None =>
-        usersDAO.insert(User(login = hubUser.getLogin, name = hubUser.getName, avatar = Option(hubUser.getAvatar.getUrl))) onSuccess { case id =>
+        usersDAO.insert(User(login = hubUser.getLogin, name = hubUser.getName,
+          avatar = Option(hubUser.getAvatar.getUrl), email = None)) onSuccess { case id =>
           usersDAO.findByLogin(hubUser.getLogin).onSuccess { case Some(u) =>
             mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(u.id), "name" -> JsString(u.name), "login" -> JsString(u.login)) ++ (u.avatar match {
               case Some(value) => Seq("avatar" -> JsString(value))

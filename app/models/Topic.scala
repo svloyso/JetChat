@@ -144,7 +144,7 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
        sql.as[(Long, String, Timestamp, Long, String, Option[String], Long, String, Option[Timestamp], Boolean, Int, Int)]
      ).map { case results =>
        results.map { case (topicId, topicText, topicDate, uId, userName, userAvatar, gId, groupName, updateDate, topicRead, readCount, totalCount) =>
-         TopicChat(Topic(topicId, gId, uId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName, userAvatar), updateDate.getOrElse(topicDate), !topicRead, totalCount - readCount)
+         TopicChat(Topic(topicId, gId, uId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName, userAvatar, None), updateDate.getOrElse(topicDate), !topicRead, totalCount - readCount)
        }.sortBy(-_.updateDate.getTime)
      }
    }
@@ -199,36 +199,39 @@ class TopicsDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
           val total = (userTopics ++ commentedTopics).toSeq.sortBy(-_._2._1.getTime)
 
           total.map { case ((topicId, topicDate, topicText, gId, groupName, uId, userName), (updateDate, readStatus, readCount, totalCount)) =>
-            TopicChat(Topic(topicId, gId, userId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName,  null), updateDate, !readStatus, totalCount - readCount)
+            TopicChat(Topic(topicId, gId, userId, topicDate, topicText), Group(gId, groupName), User(uId, null, userName,  null, None), updateDate, !readStatus, totalCount - readCount)
           }
         }
       }
     }
 
-  def messages(userId: Long, topicId: Long, query: Option[String]): Future[Seq[(AbstractMessage, User, Group, Boolean)]] = {
-    val topics = topicsByQuery(query, commentsByQueryAndTopicId(_, _).exists)
+  def messages(userId: Long, topicId: Long, query: Option[String], offset: Long, length: Long): Future[Seq[(AbstractMessage, User, Group, Boolean)]] = {
     val comments = commentsByQuery(query)
-
     db.run(
-      (topics.filter(_.id === topicId)
-      join allUsers on { case (topic, user) => topic.userId === user.id }
-      join allGroups on { case ((topic, user), group) => topic.groupId === group.id }
-      joinLeft allTopicReadStatuses on { case (((topic, user), group), status) => topic.id === status.topicId && status.userId === userId })
-      .map { case (((topic, user), group), status) =>
-        (topic, user, group, status.map(_.topicId).isDefined)
-      }.result.head
-    ).flatMap { case t =>
-      db.run((comments.filter(comment => comment.topicId === topicId)
+      (comments.filter(comment => comment.topicId === topicId)
         join allUsers on { case (comment, user) => comment.userId === user.id }
         join allGroups on { case ((comment, user), group) => comment.groupId === group.id }
         joinLeft allCommentReadStatuses on { case (((comment, user), group), status) => comment.id === status.commentId && status.userId === userId }
-        )
-        .map { case (((comment, user), group), status) =>
-          (comment, user, group, status.map(_.commentId).isDefined)
-        }.sortBy(_._1.date).result
-      ).map { case f =>
-        f.+:(t)
-      }
+      ).map { case (((comment, user), group), status) =>
+        (comment, user, group, status.map(_.commentId).isDefined)
+      }.sortBy(_._1.date desc).drop(offset).take(length).result
+    ).flatMap { case commentTuples =>
+        if (commentTuples.length < length) {
+          val topics = topicsByQuery(query, commentsByQueryAndTopicId(_, _).exists)
+          db.run(
+            (topics.filter(_.id === topicId)
+              join allUsers on { case (topic, user) => topic.userId === user.id }
+              join allGroups on { case ((topic, user), group) => topic.groupId === group.id }
+              joinLeft allTopicReadStatuses on { case (((topic, user), group), status) => topic.id === status.topicId && status.userId === userId }
+            ).map { case (((topic, user), group), status) =>
+              (topic, user, group, status.map(_.topicId).isDefined)
+            }.result.head
+          ).map { topicTuple =>
+            commentTuples.sortBy(_._1.date.getTime).+:(topicTuple)
+          }
+        } else {
+          Future.successful(commentTuples.sortBy(_._1.date.getTime))
+        }
     }
   }
 }

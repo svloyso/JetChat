@@ -11,7 +11,7 @@ import models.api.IntegrationToken
 import models.{IntegrationTopic, IntegrationUpdate}
 import org.apache.commons.lang3.StringEscapeUtils
 import play.api.http.{HeaderNames, MimeTypes}
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsArray, JsValue}
 import play.api.libs.ws.WSAuthScheme.BASIC
 import play.api.libs.ws.{WS, WSResponse}
 import play.api.mvc.Results._
@@ -74,8 +74,25 @@ class GitHubIntegration extends Integration {
 
     override def avatarUrl(token: String, login: Option[String] = None): Future[Option[String]] =
       info(token, "avatar_url", login)
+
+    override def email(token: String, login: Option[String] = None): Future[Option[String]] =
+      GitHubIntegration.askAPI("https://api.github.com/user/emails", token).map { result =>
+        result.response.json match {
+          case array: JsArray =>
+            array.value.find(v => (v \ "primary").as[Boolean]) match {
+              case Some(v) =>
+                Some((v \ "email").as[String])
+              case _ =>
+                None
+            }
+          case _ =>
+            None
+        }
+      }
+
     override def name(token: String, login: Option[String] = None): Future[Option[String]] =
       info(token, "name", login)
+
     override def login(token: String): Future[String] =
       info(token, "login").map(_.get)
 
@@ -263,15 +280,21 @@ object GitHubIntegration {
                       case "Commit" => (json \ "author" \ "login").as[String]
                       case _ => (json \ "user" \ "login").as[String]
                     }
-                    val topicText = tp match {
+                    val descriptionText = tp match {
                       case "Commit" => (json \ "commit" \ "message").as[String]
-                      case _ => (json \ "title").as[String]
+                      case _ => (json \ "body").as[String]
                     }
                     val topicTimestamp = tp match {
                       case "Commit" => new Timestamp(dateFormat.parse((json \ "commit" \ "author" \ "date").as[String]).getTime)
                       case _ => new Timestamp(dateFormat.parse((json \ "created_at").as[String]).getTime)
                     }
-                    val integrationTopic = IntegrationTopic(0, ID, Some(topicId), groupId, integrationToken.userId, topicAuthor, topicTimestamp, topicText, topicTitle)
+                    val topicUrl = (json \ "html_url").as[String]
+                    val urlUpdate = IntegrationUpdate(0, ID, Some(topicId + "_Url"), groupId, topicId, integrationToken.userId, topicAuthor, topicTimestamp, topicUrl)
+                    val descriptionUpdate: Option[IntegrationUpdate] =
+                      if (descriptionText.isEmpty) None
+                      else Some(IntegrationUpdate(0, ID, Some(topicId + "_Description"), groupId, topicId, integrationToken.userId, topicAuthor, topicTimestamp, descriptionText))
+
+                    val integrationTopic = IntegrationTopic(0, ID, Some(topicId), groupId, integrationToken.userId, topicAuthor, topicTimestamp, topicTitle, topicTitle)
 
                     val comments_url = (json \ "comments_url").as[String]
                     val commentsFuture = extractComments(groupId, topicId, comments_url)
@@ -283,7 +306,7 @@ object GitHubIntegration {
                           case _ => None
                         }
                       case _ => commentsFuture
-                    }).map { case Some(x) => Some(integrationTopic -> x) case _ => None }
+                    }).map { case Some(x) => Some(integrationTopic -> (Seq(urlUpdate) ++ descriptionUpdate ++ x)) case _ => None }
                   case _ =>
                     LOG.error(s"Unsupported topic title $tp")
                     Future { None }
@@ -337,7 +360,7 @@ object GitHubIntegration {
           topicId match {
             case Commit(hash) => Future(None)//todo: working with commits
             case Issue(issueId) => update("issues", issueId)
-            case PullRequest(pullId) => update("pulls", pullId)
+            case PullRequest(pullId) => update("issues", pullId)
           }
         case _ => Future(None)
       }
@@ -346,7 +369,7 @@ object GitHubIntegration {
     override def isNewTopicAvailable: Boolean = true
 
     override def newTopic(integrationToken: IntegrationToken, groupId: String,
-                          message: SentNewTopic): Future[Option[IntegrationTopic]] = {
+                          message: SentNewTopic): Future[Option[IntegrationTopic]] = { //todo: add url
       message match {
         case NewTopic(text) =>
           WS.url(s"https://api.github.com/repos/$groupId/issues")(Play.current).
@@ -365,9 +388,9 @@ object GitHubIntegration {
               val id = (value \ "id").as[Long]
               val userId = (value \ "user" \ "login").as[String]
               val timestamp = new Timestamp(dateFormat.parse((value \ "created_at").as[String]).getTime)
-              val title = (value \ "title").as[String]
-              val text = (value \ "body").as[String]
-              Some(IntegrationTopic(0, ID, Some(s"Issue/$id"), groupId, integrationToken.userId, userId, timestamp, text, title))
+              val title = (value \ "title").as[String] //todo: add issue number to title
+              val text = (value \ "body").asOpt[String].getOrElse("")
+              Some(IntegrationTopic(0, ID, Some(s"Issue/$id"), groupId, integrationToken.userId, userId, timestamp, title, title))
             } else None
           }
         case _ => Future(None)
