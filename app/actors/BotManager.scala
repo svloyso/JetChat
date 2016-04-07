@@ -37,7 +37,7 @@ class BotManager (system: ActorSystem,
       log.info("Got an RegisterBot message")
       val botSender = sender
       usersDAO.mergeByLogin(botName, botName, botAvatar).map {
-        case User(id, _, _, _) =>
+        case User(id, _, _, _, _) =>
           registeredBots += botSender
           botSender ! BotRegistered(id)
       }

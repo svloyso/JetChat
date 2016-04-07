@@ -48,14 +48,15 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run((allUsers returning allUsers.map(_.id)) += user)
   }
 
-  def mergeByLogin(login: String, name: String, avatar: Option[String] = None): Future[User] = {
+  def mergeByLogin(login: String, name: String, avatar: Option[String] = None, email: Option[String] = None): Future[User] = {
     findByLogin(login).flatMap {
       case None =>
-        val user: User = User(login = login, name = name, avatar = avatar)
-        insert(user).map { id => User(id, user.login, user.name, user.avatar) }
+        val user: User = User(login = login, name = name, avatar = avatar, email = email)
+        insert(user).map { id => User(id, user.login, user.name, user.avatar, user.email) }
       case Some(user) =>
         Future(user)
     }
+  }
 
   def update(user: User): Future[Boolean] = {
     db.run(allUsers.filter(_.id === user.id).map(u => (u.avatar, u.email)).update(user.avatar, user.email)).map(_ > 0)
