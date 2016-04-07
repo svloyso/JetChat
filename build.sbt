@@ -12,6 +12,8 @@ resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
+resolvers += Resolver.sonatypeRepo("snapshots")
+
 libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-slick" % "1.1.1",
   "com.typesafe.play" %% "play-slick-evolutions" % "1.1.1",
@@ -27,7 +29,9 @@ libraryDependencies ++= Seq(
   "org.mousio" % "etcd4j" % "2.7.0",
   "com.fasterxml.jackson.jaxrs" % "jackson-jaxrs-json-provider" % "2.5.4",
   "org.apache.commons" % "commons-lang3" % "3.3.2",
-  "com.typesafe.play" %% "play-mailer" % "3.0.0"
+  "com.typesafe.play" %% "play-mailer" % "3.0.0",
+  "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+  "org.scala-lang" % "scala-reflect" % scalaVersion.value
 )
 
 unmanagedBase <<= baseDirectory { base => base / "lib" }

@@ -6,7 +6,7 @@ import javax.inject.{Inject, Singleton}
 
 import _root_.api.Integration
 import actors._
-import akka.actor.{ActorSystem, PoisonPill}
+import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import com.typesafe.config.ConfigRenderOptions
@@ -20,6 +20,7 @@ import play.api.mvc._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+
 
 
 @Singleton
@@ -378,6 +379,8 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     }
   }
 
+
+
   def addComment() = Action.async(parse.json) { implicit request =>
     val userId = (request.body \ "user" \ "id").get.asInstanceOf[JsNumber].value.toLong
     val groupId = (request.body \ "group" \ "id").get.asInstanceOf[JsNumber].value.toLong
@@ -385,16 +388,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     val text = (request.body \ "text").get.asInstanceOf[JsString].value
     val date = new Timestamp(Calendar.getInstance.getTime.getTime)
 
-
-    if (text contains "bot") {
-      usersDAO.findByLogin("Bot").map {
-        case None =>
-          usersDAO.insert(User(login="Bot", name="Bot", avatar=None)).map {
-            id => BotActor.actorSelection(system) ! MentionEvent(id, groupId, topicId, text)
-          }
-        case Some(user) => BotActor.actorSelection(system) ! MentionEvent(user.id, groupId, topicId, text)
-      }
-    }
+    BotManager.actorSelection(system) ! MsgRecv(groupId, topicId, text)
 
     commentsDAO.insert(Comment(groupId = groupId, userId = userId, topicId = topicId, date = date, text = text)).flatMap { case id =>
       Logger.debug(s"Adding comment: $userId, $groupId, $topicId, $text")
