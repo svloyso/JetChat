@@ -12,7 +12,6 @@ import play.api.libs.json.{Json, JsObject, JsString, JsNumber}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc._
 
-import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.DurationInt
 import scala.reflect.runtime._
 import scala.tools.reflect.ToolBox
@@ -25,7 +24,7 @@ class BotManager (system: ActorSystem,
                   usersDAO: UsersDAO) extends MasterActor with ActorLogging {
 
   val mediator = DistributedPubSub(system).mediator
-  val registeredBots: ArrayBuffer[(User, ActorRef)] = new ArrayBuffer[(User, ActorRef)]
+  var registeredBots: List[(User, ActorRef)] = Nil
 
   val commands: List[(String) => Boolean] = List[String => Boolean] (
     (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false },
@@ -33,14 +32,19 @@ class BotManager (system: ActorSystem,
   )
 
   override def receiveAsMaster: Receive = {
-    case RegisterBot(botName, botAvatar) =>
-      log.info("Got an RegisterBot message")
+    case CreateBot(botName, botAvatar) =>
+      log.info(s"Got a CreateBot with name $botName message")
       val botSender = sender
-      usersDAO.mergeByLogin(botName, botName, botAvatar).map {
+      usersDAO.mergeByLogin(botName, botName, isBot = true, botAvatar).map {
         case u@User(id, _, _, _, _) =>
-          registeredBots += ((u, botSender)) //TODO: potential race condition. Need to be fixed
           botSender ! id
       }
+    case RegisterBot(user) =>
+      log.info(s"Got a RegisterBot message from $user")
+      registeredBots = (user, sender) :: registeredBots
+    case UnregisterBot(botId) =>
+      log.info(s"Got a RegisterBot message from $botId")
+      registeredBots = registeredBots.filterNot { case (u, _) => u.id == botId }
     case BotSend(botId, groupId, topicId, text) =>
       log.info(s"Bot ($botId) sends a message $text")
       val date = new Timestamp(Calendar.getInstance.getTime.getTime)
@@ -92,6 +96,16 @@ class BotManager (system: ActorSystem,
             Results.Ok(Json.toJson(JsNumber(id)))
           }
       }
+    case GetUserByName(name) =>
+      val botSender = sender
+      usersDAO.findByLogin(name).map {
+        case r => botSender ! r
+      }
+    case GetUserById(id) =>
+      val botSender = sender
+      usersDAO.findById(id).map {
+        case r => botSender ! r
+      }
     case GetUserList =>
       val botSender = sender
       usersDAO.all.map {
@@ -100,7 +114,9 @@ class BotManager (system: ActorSystem,
   }
 }
 
-case class RegisterBot(botName: String, botAvatar: Option[String])
+case class CreateBot(botName: String, botAvatar: Option[String])
+case class RegisterBot(botUser: User)
+case class UnregisterBot(botId: Long)
 case class MsgRecv(userId: Long, groupId: Long, topicId: Long, text: String)
 case class DirMsgRecv(fromId: Long, toId: Long, text: String)
 case class BotSend(botId: Long, groupId: Long, topicId: Long, text: String)
@@ -108,7 +124,8 @@ case class BotRecv(userId: Long, groupId: Long, topicId: Long, text: String)
 case class BotDirRecv(fromId: Long, text: String)
 case class BotDirSend(botId: Long, userId: Long, text: String)
 case class GetUserList()
-
+case class GetUserByName(name: String)
+case class GetUserById(id: Long)
 object BotManager {
   val DEFAULT_DURATION = 30.seconds
 
