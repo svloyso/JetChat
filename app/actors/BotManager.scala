@@ -30,7 +30,7 @@ class BotManager (system: ActorSystem,
 
 
   val commands: List[(String) => Boolean] = List[String => Boolean] (
-    (s:String) => if (s == "test compiling") { BotCompilerTest(system, handler); true } else { false },
+    (s:String) => if (s == "test compiling") { BotCompilerTest(system); true } else { false },
     (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false }
   )
 
