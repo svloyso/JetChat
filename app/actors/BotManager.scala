@@ -6,7 +6,8 @@ import java.util.Calendar
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import models._
+import api.{DummyClass, Bot, BotInternalOutcomingMessage, TextMessage}
+import models.{User, Comment, UsersDAO, CommentsDAO}
 import play.api.Logger
 import play.api.libs.json.{Json, JsObject, JsString, JsNumber}
 import play.api.libs.concurrent.Execution.Implicits._
@@ -24,11 +25,21 @@ class BotManager (system: ActorSystem,
                   usersDAO: UsersDAO) extends MasterActor with ActorLogging {
 
   val mediator = DistributedPubSub(system).mediator
-  var registeredBots: List[(User, ActorRef)] = Nil
+  val registeredBots: ArrayBuffer[ActorRef] = new ArrayBuffer[ActorRef]
+
+  //TODO: Debugging only! Remove ASAP
+  val handler : String =
+    """
+      def receive : ActorRef => Actor.Receive = (sender : ActorRef) => {
+              case TextMessage(senderId, groupId, topicId, text) =>
+                   sender ! BotInternalOutcomingMessage(senderId, groupId, topicId,
+                       s"Recieved message from $senderId in group $groupId and topic $topicId " + "\n" +
+                           s"Message: $text")
+          }
+    """
 
   val commands: List[(String) => Boolean] = List[String => Boolean] (
-    (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false },
-    (s:String) => if (s == "test compiling") { BotCompilerTest(system); true } else { false }
+    (s:String) => if (s == "test compiling") { BotCompilerTest(system, handler); true } else { false }
   )
 
   override def receiveAsMaster: Receive = {
@@ -145,24 +156,37 @@ object BotManager {
 object BotCompilerTest {
   def createBot(system: ActorSystem, botCode: String, botName:String) = {
     Logger.info(s"Creating a bot with name $botName")
-    val cm = universe.runtimeMirror(getClass.getClassLoader)
-    val tb = cm.mkToolBox()
-    val botClass:Class[BotActor] = tb.eval(tb.parse(botCode)).asInstanceOf[Class[BotActor]]
-    system.actorOf(Props.create(botClass, system, botName), botName)
+
+    val cm      = universe.runtimeMirror(getClass.getClassLoader)
+    val tb      = cm.mkToolBox()
+    val handlerClass = tb.eval(tb.parse(botCode)).asInstanceOf[Class[DummyClass]]
+    val handlerObj = handlerClass.getConstructors()(0).newInstance()
+    val handler = handlerObj.asInstanceOf[DummyClass].apply()
+    system.actorOf(Props(classOf[Bot], system, botName, handler))
   }
-  def apply(system: ActorSystem) = {
-    createBot(system, """
+
+  def apply(system: ActorSystem, userSpecifiedHandler : String) = {
+    createBot(system,
+              """
                     import actors._
                     import akka.actor._
                     import scala.concurrent.duration.DurationInt
                     import scala.reflect.runtime
                     import scala.reflect.runtime._
+                    import scala.reflect.runtime.universe._
+                    import api.{DummyClass, TextMessage, BotInternalOutcomingMessage}
 
-                    class BotRuntime(system: ActorSystem, name: String) extends BotActor(system, name) with ActorLogging {
+                    class RuntimeDummy extends DummyClass {
 
-                        |override def botReceive(userId: Long, groupId: Long, topicId: Long, text: String): Receive = send(groupId, topicId, text ++ " runtime!")
+              """
+                    +
+                    userSpecifiedHandler
+                    +
+              """
+                    override def apply() = receive
                     }
-                    scala.reflect.classTag[BotRuntime].runtimeClass
-              """, "CompiledBot")
+                    scala.reflect.classTag[RuntimeDummy].runtimeClass
+              """,
+              "CompiledBot")
   }
 }
