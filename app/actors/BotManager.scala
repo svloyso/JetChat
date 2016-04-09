@@ -6,8 +6,8 @@ import java.util.Calendar
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import api.{DummyClass, Bot, BotInternalOutcomingMessage, TextMessage}
-import models.{User, Comment, UsersDAO, CommentsDAO}
+import _root_.api.{DummyClass, Bot, BotInternalOutcomingMessage, TextMessage}
+import models._
 import play.api.Logger
 import play.api.libs.json.{Json, JsObject, JsString, JsNumber}
 import play.api.libs.concurrent.Execution.Implicits._
@@ -25,7 +25,7 @@ class BotManager (system: ActorSystem,
                   usersDAO: UsersDAO) extends MasterActor with ActorLogging {
 
   val mediator = DistributedPubSub(system).mediator
-  val registeredBots: ArrayBuffer[ActorRef] = new ArrayBuffer[ActorRef]
+  var registeredBots: List[(User, ActorRef)] = Nil
 
   //TODO: Debugging only! Remove ASAP
   val handler : String =
@@ -39,7 +39,8 @@ class BotManager (system: ActorSystem,
     """
 
   val commands: List[(String) => Boolean] = List[String => Boolean] (
-    (s:String) => if (s == "test compiling") { BotCompilerTest(system, handler); true } else { false }
+    (s:String) => if (s == "test compiling") { BotCompilerTest(system, handler); true } else { false },
+    (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false }
   )
 
   override def receiveAsMaster: Receive = {
@@ -137,6 +138,7 @@ case class BotDirSend(botId: Long, userId: Long, text: String)
 case class GetUserList()
 case class GetUserByName(name: String)
 case class GetUserById(id: Long)
+
 object BotManager {
   val DEFAULT_DURATION = 30.seconds
 
