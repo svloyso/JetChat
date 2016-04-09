@@ -24,6 +24,7 @@ abstract class BotActor(system: ActorSystem, name: String, avatar: Option[String
   }
 
   def send(groupId: Long, topicId: Long, text: String): Unit = manager ! BotSend(id, groupId, topicId, text)
+
   def isRegistered: Boolean = id != -1
 
   def botStart(): Unit = {}

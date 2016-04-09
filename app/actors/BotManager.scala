@@ -70,7 +70,6 @@ case class RegisterBot(botName: String, botAvatar: Option[String])
 case class BotSend(botId: Long, groupId: Long, topicId: Long, text: String)
 case class BotRecv(userId: Long, groupId: Long, topicId: Long, text: String)
 case class MsgRecv(userId: Long, groupId: Long, topicId: Long, text: String)
-
 object BotManager {
   val DEFAULT_DURATION = 30.seconds
 
