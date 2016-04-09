@@ -167,7 +167,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                         val userId = integrationUser.userId.get
                         (for {
                           user <- usersDAO.findById(userId)
-                          updated <- usersDAO.update(User(user.get.id, user.get.login, user.get.name, integrationAvatarUrl, email))
+                          updated <- usersDAO.update(User(user.get.id, user.get.login, user.get.name, integrationAvatarUrl, email, isBot = false))
                           result <- integrationTokensDAO.merge(IntegrationToken(userId, integrationId, accessToken, enable))
                         } yield {
                           if (enable) {
@@ -182,7 +182,7 @@ class IntegrationAuth @Inject()(integrations: java.util.Set[Integration],
                       case _ =>
                         val loginFromIntegration = s"$integrationId/$integrationUserId"
                         usersDAO.insert(User(login = loginFromIntegration, name = integrationName.getOrElse(loginFromIntegration),
-                          avatar = integrationAvatarUrl, email = email)) flatMap { case id =>
+                          avatar = integrationAvatarUrl, email = email, isBot = false)) flatMap { case id =>
                           usersDAO.findByLogin(loginFromIntegration) flatMap { case Some(user) =>
                             mediator ! Publish("cluster-events", ClusterEvent("*",
                               JsObject(Seq("newUser" -> JsObject(Seq("id" -> JsNumber(user.id), "name" -> JsString(user.name), "login" -> JsString(user.login)) ++

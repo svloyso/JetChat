@@ -36,7 +36,7 @@ class BotManager (system: ActorSystem,
       log.info(s"Got a CreateBot with name $botName message")
       val botSender = sender
       usersDAO.mergeByLogin(botName, botName, isBot = true, botAvatar).map {
-        case u@User(id, _, _, _, _) =>
+        case u@User(id, _, _, _, _, _) =>
           botSender ! id
       }
     case RegisterBot(user) =>
