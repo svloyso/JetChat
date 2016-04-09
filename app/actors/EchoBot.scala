@@ -18,6 +18,9 @@ class EchoBot(system: ActorSystem, name: String) extends BotActor(system, name) 
       send(groupId, topicId, text)
     }
   }
+  override def receiveDirect(userId: Long, text: String) = {
+    sendDirect(userId, text)
+  }
 }
 
 object EchoBot {
