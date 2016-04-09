@@ -32,13 +32,12 @@ class BotManager (system: ActorSystem,
 
   override def receiveAsMaster: Receive = {
     case RegisterBot(botName, botAvatar) =>
-
       log.info("Got an RegisterBot message")
       val botSender = sender
       usersDAO.mergeByLogin(botName, botName, botAvatar).map {
         case User(id, _, _, _, _) =>
-          registeredBots += botSender
-          botSender ! BotRegistered(id)
+          registeredBots += botSender //TODO: potential race condition. Need to be fixed
+          botSender ! id
       }
     case BotSend(botId, groupId, topicId, text) =>
       log.info(s"Bot ($botId) sends a message $text")
@@ -62,14 +61,19 @@ class BotManager (system: ActorSystem,
           bot ! BotRecv(userId, groupId, topicId, text)
         }
       }
+    case GetUserList =>
+      val botSender = sender
+      usersDAO.all.map {
+        case s: Seq[User] => botSender ! s
+      }
   }
 }
 
-case class BotRegistered(id: Long)
 case class RegisterBot(botName: String, botAvatar: Option[String])
+case class MsgRecv(userId: Long, groupId: Long, topicId: Long, text: String)
 case class BotSend(botId: Long, groupId: Long, topicId: Long, text: String)
 case class BotRecv(userId: Long, groupId: Long, topicId: Long, text: String)
-case class MsgRecv(userId: Long, groupId: Long, topicId: Long, text: String)
+case class GetUserList()
 
 object BotManager {
   val DEFAULT_DURATION = 30.seconds
