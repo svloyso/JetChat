@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 // TODO: Make User.name Option[String]
-case class User(id: Long = 0, login: String, name: String, avatar: Option[String], email: Option[String])
+case class User(id: Long = 0, login: String, name: String, avatar: Option[String], email: Option[String], isBot: Boolean)
 
 case class UserChat(user: User, text: String, updateDate: Timestamp, unreadCount: Int) extends AbstractChat
 
@@ -24,8 +24,9 @@ trait UsersComponent extends HasDatabaseConfigProvider[JdbcProfile] {
     def name = column[String]("name")
     def avatar = column[Option[String]]("avatar")
     def email = column[Option[String]]("email")
+    def isBot = column[Boolean]("isbot")
     def loginIndex = index("user_login_index", login, unique = true)
-    def * = (id, login, name, avatar, email) <> (User.tupled, User.unapply)
+    def * = (id, login, name, avatar, email, isBot) <> (User.tupled, User.unapply)
   }
 
   val allUsers = TableQuery[UsersTable]
@@ -48,11 +49,11 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
     db.run((allUsers returning allUsers.map(_.id)) += user)
   }
 
-  def mergeByLogin(login: String, name: String, avatar: Option[String] = None, email: Option[String] = None): Future[User] = {
+  def mergeByLogin(login: String, name: String, isBot: Boolean = false, avatar: Option[String] = None, email: Option[String] = None): Future[User] = {
     findByLogin(login).flatMap {
       case None =>
-        val user: User = User(login = login, name = name, avatar = avatar, email = email)
-        insert(user).map { id => User(id, user.login, user.name, user.avatar, user.email) }
+        val user: User = User(login = login, name = name, avatar = avatar, email = email, isBot = isBot)
+        insert(user).map { id => User(id, user.login, user.name, user.avatar, user.email, user.isBot) }
       case Some(user) =>
         Future(user)
     }
@@ -71,7 +72,7 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       val allUsers = if (!nonEmptyOnly) u.map(_ ->("", new Timestamp(0), 0, 0)).toMap else Seq().toMap
       val sqlQuery = query match {
         case None =>
-          sql"""SELECT u.id, u.login, u.name, u.avatar, u.email, ld.date, ld.text,
+          sql"""SELECT u.id, u.login, u.name, u.avatar, u.email, u.isbot, ld.date, ld.text,
             sum(CASE WHEN ds.direct_message_id IS NOT NULL AND d.to_user_id = $userId THEN 1 ELSE 0 END) read_count,
             sum(CASE WHEN d.to_user_id = $userId THEN 1 ELSE 0 END) count
             FROM direct_messages d
@@ -82,7 +83,7 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
             GROUP BY u.id, u.login, u.name, u.avatar, ld.date, ld.text
             ORDER BY date DESC"""
         case Some(words) =>
-          sql"""SELECT u.id, u.login, u.name, u.avatar, u.email, ld.date, ld.text,
+          sql"""SELECT u.id, u.login, u.name, u.avatar, u.email, u.isbot, ld.date, ld.text,
             sum(CASE WHEN ds.direct_message_id IS NOT NULL AND d.to_user_id = $userId THEN 1 ELSE 0 END) read_count,
             sum(CASE WHEN d.to_user_id = $userId THEN 1 ELSE 0 END) count
             FROM direct_messages d
@@ -97,10 +98,10 @@ class UsersDAO @Inject()(val dbConfigProvider: DatabaseConfigProvider)
       }
 
       db.run(
-        sqlQuery.as[(Long, String, String, Option[String], Option[String], Timestamp, String, Int, Int)]
+        sqlQuery.as[(Long, String, String, Option[String], Option[String], Boolean, Timestamp, String, Int, Int)]
       ).map { case results =>
-        val myMessages = results.map { case (id, login, name, avatar, email, updateDate, text, readCount, totalCount) =>
-          User(id, login, name, avatar, email) ->(text, updateDate, readCount, totalCount)
+        val myMessages = results.map { case (id, login, name, avatar, email, isBot, updateDate, text, readCount, totalCount) =>
+          User(id, login, name, avatar, email, isBot) ->(text, updateDate, readCount, totalCount)
         }.toMap
         (allUsers ++ myMessages).toSeq.sortBy(-_._2._2.getTime).map { case (user, (text, updateDate, readCount, totalCount)) =>
           UserChat(user, text, updateDate, totalCount - readCount)

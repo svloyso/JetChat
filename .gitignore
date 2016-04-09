@@ -1,6 +1,11 @@
 logs
 project/project
 project/target
+project/.sbtserver*
+public/javascripts/webpack
+tasks.txt
+node_modules
+/.sbtserver
 target
 tmp
 .history

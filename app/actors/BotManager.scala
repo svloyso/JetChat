@@ -6,7 +6,7 @@ import java.util.Calendar
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import _root_.api.{DummyClass, Bot, BotInternalOutcomingMessage, TextMessage}
+import api.{DummyClass, Bot, BotInternalOutcomingMessage, TextMessage}
 import models._
 import play.api.Logger
 import play.api.libs.json.{Json, JsObject, JsString, JsNumber}
@@ -30,15 +30,16 @@ class BotManager (system: ActorSystem,
 
 
   val commands: List[(String) => Boolean] = List[String => Boolean] (
-    (s:String) => if (s == "test compiling") { BotCompilerTest(system); true } else { false }
+    (s:String) => if (s == "test compiling") { BotCompilerTest(system, handler); true } else { false },
+    (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false }
   )
 
   override def receiveAsMaster: Receive = {
     case CreateBot(botName, botAvatar) =>
       log.info(s"Got a CreateBot with name $botName message")
       val botSender = sender
-      usersDAO.mergeByLogin(botName, botName, botAvatar).map {
-        case u@User(id, _, _, _, _) =>
+      usersDAO.mergeByLogin(botName, botName, isBot = true, botAvatar).map {
+        case u@User(id, _, _, _, _, _) =>
           botSender ! id
       }
     case RegisterBot(user) =>
@@ -128,6 +129,7 @@ case class BotDirSend(botId: Long, userId: Long, text: String)
 case class GetUserList()
 case class GetUserByName(name: String)
 case class GetUserById(id: Long)
+
 object BotManager {
   val DEFAULT_DURATION = 30.seconds
 
