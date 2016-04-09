@@ -3,7 +3,12 @@ package models
 import java.sql.Timestamp
 import javax.inject.{Inject, Singleton}
 
+import actors.ClusterEvent
+import akka.actor.ActorRef
+import akka.cluster.pubsub.DistributedPubSubMediator.Publish
+import play.api.Logger
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
+import play.api.libs.json.{Json, JsObject, JsString, JsNumber}
 import slick.driver.JdbcProfile
 
 import scala.concurrent.ExecutionContext.Implicits.global

@@ -27,7 +27,7 @@ class Global @Inject()(val system: ActorSystem, val application: Application,
     system.actorOf(Props(new ClusterListener(application)), "cluster-listener")
     system.actorOf(IntegrationActor.props(integrations, integrationTokensDAO), "integration-actor")
     
-    BotManager.actorOf(system, commentsDAO, usersDAO)
+    BotManager.actorOf(system, commentsDAO, directMessagesDAO, usersDAO)
     system.actorOf(Props(new EmailActor(topicsDAO, commentsDAO, directMessagesDAO, usersDAO, mailerClient, application)), "email-actor")
 
     for (integration <- integrations) {

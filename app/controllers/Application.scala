@@ -392,6 +392,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
             case Some(value) => Seq("avatar" -> JsString(value))
             case None => Seq()
           })
+
         mediator ! Publish("cluster-events", ClusterEvent("*", JsObject(Seq("id" -> JsNumber(id),
           "group" -> JsObject(Seq("id" -> JsNumber(groupId))),
           "topicId" -> JsNumber(topicId),
@@ -409,6 +410,9 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     val toUserId = (request.body \ "toUser" \ "id").get.asInstanceOf[JsNumber].value.toLong
     val text = (request.body \ "text").get.asInstanceOf[JsString].value
     val date = new Timestamp(Calendar.getInstance.getTime.getTime)
+
+    BotManager.actorSelection(system) ! DirMsgRecv(fromUserId, toUserId, text)
+
     directMessagesDAO.insert(DirectMessage(fromUserId = fromUserId, toUserId = toUserId, date = date, text = text)).flatMap {
       case id =>
         (for {
