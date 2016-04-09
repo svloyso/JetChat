@@ -35,5 +35,5 @@ abstract class BotActor(system: ActorSystem, name: String, avatar: Option[String
   def botStart(): Unit = {}
   def receiveMsg(userId: Long, groupId: Long, topicId: Long, text: String): Unit = {}
   def receiveDirect(userId: Long, text: String): Unit = {}
-  def receiveOther: Receive = {case _ => Unit}
+  def receiveOther(msg : Any) : Unit = {}
 }

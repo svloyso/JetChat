@@ -14,10 +14,12 @@ case class TextMessage(senderId : Long, groupId : Long, topicId : Long, text : S
 case class BotInternalOutcomingMessage(adresseeId : Long, groupId : Long, topicId : Long, text: String)
 
 abstract class DummyClass() {
-
     def apply() : ActorRef => Actor.Receive
 }
 
+class State()(handler : Function[Any, Any]) {
+    def say() = {}
+}
 
 class Talk(handler: ActorRef => Actor.Receive, parent : ActorRef) extends Actor {
     var currentState = "Initializing"
