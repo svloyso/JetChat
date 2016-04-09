@@ -9,14 +9,7 @@ import scala.concurrent.duration.DurationInt
 
 class EchoBot(system: ActorSystem, name: String) extends BotActor(system, name) with ActorLogging {
 
-  override def botReceive: Receive = {
-    case BotRecv(groupId, topicId, text) =>
-      log.info(s"Bot with id $id got a message: $text")
-      if ((id != -1) && (text contains "bot")) {
-        log.info("Resend msg back to manager")
-        sender ! BotSend(id, groupId, topicId, text)
-      }
-  }
+  override def botReceive(userId: Long, groupId: Long, topicId: Long, text: String) = send(groupId, topicId, text)
 }
 
 object EchoBot {

@@ -1,7 +1,7 @@
 package actors
 
 import java.sql.Timestamp
-import java.util.{Comparator, Calendar}
+import java.util.Calendar
 
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
@@ -12,7 +12,6 @@ import play.api.libs.json.{JsObject, JsString, JsNumber}
 import play.api.libs.concurrent.Execution.Implicits._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.Map
 import scala.concurrent.duration.DurationInt
 import scala.reflect.runtime._
 import scala.tools.reflect.ToolBox
@@ -53,14 +52,14 @@ class BotManager (system: ActorSystem,
           "date" -> JsNumber(date.getTime),
           "text" -> JsString(text)))))
       }
-    case MsgRecv(groupId, topicId, text) =>
+    case MsgRecv(userId, groupId, topicId, text) =>
       if(!commands.map(cmd => cmd(text)).reduce(_ || _)) {
         log.info(s"Got a message $text. Check ${commands.size} commands and resend it to ${registeredBots.size} bots")
         for (
           bot <- registeredBots
         ) {
           log.info(s"Resend it to ${bot.toString()}")
-          bot ! BotRecv(groupId, topicId, text)
+          bot ! BotRecv(userId, groupId, topicId, text)
         }
       }
   }
@@ -69,8 +68,8 @@ class BotManager (system: ActorSystem,
 case class BotRegistered(id: Long)
 case class RegisterBot(botName: String, botAvatar: Option[String])
 case class BotSend(botId: Long, groupId: Long, topicId: Long, text: String)
-case class BotRecv(groupId: Long, topicId: Long, text: String)
-case class MsgRecv(groupId: Long, topicId: Long, text: String)
+case class BotRecv(userId: Long, groupId: Long, topicId: Long, text: String)
+case class MsgRecv(userId: Long, groupId: Long, topicId: Long, text: String)
 
 object BotManager {
   val DEFAULT_DURATION = 30.seconds
@@ -105,14 +104,7 @@ object BotCompilerTest {
 
                     class BotRuntime(system: ActorSystem, name: String) extends BotActor(system, name) with ActorLogging {
 
-                      override def botReceive(): Receive = {
-                        case BotRecv(groupId, topicId, text) =>
-                          log.info(s"Bot with name $name got a message: $text")
-                          if ((id != -1) && (text contains "bot")) {
-                            log.info("Resend msg back to manager")
-                            sender ! BotSend(id, groupId, topicId, text ++ " runtime!")
-                          }
-                      }
+                        |override def botReceive(userId: Long, groupId: Long, topicId: Long, text: String): Receive = send(groupId, topicId, text ++ " runtime!")
                     }
                     scala.reflect.classTag[BotRuntime].runtimeClass
               """, "CompiledBot")

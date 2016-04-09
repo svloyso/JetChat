@@ -381,7 +381,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
     val text = (request.body \ "text").get.asInstanceOf[JsString].value
     val date = new Timestamp(Calendar.getInstance.getTime.getTime)
 
-    BotManager.actorSelection(system) ! MsgRecv(groupId, topicId, text)
+    BotManager.actorSelection(system) ! MsgRecv(userId, groupId, topicId, text)
 
     commentsDAO.insert(Comment(groupId = groupId, userId = userId, topicId = topicId, date = date, text = text)).flatMap { case id =>
       Logger.debug(s"Adding comment: $userId, $groupId, $topicId, $text")
