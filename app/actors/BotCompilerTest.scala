@@ -1,25 +1,67 @@
 package actors
 
 import akka.actor._
-import _root_.api.{DummyClass, Bot}
+import _root_.api.{Bot}
 import play.api.Logger
 import scala.reflect.runtime._
 import scala.tools.reflect.ToolBox
 
 
+abstract class BotDescription[T] {
+    def apply() : Bot[T]
+}
 /**
   * Created by dsavvinov on 4/9/16.
   */
 
 object BotCompilerTest {
     //TODO: Debugging only! Remove ASAP
-    val handler : String =
+    val code : String =
         """
-      def receive : ActorRef => Actor.Receive = (sender : ActorRef) => {
-              case TextMessage(senderId, groupId, topicId, text) =>
-                   sender ! BotInternalOutcomingMessage(senderId, groupId, topicId,
-                       s"Recieved message from $senderId in group $groupId and topic $topicId " + "\n" +
-                           s"Message: $text")
+          class MyBotDescription extends BotDescription[List[String]] {
+              def apply() = {
+                  val myBot = new Bot[List[String]]("my-bot", List[String]())
+
+                  val startState = State("Start")(new Behaviour[List[String]] {
+                      override def handler(msg: TextMessage) = {
+                          msg.text match {
+                              case "hello" =>
+                                  say("hello")
+                                  moveTo("Echo")
+                              case other =>
+                                  say("I don't want to talk with impolite ones")
+                          }
+                      }
+                  })
+
+                  val echoState = State("Echo")(new Behaviour[List[String]] {
+                      override def handler(msg: TextMessage) = {
+                          msg.text match {
+                              case "bye" =>
+                                  say("Good bye!")
+                                  moveTo("Finish")
+                              case other =>
+                                  say(other)
+                          }
+                      }
+                  })
+
+                  val talkFinishedState = State("Finish")(new Behaviour[List[String]] {
+                      override def handler(msg: TextMessage): Unit = {
+                          msg.text match {
+                              case "sorry" =>
+                                  say("OK, let's talk a bit more")
+                                  moveTo("Echo")
+                              case other =>
+                                  say("Talk is finished. Say \"sorry\" to start it again")
+                          }
+                      }
+                  })
+
+                  myBot startWith startState
+
+                  myBot + startState + echoState + talkFinishedState
+              }
           }
         """
 
@@ -28,33 +70,25 @@ object BotCompilerTest {
 
         val cm      = universe.runtimeMirror(getClass.getClassLoader)
         val tb      = cm.mkToolBox()
-        val handlerClass = tb.eval(tb.parse(botCode)).asInstanceOf[Class[DummyClass]]
-        val handlerObj = handlerClass.getConstructors()(0).newInstance()
-        val handler = handlerObj.asInstanceOf[DummyClass].apply()
-        system.actorOf(Props(classOf[Bot], system, botName, handler))
+        val botUserDefinedClass = tb.eval(tb.parse(botCode)).asInstanceOf[Class[BotDescription[List[String]]]]
+        val botUserDefinedObj = botUserDefinedClass.getConstructors()(0).newInstance()
+        val bot = botUserDefinedObj.asInstanceOf[BotDescription[List[String]]].apply()
+        bot.launch(system)
     }
 
     def apply(system: ActorSystem) = {
         createBot(system,
             """
-                    import actors._
-                    import akka.actor._
-                    import scala.concurrent.duration.DurationInt
-                    import scala.reflect.runtime
-                    import scala.reflect.runtime._
-                    import scala.reflect.runtime.universe._
-                    import api.{DummyClass, TextMessage, BotInternalOutcomingMessage}
-
-                    class RuntimeDummy extends DummyClass {
+                   import api.{TextMessage, Behaviour, State, Bot}
+                   import actors.BotDescription
+                   import java.util
 
             """
                 +
-                handler
+                code
                 +
                 """
-                    override def apply() = receive
-                    }
-                    scala.reflect.classTag[RuntimeDummy].runtimeClass
+                    scala.reflect.classTag[MyBotDescription].runtimeClass
                 """,
             "CompiledBot")
     }

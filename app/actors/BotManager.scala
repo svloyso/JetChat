@@ -6,7 +6,7 @@ import java.util.Calendar
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import api.{DummyClass, Bot, BotInternalOutcomingMessage, TextMessage}
+import api.{Bot, BotInternalOutcomingMessage, TextMessage, TestClass}
 import models._
 import play.api.Logger
 import play.api.libs.json.{Json, JsObject, JsString, JsNumber}
@@ -14,8 +14,6 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc._
 
 import scala.concurrent.duration.DurationInt
-import scala.reflect.runtime._
-import scala.tools.reflect.ToolBox
 /**
   * Created by svloyso on 24.03.16.
   */
@@ -31,7 +29,8 @@ class BotManager (system: ActorSystem,
 
   val commands: List[(String) => Boolean] = List[String => Boolean] (
     (s:String) => if (s == "test compiling") { BotCompilerTest(system); true } else { false },
-    (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false }
+    (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false },
+    (s:String) => if (s == "test prewritten") { val tc = new TestClass(); tc.apply().launch(system); true} else { false}
   )
 
   override def receiveAsMaster: Receive = {
