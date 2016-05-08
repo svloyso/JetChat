@@ -5,16 +5,18 @@ import java.util
 import actors.BotDescription
 import api.{TextMessage, Behaviour, State, Bot}
 
+import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
 
 /**
   * Created by dsavvinov on 4/16/16.
   */
-class TestClass extends BotDescription[collection.mutable.ListBuffer[String]] {
+class TestClass extends BotDescription {
     def apply() = {
-        val myBot = new Bot[collection.mutable.ListBuffer[String]]("my-bot", collection.mutable.ListBuffer[String]())
+        val myBot = new Bot("my-bot")
+        myBot.storesData[collection.mutable.ListBuffer[String]]("history", new ListBuffer[String]())
 
-        val startState = State("Start")(new Behaviour[collection.mutable.ListBuffer[String]] {
+        val startState = State("Start")(new Behaviour {
             override def handler(msg: TextMessage) = {
                 msg.text match {
                     case "hello" =>
@@ -26,22 +28,24 @@ class TestClass extends BotDescription[collection.mutable.ListBuffer[String]] {
             }
         })
 
-        val echoState = State("Echo")(new Behaviour[collection.mutable.ListBuffer[String]] {
+        val echoState = State("Echo")(new Behaviour {
             override def handler(msg: TextMessage) = {
                 val pattern = """find (\d*)""".r
                 msg.text match {
                     case pattern(c) =>
                         say(
-                            data().take(Integer.parseInt(c)).toString()
+                            data.history.asInstanceOf[collection.mutable.ListBuffer[String]].
+                                take(Integer.parseInt(c)).toString()
                         )
                         moveTo("Finish")
                     case other =>
-                        data().append(other)
+                        data.history.asInstanceOf[collection.mutable.ListBuffer[String]].
+                            append(other)
                 }
             }
         })
 
-        val talkFinishedState = State("Finish")(new Behaviour[collection.mutable.ListBuffer[String]] {
+        val talkFinishedState = State("Finish")(new Behaviour {
             override def handler(msg: TextMessage): Unit = {
                 msg.text match {
                     case "sorry" =>

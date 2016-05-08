@@ -2,6 +2,7 @@ package api
 
 import actors.BotActor
 import akka.actor._
+import scala.language.dynamics
 
 /**
   * Created by dsavvinov on 4/7/16.
@@ -19,14 +20,33 @@ case class TextMessage(senderId: Long, groupId: Long, topicId: Long, text: Strin
 
 case class BotInternalOutcomingMessage(adresseeId: Long, groupId: Long, topicId: Long, text: String) extends InternalMessage
 
-//TODO: think if we can remove boiler-plate 'new' from the DSL (maybe using companion-objects?..)
-trait Behaviour[DataType] {
-    var talk: Talk[DataType] = null
+class DynamicProxyStorage extends Dynamic {
+    var talk : Talk = null
+    def selectDynamic(name: String) : Any = {
+        talk.data.getHolder(name).dataValue
+    }
+
+    def updateDynamic(name: String)(value: Any) : Unit = {
+        val holder = talk.data.getHolder(name)
+        val newHolder = new DataHolder {
+            override type DataType = holder.DataType
+            override val dataValue: DataType = holder.dataValue
+        }
+        talk.data.dataStorage(name) = newHolder
+    }
+
+
+}
+/** collection of proxy objects for unbound-DSL calls **/
+trait Behaviour{
+    var talk: Talk = null
+    val data: DynamicProxyStorage = new DynamicProxyStorage()
 
     def handler(msg: TextMessage): Unit
 
-    def bindToTalk(t: Talk[DataType]) = {
+    def bindToTalk(t: Talk) = {
         talk = t
+        data.talk = t
     }
 
     /** redirecting calls to Talk **/
@@ -37,10 +57,6 @@ trait Behaviour[DataType] {
     def moveTo(newState: String): Unit = {
         talk.moveTo(newState)
     }
-
-    def data() : DataType = {
-        talk.getData
-    }
 }
 
 abstract class AbstractData() {
@@ -48,22 +64,22 @@ abstract class AbstractData() {
 }
 
 object State {
-    def apply[T](stateName: String)(stateBehaviour: Behaviour[T]): State[T] = {
+    def apply(stateName: String)(stateBehaviour: Behaviour): State = {
         new State(stateName)(stateBehaviour)
     }
 }
 
-class State[T](val stateName: String)(val stateBehaviour: Behaviour[T]) {}
+class State(val stateName: String)(val stateBehaviour: Behaviour) {}
 
-class Talk[DataType](
-                                        val userId: Long,
-                                        val groupId: Long,
-                                        val topicId: Long,
-                                        val statesToHandlers: collection.mutable.Map[String, Behaviour[DataType]],
-                                        val parent: ActorRef,
-                                        var currentState: String,
-                                        val data: DataType
-                                    )
+class Talk(
+              val userId: Long,
+              val groupId: Long,
+              val topicId: Long,
+              val statesToHandlers: collection.mutable.Map[String, Behaviour],
+              val parent: ActorRef,
+              var currentState: String,
+              val data: BotDataStorage
+          )
     extends Actor {
 
 
@@ -88,10 +104,6 @@ class Talk[DataType](
         parent ! BotInternalOutcomingMessage(userId, groupId, topicId, text)
     }
 
-    def getData = {
-        data
-    }
-
     def moveTo(newState: String) = {
         //TODO: think about implicit conversion here
         currentState = newState
@@ -100,19 +112,24 @@ class Talk[DataType](
 }
 
 /** wrapper for BotActorImplementation that will be exposed for users **/
-class Bot[T](botName: String, val initialData : T) {
-    private val statesToHandlers = collection.mutable.Map[String, Behaviour[T]]()
+class Bot(botName: String) {
+    private val statesToHandlers = collection.mutable.Map[String, Behaviour]()
     private var botActor: ActorRef = null
+    private val data: BotDataStorage = new BotDataStorage()
+
+    def storesData[T](fieldName: String, value: T): Unit = {
+        data.initHolder[T](fieldName, value)
+    }
 
     var startState: String = null
 
     /** add new state to bot **/
-    def +(newState: State[T]) = {
+    def +(newState: State) = {
         statesToHandlers += (newState.stateName -> newState.stateBehaviour)
         this
     }
 
-    def startWith(s: State[T]) = {
+    def startWith(s: State) = {
         startState = s.stateName
     }
 
@@ -122,19 +139,19 @@ class Bot[T](botName: String, val initialData : T) {
         }
 
         botActor = system.actorOf(
-            Props(classOf[BotActorImplementation[T]], system, botName, statesToHandlers, startState, initialData),
+            Props(classOf[BotActorImplementation], system, botName, statesToHandlers, startState, data),
             s"bot-$botName"
         )
     }
 }
 
-class BotActorImplementation[T](
-                                   system: ActorSystem,
-                                   name: String,
-                                   statesToHandlers: collection.mutable.Map[String, Behaviour[T]],
-                                   startingState: String,
-                                   initialData : T
-                               ) extends BotActor(system, name) {
+class BotActorImplementation(
+                                system: ActorSystem,
+                                name: String,
+                                statesToHandlers: collection.mutable.Map[String, Behaviour],
+                                startingState: String,
+                                talkStorage: BotDataStorage
+                            ) extends BotActor(system, name) {
 
     private val usersToTalks: collection.mutable.Map[Long, ActorRef] = collection.mutable.Map()
 
@@ -142,9 +159,10 @@ class BotActorImplementation[T](
         usersToTalks.get(senderId) match {
             case Some(talk) => talk ! TextMessage(senderId, groupId, topicId, text)
             case None =>
-                val talkHandlers = statesToHandlers.clone()
+                val localTalkHandlers = statesToHandlers.clone()
+                val localTalkStorage = talkStorage.clone()
                 val newTalk = context.actorOf(
-                    Props(classOf[Talk[T]], senderId, groupId, topicId, talkHandlers, self, startingState, initialData),
+                    Props(classOf[Talk], senderId, groupId, topicId, localTalkHandlers, self, startingState, localTalkStorage),
                     s"bot-$id-talk-wth-$senderId")
                 usersToTalks += senderId -> newTalk
                 newTalk ! TextMessage(senderId, groupId, topicId, text)

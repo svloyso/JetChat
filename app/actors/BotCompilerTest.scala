@@ -7,8 +7,8 @@ import scala.reflect.runtime._
 import scala.tools.reflect.ToolBox
 
 
-abstract class BotDescription[T] {
-    def apply() : Bot[T]
+abstract class BotDescription {
+    def apply() : Bot
 }
 /**
   * Created by dsavvinov on 4/9/16.
@@ -70,9 +70,9 @@ object BotCompilerTest {
 
         val cm      = universe.runtimeMirror(getClass.getClassLoader)
         val tb      = cm.mkToolBox()
-        val botUserDefinedClass = tb.eval(tb.parse(botCode)).asInstanceOf[Class[BotDescription[List[String]]]]
+        val botUserDefinedClass = tb.eval(tb.parse(botCode)).asInstanceOf[Class[BotDescription]]
         val botUserDefinedObj = botUserDefinedClass.getConstructors()(0).newInstance()
-        val bot = botUserDefinedObj.asInstanceOf[BotDescription[List[String]]].apply()
+        val bot = botUserDefinedObj.asInstanceOf[BotDescription].apply()
         bot.launch(system)
     }
 
