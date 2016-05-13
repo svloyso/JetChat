@@ -1,15 +1,11 @@
-package actors
+package bots.dsl.backend
 
-import akka.actor._
-import _root_.api.{Bot}
+import akka.actor.ActorSystem
 import play.api.Logger
+
 import scala.reflect.runtime._
-import scala.tools.reflect.ToolBox
+import tools.reflect.ToolBox
 
-
-abstract class BotDescription {
-    def apply() : Bot
-}
 /**
   * Created by dsavvinov on 4/9/16.
   */

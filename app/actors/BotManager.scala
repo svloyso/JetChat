@@ -1,11 +1,12 @@
 package actors
 
-import api.Utils.buildBot
+
 import java.sql.Timestamp
 import java.util.Calendar
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
+import bots.dsl.backend.{BotCompilerTest, BotBuilder}
 import models._
 import play.api.Logger
 import play.api.libs.json.{Json, JsObject, JsString, JsNumber}
@@ -31,7 +32,7 @@ class BotManager (system: ActorSystem,
     (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false },
     (s:String) => if (s == "test prewritten") {
       val lines = scala.io.Source.fromFile("""./Bots/BoringBot""").mkString
-      buildBot(system, lines)
+      BotBuilder.buildBot(system, lines)
       true
     } else { false }
   )

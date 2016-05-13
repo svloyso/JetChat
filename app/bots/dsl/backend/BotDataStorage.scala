@@ -1,14 +1,8 @@
-package api
+package bots.dsl.backend
 
 /**
-  * Created by dsavvinov on 4/25/16.
+  * Created by dsavvinov on 5/13/16.
   */
-
-trait DataHolder {
-    type DataType
-    val dataValue : DataType
-}
-
 class BotDataStorage(val dataStorage : collection.mutable.Map[String, DataHolder] = collection.mutable.Map.empty[String, DataHolder]) {
     override def clone() : BotDataStorage = {
         new BotDataStorage(dataStorage.clone())

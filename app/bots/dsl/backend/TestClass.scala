@@ -1,12 +1,7 @@
-package api
+package bots.dsl.backend
 
-import java.util
-
-import actors.BotDescription
-import api.{TextMessage, Behaviour, State, Bot}
-
-
-import scala.util.matching.Regex
+import bots.dsl.backend.BotMessages.TextMessage
+import bots.dsl.frontend.{Behaviour, Bot, State}
 
 /**
   * Created by dsavvinov on 4/16/16.
