@@ -88,7 +88,7 @@ object BotCompilerTest {
                 code
                 +
                 """
-                    scala.reflect.classTag[MyBotDescription].runtimeClass
+                    scala.reflect.classTag[BotDesc].runtimeClass
                 """,
             "CompiledBot")
     }

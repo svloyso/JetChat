@@ -1,12 +1,11 @@
 package actors
 
+import api.Utils.buildBot
 import java.sql.Timestamp
 import java.util.Calendar
-
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import api.{Bot, BotInternalOutcomingMessage, TextMessage, TestClass}
 import models._
 import play.api.Logger
 import play.api.libs.json.{Json, JsObject, JsString, JsNumber}
@@ -30,7 +29,11 @@ class BotManager (system: ActorSystem,
   val commands: List[(String) => Boolean] = List[String => Boolean] (
     (s:String) => if (s == "test compiling") { BotCompilerTest(system); true } else { false },
     (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false },
-    (s:String) => if (s == "test prewritten") { val tc = new TestClass(); tc.apply().launch(system); true} else { false}
+    (s:String) => if (s == "test prewritten") {
+      val lines = scala.io.Source.fromFile("""./Bots/BoringBot""").mkString
+      buildBot(system, lines)
+      true
+    } else { false }
   )
 
   override def receiveAsMaster: Receive = {
@@ -143,5 +146,9 @@ object BotManager {
 
   def actorSelection(system: ActorSystem): ActorSelection =
     system.actorSelection("/user/" ++ actorName)
+
 }
+
+
+
 
