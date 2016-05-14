@@ -1,6 +1,6 @@
         import scala.collection.mutable.ListBuffer
         val myBot = new Bot("my-bot")
-        myBot.storesData[collection.mutable.ListBuffer[String]]("history", new ListBuffer[String]())
+        myBot storesData[collection.mutable.ListBuffer[String]] "history" initWith new ListBuffer[String]()
 
         val startState = State("Start"){
                 msg.text match {

@@ -6,7 +6,7 @@ import java.util.Calendar
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
-import bots.dsl.backend.{BotCompilerTest, BotBuilder}
+import bots.dsl.backend.{TestClass, BotCompilerTest, BotBuilder}
 import models._
 import play.api.Logger
 import play.api.libs.json.{Json, JsObject, JsString, JsNumber}
@@ -29,7 +29,7 @@ class BotManager (system: ActorSystem,
 
   val commands: List[(String) => Boolean] = List[String => Boolean] (
     (s:String) => if (s == "test compiling") { BotCompilerTest(system); true } else { false },
-    (s:String) => if (s == "test register") { EchoBot.actorOf(system); true } else { false },
+    (s:String) => if (s == "test scala") { val tc = new TestClass; tc().launch(system); true } else { false },
     (s:String) => if (s == "test prewritten") {
       val lines = scala.io.Source.fromFile("""./Bots/BoringBot""").mkString
       BotBuilder.buildBot(system, lines)

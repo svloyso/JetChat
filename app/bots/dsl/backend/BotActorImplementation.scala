@@ -18,8 +18,10 @@ class BotActorImplementation(
                             ) extends BotActor(system, name) {
 
   private val usersToTalks = collection.mutable.Map[Long, ActorRef]()
+  private val chatRooms = collection.mutable.Set[(Long, Long)]()
 
   override def receiveMsg(senderId: Long, groupId: Long, topicId: Long, text: String) = {
+    chatRooms += ( (groupId, topicId) )
     usersToTalks.get(senderId) match {
       case Some(talk) => talk ! TextMessage(senderId, groupId, topicId, text)
       case None =>
@@ -36,8 +38,10 @@ class BotActorImplementation(
 
   override def receiveOther(msg: Any): Unit = {
     msg match {
-      case BotInternalOutcomingMessage(senderId, groupId, topicId, text) =>
+      case SendToUser(senderId, groupId, topicId, text) =>
         send(groupId, topicId, text)
+      case BroadcastMessage(text) =>
+        chatRooms foreach { case (groupId, topicId) => send(groupId, topicId, text) }
       case msg: Any =>
         throw new InternalError("Error: unhandled message " ++ msg.toString)
     }

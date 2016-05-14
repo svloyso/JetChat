@@ -3,6 +3,7 @@ package bots.dsl.frontend
 import akka.actor._
 import bots.dsl.backend.BotMessages._
 import bots.dsl.backend._
+import scala.concurrent.duration.{FiniteDuration, Duration}
 
 /** collection of proxy objects for unbound-DSL calls **/
 trait Behaviour {
@@ -22,8 +23,16 @@ trait Behaviour {
     talk.say(text)
   }
 
+  def broadcast(message: String): Unit = {
+    talk.broadcast(message)
+  }
+
   def moveTo(newState: String): Unit = {
     talk.moveTo(newState)
+  }
+
+  def schedule(task: (Unit => Any), duration: FiniteDuration): Unit = {
+    talk.schedule(task, duration)
   }
 }
 
@@ -40,10 +49,10 @@ class State(val stateName: String)(val stateBehaviour: Behaviour) {}
 class Bot(botName: String) {
   private val statesToHandlers = collection.mutable.Map[String, Behaviour]()
   private var botActor: ActorRef = null
-  private val data: BotDataStorage = new BotDataStorage()
+  val data: BotDataStorage = new BotDataStorage()
 
-  def storesData[T](fieldName: String, value: T): Unit = {
-    data.initHolder[T](fieldName, value)
+  def storesData[T](fieldName: String): DataTransformer[T] = {
+    new DataTransformer[T](fieldName, this)
   }
 
   var startState: String = null

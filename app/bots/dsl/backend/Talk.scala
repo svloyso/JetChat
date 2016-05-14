@@ -4,6 +4,8 @@ import akka.actor.{Actor, ActorRef}
 import bots.dsl.backend.BotMessages._
 import bots.dsl.frontend._
 
+import scala.concurrent.duration.{FiniteDuration, Duration}
+
 /**
   * Created by dsavvinov on 5/13/16.
   */
@@ -24,6 +26,8 @@ class Talk(
   statesToHandlers.foreach { case (s, b) => b.bindToTalk(this) }
 
   def receive = {
+    case ScheduledTask(task) =>
+      task()
     case textMessage: TextMessage =>
       println(s"in state $currentState processing message ${textMessage.text}")
       statesToHandlers.get(currentState) match {
@@ -35,10 +39,19 @@ class Talk(
 
   /** == DSL-related methods == **/
   def say(text: String) = {
-    parent ! BotInternalOutcomingMessage(userId, groupId, topicId, text)
+    parent ! SendToUser(userId, groupId, topicId, text)
   }
 
   def moveTo(newState: String) = {
     currentState = newState
+  }
+
+  def broadcast(text: String) = {
+    parent ! BroadcastMessage(text)
+  }
+
+  def schedule(task: (Unit => Any), duration: FiniteDuration): Unit = {
+    import context._
+    context.system.scheduler.scheduleOnce(duration, context.self, new ScheduledTask(task))
   }
 }

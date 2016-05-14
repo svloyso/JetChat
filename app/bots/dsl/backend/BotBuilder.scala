@@ -20,21 +20,17 @@ object BotBuilder {
 
     def squareBrackets: Parser[String] = ("[" ~ squareInner ~ "]") ^^ { case lbr ~ in ~ rbr => lbr + in + rbr }
 
-    def roundBrackets: Parser[String] = ("(" ~ args ~ ")") ^^ { case lbr ~ l ~ rbr => lbr + l + rbr }
-
-    def arg: Parser[String] = rep("""[^,()]+""".r | roundBrackets) ^^ { _.mkString}
-
-    def args: Parser[String] =  repsep(arg, ",") ^^ { _(0) }
+    def arg: Parser[String] = not(regex("initWith".r)) ~> """[^\s]+""".r
 
     def field_definition: Parser[(String, String)] =
-      (("[" ~> squareInner <~ "]") ~ ("(" ~> args <~ ")")) ^^ {
+      (("[" ~> squareInner <~ "]") ~ arg ) ^^ {
         case tpe ~ fieldName => {
           val strippedFieldName = fieldName.stripPrefix("\"").stripSuffix("\"")
           nameToType += (strippedFieldName -> tpe); (tpe, fieldName)
         }
       }
 
-    def preamble: Parser[String] = """.storesData""".r
+    def preamble: Parser[String] = """storesData""".r
     def whitespace: Parser[String] = """\s""".r
 
     def chunk: Parser[String] = (preamble ~ field_definition) ^^ { _ => "" } | (not(preamble | whitespace) ~> ".".r) ^^ { _ => "" }
@@ -57,11 +53,6 @@ object BotBuilder {
     }
   }
 
-  import scala.util.parsing.combinator.JavaTokenParsers
-
-  /**
-    * Created by dsavvinov on 5/14/16.
-    */
   object BehaviourWrapper extends JavaTokenParsers {
     override def skipWhitespace = false
 
