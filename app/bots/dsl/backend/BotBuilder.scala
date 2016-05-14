@@ -57,6 +57,42 @@ object BotBuilder {
     }
   }
 
+  import scala.util.parsing.combinator.JavaTokenParsers
+
+  /**
+    * Created by dsavvinov on 5/14/16.
+    */
+  object BehaviourWrapper extends JavaTokenParsers {
+    override def skipWhitespace = false
+
+    def wrapBefore = """(new Behaviour {
+                          override def handler(msg: TextMessage) = """
+
+    def wrapAfter = """ }) """
+    def preamble = "State".r
+
+    def word = regex("""[^()]+""".r) | roundBrackets
+
+    def roundBrackets: Parser[String] = ("(" ~ rep(word) ~ ")") ^^ { case lbr ~ l ~ rbr =>  lbr + l.mkString + rbr }
+
+    def figureBrackets: Parser[String] = "{" ~ figureInner ~ "}" ^^ { case lbr ~ in ~ rbr => lbr + in + rbr}
+
+    def expr: Parser[String] = """[^{}]+""".r
+
+    def figureInner: Parser[String] = rep1(figureBrackets | expr) ^^ { _.mkString }
+
+    def stateDef: Parser[String] = (preamble ~ roundBrackets ~ figureBrackets ^^  { case definition ~ name ~ handler =>
+      definition + name + wrapBefore + handler + wrapAfter}) | regex("(?s).".r)
+
+    def mainParser = rep1(stateDef ) ^^ { _.mkString }
+    def apply(input: String): String = {
+      parseAll(mainParser, input) match {
+        case Success(result, _) => result
+        case failure: NoSuccess => sys.error(failure.msg)
+      }
+    }
+  }
+
   def compileBot(system: ActorSystem, code: String): Unit = {
     val cm      = universe.runtimeMirror(getClass.getClassLoader)
     val tb      = cm.mkToolBox()
@@ -80,8 +116,10 @@ object BotBuilder {
                         scala.reflect.classTag[ReflectiveDescription].runtimeClass
                        """
   def buildBot(system: ActorSystem, userCode: String) = {
-    DefinitionsParser(userCode)
-    val ascribedUserCode = DefinitionsParser(userCode)
-    compileBot(system, preambleCode + ascribedUserCode + postambleCode)
+    DefinitionsParser(userCode)                         // collect definitions of data fields
+    val ascribedUserCode = DefinitionsParser(userCode)  // add explicit casts to use of data fields
+    val wrappedUserCode = BehaviourWrapper(ascribedUserCode)    // wrap handlers into anonymous classes to add context
+    val code = preambleCode + wrappedUserCode + postambleCode // add imports and reflective calls
+    compileBot(system, code)
   }
 }

@@ -2,8 +2,7 @@
         val myBot = new Bot("my-bot")
         myBot.storesData[collection.mutable.ListBuffer[String]]("history", new ListBuffer[String]())
 
-        val startState = State("Start")(new Behaviour {
-            override def handler(msg: TextMessage) = {
+        val startState = State("Start"){
                 msg.text match {
                     case "hello" =>
                         say("hello")
@@ -12,10 +11,8 @@
                         say("I don't want to talk with impolite ones")
                 }
             }
-        })
 
-        val echoState = State("Echo")(new Behaviour {
-            override def handler(msg: TextMessage) = {
+        val echoState = State("Echo"){
                 val pattern = """find (\d*)""".r
                 msg.text match {
                     case pattern(c) =>
@@ -29,10 +26,8 @@
                             append(other)
                 }
             }
-        })
 
-        val talkFinishedState = State("Finish")(new Behaviour {
-            override def handler(msg: TextMessage): Unit = {
+        val talkFinishedState = State("Finish"){
                 msg.text match {
                     case "sorry" =>
                         say("OK, let's talk a bit more")
@@ -41,7 +36,6 @@
                         say("Talk is finished. Say \"sorry\" to start it again")
                 }
             }
-        })
 
         myBot startWith startState
 

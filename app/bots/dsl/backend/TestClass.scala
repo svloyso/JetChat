@@ -7,12 +7,6 @@ import bots.dsl.frontend.{Behaviour, Bot, State}
   * Created by dsavvinov on 4/16/16.
   */
 
-object Main extends App {
-    val t = new TestClass()
-    t()
-}
-
-
 class TestClass extends BotDescription {
     def apply() = {
         import scala.collection.mutable.ListBuffer

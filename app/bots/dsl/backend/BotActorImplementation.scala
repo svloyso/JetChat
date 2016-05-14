@@ -10,24 +10,25 @@ import bots.dsl.frontend._
   */
 /** actual bot actor class **/
 class BotActorImplementation(
-                              system: ActorSystem,
-                              name: String,
+                              system:           ActorSystem,
+                              name:             String,
                               statesToHandlers: collection.mutable.Map[String, Behaviour],
-                              startingState: String,
-                              talkStorage: BotDataStorage
+                              startingState:    String,
+                              talkStorage:      BotDataStorage
                             ) extends BotActor(system, name) {
 
-  private val usersToTalks: collection.mutable.Map[Long, ActorRef] = collection.mutable.Map()
+  private val usersToTalks = collection.mutable.Map[Long, ActorRef]()
 
-  override def receiveMsg(senderId: Long, groupId: Long, topicId: Long, text: String): Unit = {
+  override def receiveMsg(senderId: Long, groupId: Long, topicId: Long, text: String) = {
     usersToTalks.get(senderId) match {
       case Some(talk) => talk ! TextMessage(senderId, groupId, topicId, text)
       case None =>
         val localTalkHandlers = statesToHandlers.clone()
-        val localTalkStorage = talkStorage.clone()
-        val newTalk = context.actorOf(
+        val localTalkStorage  = talkStorage.clone()
+        val newTalk           = context.actorOf(
           Props(classOf[Talk], senderId, groupId, topicId, localTalkHandlers, self, startingState, localTalkStorage),
-          s"bot-$id-talk-wth-$senderId")
+          s"bot-$id-talk-wth-$senderId"
+        )
         usersToTalks += senderId -> newTalk
         newTalk ! TextMessage(senderId, groupId, topicId, text)
     }
