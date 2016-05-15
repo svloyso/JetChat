@@ -1,30 +1,30 @@
 package bots.dsl.backend
 
-import bots.dsl.frontend.Bot
 
 /**
   * Created by dsavvinov on 5/13/16.
   */
 
-class DataTransformer[T](val fieldName: String, val bot: Bot) {
+class DataTransformer[T](val fieldName: String, val dataStorage: BotDataStorage) {
   def initWith(value: T) {
-    bot.data.initHolder[T](fieldName, value)
+    dataStorage.initHolder[T](fieldName, value)
   }
 }
 
-class BotDataStorage(val dataStorage: collection.mutable.Map[String, DataHolder] = collection.mutable.Map.empty[String, DataHolder]) {
+class BotDataStorage(val dataStorage: collection.mutable.Map[String, Any] = collection.mutable.Map.empty[String, Any]) {
   override def clone(): BotDataStorage = {
     new BotDataStorage(dataStorage.clone())
   }
 
   def initHolder[T](fieldName: String, data: T) = {
-    dataStorage += (fieldName -> new DataHolder {
-      type DataType = T
-      val dataValue: DataType = data
-    })
+    dataStorage += (fieldName -> data.asInstanceOf[Any])
   }
 
-  def getHolder(fieldName: String): DataHolder = {
+  def getHolder(fieldName: String): Any = {
+    apply(fieldName)
+  }
+
+  def apply(fieldName: String): Any = {
     dataStorage.get(fieldName) match {
       case Some(field) => field
       case None => throw new ClassCastException(s"Error acquiring data $fieldName: incorrect name")

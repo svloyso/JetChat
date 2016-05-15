@@ -29,7 +29,6 @@ class Talk(
     case ScheduledTask(task) =>
       task()
     case textMessage: TextMessage =>
-      println(s"in state $currentState processing message ${textMessage.text}")
       statesToHandlers.get(currentState) match {
         case Some(behaviour) =>
           behaviour.handler(textMessage)
@@ -53,5 +52,13 @@ class Talk(
   def schedule(task: (Unit => Any), duration: FiniteDuration): Unit = {
     import context._
     context.system.scheduler.scheduleOnce(duration, context.self, new ScheduledTask(task))
+  }
+
+  def getUserID: Long = {
+    userId
+  }
+
+  def sendToGlobal(message: Any) = {
+    parent ! message
   }
 }

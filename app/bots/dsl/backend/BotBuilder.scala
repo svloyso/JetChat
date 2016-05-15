@@ -96,7 +96,8 @@ object BotBuilder {
   val preambleCode = """
                        import bots.dsl.backend.BotMessages.TextMessage
                        import bots.dsl.backend.BotDescription
-                       import bots.dsl.frontend.{Behaviour, Bot, State}
+                       import bots.dsl.frontend.{GlobalBehaviour, Behaviour, Bot, State}
+                       import scala.concurrent.duration.{Duration, FiniteDuration}
                        class ReflectiveDescription extends BotDescription {
                            def apply() = {
                      """
@@ -107,10 +108,10 @@ object BotBuilder {
                         scala.reflect.classTag[ReflectiveDescription].runtimeClass
                        """
   def buildBot(system: ActorSystem, userCode: String) = {
-    DefinitionsParser(userCode)                         // collect definitions of data fields
-    val ascribedUserCode = DefinitionsParser(userCode)  // add explicit casts to use of data fields
-    val wrappedUserCode = BehaviourWrapper(ascribedUserCode)    // wrap handlers into anonymous classes to add context
-    val code = preambleCode + wrappedUserCode + postambleCode // add imports and reflective calls
+    DefinitionsParser(userCode)                                 // collect definitions of data fields
+    val ascribedUserCode = DefinitionsParser(userCode)          // add explicit casts to use of data fields
+    val wrappedUserCode = BehaviourWrapper(ascribedUserCode)    // wrap handlers into anonymous classes
+    val code = preambleCode + wrappedUserCode + postambleCode   // add imports and reflective calls
     compileBot(system, code)
   }
 }

@@ -31,7 +31,7 @@ class BotManager (system: ActorSystem,
     (s:String) => if (s == "test compiling") { BotCompilerTest(system); true } else { false },
     (s:String) => if (s == "test scala") { val tc = new TestClass; tc().launch(system); true } else { false },
     (s:String) => if (s == "test prewritten") {
-      val lines = scala.io.Source.fromFile("""./Bots/BoringBot""").mkString
+      val lines = scala.io.Source.fromFile("""./Bots/SchedulerBot""").mkString
       BotBuilder.buildBot(system, lines)
       true
     } else { false }
