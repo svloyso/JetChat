@@ -1,6 +1,6 @@
 package bots.dsl.backend
 
-import bots.dsl.backend.BotMessages.{ChatMessage, TextMessage}
+import bots.dsl.backend.BotMessages._
 import bots.dsl.frontend.{GlobalBehaviour, Behaviour, Bot, State}
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -12,8 +12,8 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 class TestClass extends BotDescription {
   def apply() = {
     import scala.collection.mutable.ListBuffer
-    case class RegisterUser(userID: Long, group: String)
-    case class ScheduleBroadcast(group: String, time: FiniteDuration, text: String)
+    case class RegisterUser(user: User, group: String) extends UserMessage
+    case class ScheduleBroadcast(group: String, time: FiniteDuration, text: String) extends UserMessage
 
     val bot = new Bot("scheduler-bot")
 
@@ -26,14 +26,14 @@ class TestClass extends BotDescription {
     val s = State("Listening")(new Behaviour {
       /** user-defined function for handling incoming messages **/
       override def handler = {
-          case TextMessage(uid, gid, tip, text) => {
+          case TextMessage(address, text) => {
             text match {
               case pattern_after(messageToSend, time, group) => {
                 val duration = Duration(time).asInstanceOf[FiniteDuration]
                 sendToGlobal(ScheduleBroadcast(group, duration, messageToSend))
               }
               case pattern_subscribe(group) => {
-                sendToGlobal(RegisterUser(getUserID, group))
+                sendToGlobal(RegisterUser(getUser, group))
               }
               case other =>
             }

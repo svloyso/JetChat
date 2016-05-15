@@ -3,6 +3,7 @@ package actors
 import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
+import bots.dsl.backend.BotMessages._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import models.User
@@ -19,10 +20,10 @@ abstract class BotActor(system: ActorSystem, name: String, avatar: Option[String
   final override def receive: Receive = {
     case BotRecv(userId, groupId, topicId, text) =>
       log.info(s"Bot with id $id got a message: '$text'")
-      receiveMsg(userId, groupId, topicId, text)
+      receiveMsg(TextMessage(ChatAddress(userId, ChatRoom(groupId, topicId)), text))
     case BotDirRecv(userId: Long, text: String) =>
       log.info(s"Bot with id $id got a direct message '$text' from user $userId")
-      receiveDirect(userId, text)
+      receiveDirect(PrivateMessage(userId, text))
     case otherMsg => receiveOther(otherMsg)
   }
 
@@ -33,7 +34,7 @@ abstract class BotActor(system: ActorSystem, name: String, avatar: Option[String
   def getUserById(id: Long): Option[User] = Await.result(manager ? GetUserById(id), timeout.duration).asInstanceOf[Option[User]]
 
   def botStart(): Unit = {}
-  def receiveMsg(userId: Long, groupId: Long, topicId: Long, text: String): Unit = {}
-  def receiveDirect(userId: Long, text: String): Unit = {}
+  def receiveMsg(message: ChatMessage): Unit = {}
+  def receiveDirect(message: PrivateMessage): Unit = {}
   def receiveOther(msg: Any): Unit = {}
 }

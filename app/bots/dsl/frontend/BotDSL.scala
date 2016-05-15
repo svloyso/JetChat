@@ -39,21 +39,26 @@ trait Behaviour {
     talk.sendToGlobal(message)
   }
 
-  def getUserID: Long = {
+  def getUser: User= {
     talk.getUserID
   }
 }
 
 trait GlobalBehaviour {
-  var botImpl: BotActorImplementation = null
-  var globalStorage: BotDataStorage = new BotDataStorage()
-  var talkCreatedProcessor: (Long => Unit) = x => Unit
-  var messageReceiveProcessor: PartialFunction[Any, Unit] = PartialFunction.empty[Any, Unit]
-  def sendTo(userID: Long, text: String) = {
-    botImpl.sendTo(userID, text)
+  type MessageHandlerType     = PartialFunction[UserMessage, Unit]
+  type TalkCreatedHandlerType = Long => Unit
+  type TaskType               = Unit => Any
+
+  var botImpl:                  BotActorImplementation  = null
+  var globalStorage:            BotDataStorage          = new BotDataStorage()
+  var talkCreatedProcessor:     TalkCreatedHandlerType  = x => Unit
+  var messageReceiveProcessor:  MessageHandlerType      = PartialFunction.empty[UserMessage, Unit]
+
+  def sendTo(user: User, text: String) = {
+    botImpl.sendTo(user, text)
   }
 
-  def schedule(task: (Unit => Any), duration: FiniteDuration): Unit = {
+  def schedule(task: TaskType, duration: FiniteDuration): Unit = {
     botImpl.schedule(task, duration)
   }
 
@@ -61,11 +66,11 @@ trait GlobalBehaviour {
     botImpl = b
   }
 
-  def onTalkCreation(handler: Long => Unit): Unit = {
+  def onTalkCreation(handler: TalkCreatedHandlerType): Unit = {
     talkCreatedProcessor = handler
   }
 
-  def onMessageReceive(handler: PartialFunction[Any, Unit]) = {
+  def onMessageReceive(handler: MessageHandlerType) = {
     messageReceiveProcessor = handler
   }
 }

@@ -11,9 +11,8 @@ import scala.concurrent.duration.FiniteDuration
   * Created by dsavvinov on 5/13/16.
   */
 class Talk(
-            val userId: Long,
-            val groupId: Long,
-            val topicId: Long,
+            val collocutor: User,
+            val chat: ChatRoom,
             val statesToHandlers: collection.mutable.Map[String, Behaviour],
             val parent: ActorRef,
             var currentState: String,
@@ -40,7 +39,7 @@ class Talk(
   /** == DSL-related methods == **/
   def say(text: String) = {
     log.info (s"Responding with message <$text>")
-    parent ! SendToUser(userId, groupId, topicId, text)
+    parent ! SendToUser(ChatAddress(collocutor, chat), text)
   }
 
   def moveTo(newState: String) = {
@@ -59,8 +58,8 @@ class Talk(
     context.system.scheduler.scheduleOnce(duration, context.self, new ScheduledTask(task))
   }
 
-  def getUserID: Long = {
-    userId
+  def getUserID: User = {
+    collocutor
   }
 
   def sendToGlobal(message: Any) = {
