@@ -57,7 +57,7 @@ object BotBuilder {
     override def skipWhitespace = false
 
     def wrapBefore = """(new Behaviour {
-                          override def handler(msg: TextMessage) = """
+                          override def handler = """
 
     def wrapAfter = """ }) """
     def preamble = "State".r
@@ -72,7 +72,9 @@ object BotBuilder {
 
     def figureInner: Parser[String] = rep1(figureBrackets | expr) ^^ { _.mkString }
 
-    def stateDef: Parser[String] = (preamble ~ roundBrackets ~ figureBrackets ^^  { case definition ~ name ~ handler =>
+    def stateDef: Parser[String] = (preamble ~ roundBrackets ~ figureBrackets ^^  { case definition ~
+      name ~
+      handler =>
       definition + name + wrapBefore + handler + wrapAfter}) | regex("(?s).".r)
 
     def mainParser = rep1(stateDef ) ^^ { _.mkString }
@@ -91,12 +93,13 @@ object BotBuilder {
     val botUserDefinedObj = botUserDefinedClass.getConstructors()(0).newInstance()
     val bot = botUserDefinedObj.asInstanceOf[BotDescription].apply()
     bot.launch(system)
+    bot
   }
 
   val preambleCode = """
-                       import bots.dsl.backend.BotMessages.TextMessage
-                       import bots.dsl.backend.BotDescription
-                       import bots.dsl.frontend.{GlobalBehaviour, Behaviour, Bot, State}
+                       import bots.dsl.backend.BotMessages._
+                       import bots.dsl.backend._
+                       import bots.dsl.frontend._
                        import scala.concurrent.duration.{Duration, FiniteDuration}
                        class ReflectiveDescription extends BotDescription {
                            def apply() = {

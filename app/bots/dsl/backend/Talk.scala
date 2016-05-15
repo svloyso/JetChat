@@ -1,10 +1,11 @@
 package bots.dsl.backend
 
+import actors.MasterActor
 import akka.actor.{Actor, ActorRef}
 import bots.dsl.backend.BotMessages._
 import bots.dsl.frontend._
 
-import scala.concurrent.duration.{FiniteDuration, Duration}
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Created by dsavvinov on 5/13/16.
@@ -18,20 +19,18 @@ class Talk(
             var currentState: String,
             val data: BotDataStorage
           )
-  extends Actor {
+  extends MasterActor {
   /** == internal methods and fields == **/
-
-
   /** bind handlers to this talk **/
   statesToHandlers.foreach { case (s, b) => b.bindToTalk(this) }
 
-  def receive = {
+  override def receiveAsMaster = {
     case ScheduledTask(task) =>
       task()
-    case textMessage: TextMessage =>
+    case msg: ChatMessage =>
       statesToHandlers.get(currentState) match {
         case Some(behaviour) =>
-          behaviour.handler(textMessage)
+          behaviour.handler(msg)
         case None => throw new IllegalStateException(s"In talk <$this> incorrect state <$currentState> encountered")
       }
   }

@@ -39,7 +39,7 @@ class BotActorImplementation(
           s"bot-$id-talk-wth-$senderId"
         )
         usersToTalks += senderId -> newTalk
-        newTalk ! TextMessage(senderId, groupId, topicId, text)
+        receiveMsg(senderId, groupId, topicId, text)
     }
   }
 

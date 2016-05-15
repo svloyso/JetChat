@@ -11,7 +11,7 @@ trait Behaviour {
   val data: LocalDynamicProxyStorage = new LocalDynamicProxyStorage()
 
   /** user-defined function for handling incoming messages **/
-  def handler(msg: TextMessage): Unit
+  def handler: PartialFunction[ChatMessage, Unit]
 
   def bindToTalk(t: Talk) = {
     talk = t
