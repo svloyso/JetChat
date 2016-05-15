@@ -28,10 +28,12 @@ class BotActorImplementation(
   override def receiveMsg(senderId: Long, groupId: Long, topicId: Long, text: String) = {
     chatRooms += ( (groupId, topicId) )
     usersToTalks.get(senderId) match {
-      case Some(talk) => talk ! TextMessage(senderId, groupId, topicId, text)
+      case Some(talk) =>
+        log.info(s"Redirecting message to talk ${talk}")
+        talk ! TextMessage(senderId, groupId, topicId, text)
       case None =>
+        log.info(s"""Creating new talk "bot-$id-talk-wth-$senderId"""")
         globalBehaviour.talkCreatedProcessor(senderId)
-
         val localTalkHandlers = statesToHandlers.clone()
         val localTalkStorage  = talkStorage.clone()
         val newTalk           = context.actorOf(
@@ -46,14 +48,18 @@ class BotActorImplementation(
   override def receiveOther(msg: Any): Unit = {
     msg match {
       case SendToUser(senderId, groupId, topicId, text) =>
+        log.info (s"""Got outcoming message "${text}" from child-talk""")
         send(groupId, topicId, text)
       case BroadcastMessage(text) =>
+        log.info (s"""Got broadcast request. Message: "$text" """)
         chatRooms foreach { case (groupId, topicId) => send(groupId, topicId, text) }
       case ScheduledTask(task) =>
+        log.info (s"""Executing scheduled task""")
         task()
       case maybeUserDefinedMessage: Any =>
         val handler = globalBehaviour.messageReceiveProcessor
         if (handler.isDefinedAt(maybeUserDefinedMessage)) {
+          log.info (s"""Passing user-defined message $maybeUserDefinedMessage to user-handler""")
           handler(maybeUserDefinedMessage)
         }
         else {

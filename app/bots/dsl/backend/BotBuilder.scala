@@ -9,6 +9,8 @@ import tools.reflect.ToolBox
   * Created by dsavvinov on 5/13/16.
   */
 object BotBuilder {
+  case class ParsingError(text: String) extends Exception
+
   object DefinitionsParser extends JavaTokenParsers {
     override def skipWhitespace() = true
 
@@ -39,7 +41,7 @@ object BotBuilder {
       nameToType.clear()
       parseAll(chunks, input) match {
         case Success(result, _) => ""
-        case failure: NoSuccess => scala.sys.error(failure.msg)
+        case failure: NoSuccess => throw new ParsingError(failure.msg)
       }
       ascribe(input)
     }
@@ -81,19 +83,19 @@ object BotBuilder {
     def apply(input: String): String = {
       parseAll(mainParser, input) match {
         case Success(result, _) => result
-        case failure: NoSuccess => sys.error(failure.msg)
+        case failure: NoSuccess => throw new ParsingError(failure.msg)
       }
     }
   }
 
   def compileBot(system: ActorSystem, code: String): Unit = {
-    val cm      = universe.runtimeMirror(getClass.getClassLoader)
-    val tb      = cm.mkToolBox()
-    val botUserDefinedClass = tb.eval(tb.parse(code)).asInstanceOf[Class[BotDescription]]
-    val botUserDefinedObj = botUserDefinedClass.getConstructors()(0).newInstance()
-    val bot = botUserDefinedObj.asInstanceOf[BotDescription].apply()
-    bot.launch(system)
-    bot
+      val cm = universe.runtimeMirror(getClass.getClassLoader)
+      val tb = cm.mkToolBox()
+      val botUserDefinedClass = tb.eval(tb.parse(code)).asInstanceOf[Class[BotDescription]]
+      val botUserDefinedObj = botUserDefinedClass.getConstructors()(0).newInstance()
+      val bot = botUserDefinedObj.asInstanceOf[BotDescription].apply()
+      bot.launch(system)
+      bot
   }
 
   val preambleCode = """
@@ -111,10 +113,10 @@ object BotBuilder {
                         scala.reflect.classTag[ReflectiveDescription].runtimeClass
                        """
   def buildBot(system: ActorSystem, userCode: String) = {
-    DefinitionsParser(userCode)                                 // collect definitions of data fields
-    val ascribedUserCode = DefinitionsParser(userCode)          // add explicit casts to use of data fields
-    val wrappedUserCode = BehaviourWrapper(ascribedUserCode)    // wrap handlers into anonymous classes
-    val code = preambleCode + wrappedUserCode + postambleCode   // add imports and reflective calls
-    compileBot(system, code)
+      DefinitionsParser(userCode) // collect definitions of data fields
+      val ascribedUserCode = DefinitionsParser(userCode) // add explicit casts to use of data fields
+      val wrappedUserCode = BehaviourWrapper(ascribedUserCode) // wrap handlers into anonymous classes
+      val code = preambleCode + wrappedUserCode + postambleCode // add imports and reflective calls
+      compileBot(system, code)
   }
 }

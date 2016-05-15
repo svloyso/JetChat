@@ -32,7 +32,12 @@ class BotManager (system: ActorSystem,
     (s:String) => if (s == "test scala") { val tc = new TestClass; tc().launch(system); true } else { false },
     (s:String) => if (s == "test prewritten") {
       val lines = scala.io.Source.fromFile("""./Bots/SchedulerBot""").mkString
-      BotBuilder.buildBot(system, lines)
+      try {
+        BotBuilder.buildBot(system, lines)
+      }
+      catch {
+        case ie: Throwable => log.error(ie, "Something went wrong during bot building")
+      }
       true
     } else { false }
   )
