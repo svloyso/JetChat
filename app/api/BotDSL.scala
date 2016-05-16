@@ -1,8 +1,8 @@
 package api
 
-import java.net.UnknownHostException
 import actors.BotActor
 import akka.actor._
+import models.User
 
 /**
   * Created by dsavvinov on 4/7/16.
@@ -27,7 +27,7 @@ class Talk(handler: ActorRef => Actor.Receive, parent : ActorRef) extends Actor 
     def receive = handler(parent)
 }
 
-class Bot(system: ActorSystem, name: String, handler: ActorRef => Actor.Receive) extends BotActor(system, name) {
+class BotDSL(system: ActorSystem, user: User, handler: ActorRef => Actor.Receive) extends BotActor(system, user) {
     private val usersToTalks: collection.mutable.Map[Long, ActorRef] = collection.mutable.Map()
     //TODO: подумать, действительно ли нам нужен абстрактный класс?
 
@@ -35,7 +35,7 @@ class Bot(system: ActorSystem, name: String, handler: ActorRef => Actor.Receive)
         usersToTalks.get(senderId) match {
             case Some(talk) => talk ! TextMessage(senderId, groupId, topicId, text)
             case None =>
-                val newTalk = context.actorOf(Props(classOf[Talk], handler, self), s"bot-$id-talk-wth-$senderId")
+                val newTalk = context.actorOf(Props(classOf[Talk], handler, self), s"bot-${user.id}-talk-wth-$senderId")
                 usersToTalks += senderId -> newTalk
                 newTalk ! TextMessage(senderId, groupId, topicId, text)
         }

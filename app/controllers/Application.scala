@@ -33,6 +33,7 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
                             val integrationGroupsDAO: IntegrationGroupsDAO,
                             val integrationUpdatesDAO: IntegrationUpdatesDAO,
                             val integrationUsersDAO: IntegrationUsersDAO,
+                            val botsDAO: BotsDAO,
                             val onlineUserRegistry: OnlineUserRegistry) extends Controller {
 
   implicit val tsReads: Reads[Timestamp] = Reads.of[Long] map (new Timestamp(_))
@@ -373,7 +374,6 @@ class Application @Inject()(val system: ActorSystem, integrations: java.util.Set
       Ok(Json.toJson(groupJson))
     }
   }
-
 
 
   def addComment() = Action.async(parse.json) { implicit request =>

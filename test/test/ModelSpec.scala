@@ -23,6 +23,11 @@ class ModelSpec extends Specification {
     app2UsersDAO(app)
   }
 
+  def botsDAO(implicit app: Application) = {
+    val app2BotsDAO = Application.instanceCache[BotsDAO]
+    app2BotsDAO(app)
+  }
+
   def integrationTokensDAO(implicit app: Application) = {
     val app2IntegrationTokensDAO = Application.instanceCache[IntegrationTokensDAO]
     app2IntegrationTokensDAO(app)

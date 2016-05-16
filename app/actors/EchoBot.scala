@@ -3,14 +3,13 @@ package actors
 import akka.actor._
 import scala.concurrent.duration.DurationInt
 import models.User
-import util.matching.Regex
 
 
 /**
   * Created by svloyso on 07.04.16.
   */
 
-class EchoBot(system: ActorSystem, name: String) extends BotActor(system, name) with ActorLogging {
+class EchoBot(system: ActorSystem, user: User) extends BotActor(system, user) with ActorLogging {
   val UserList  = "(userlist)".r
   val MsgTo     = "to (.*): (.*)".r
 
@@ -29,9 +28,8 @@ object EchoBot {
 
   val actorName = "EchoBot"
 
-  def actorOf(system: ActorSystem): ActorRef =
-    system.actorOf(Props(new EchoBot(system, actorName)),
-      actorName)
+  def actorOf(system: ActorSystem, user: User): ActorRef =
+    system.actorOf(Props(classOf[EchoBot], system, user), actorName)
 
   def actorSelection(system: ActorSystem): ActorSelection =
     system.actorSelection("/user/" ++ actorName)

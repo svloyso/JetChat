@@ -1,11 +1,11 @@
 package actors
 
 import akka.actor._
-import _root_.api.{DummyClass, Bot}
+import api.{BotDSL, DummyClass}
 import play.api.Logger
 import scala.reflect.runtime._
 import scala.tools.reflect.ToolBox
-
+import models.User
 
 /**
   * Created by dsavvinov on 4/9/16.
@@ -23,39 +23,40 @@ object BotCompilerTest {
           }
         """
 
-    def createBot(system: ActorSystem, botCode: String, botName:String) = {
-        Logger.info(s"Creating a bot with name $botName")
+    def createBot(system: ActorSystem, botCode: String, botUser: User) = {
+        Logger.info(s"Creating a bot with name ${botUser.name}")
 
         val cm      = universe.runtimeMirror(getClass.getClassLoader)
         val tb      = cm.mkToolBox()
         val handlerClass = tb.eval(tb.parse(botCode)).asInstanceOf[Class[DummyClass]]
         val handlerObj = handlerClass.getConstructors()(0).newInstance()
         val handler = handlerObj.asInstanceOf[DummyClass].apply()
-        system.actorOf(Props(classOf[Bot], system, botName, handler))
+        system.actorOf(Props(classOf[BotDSL], system, botUser, handler))
     }
 
-    def apply(system: ActorSystem) = {
-        createBot(system,
-            """
-                    import actors._
-                    import akka.actor._
-                    import scala.concurrent.duration.DurationInt
-                    import scala.reflect.runtime
-                    import scala.reflect.runtime._
-                    import scala.reflect.runtime.universe._
-                    import api.{DummyClass, TextMessage, BotInternalOutcomingMessage}
+    def apply(system: ActorSystem, botUser: User) = {
 
-                    class RuntimeDummy extends DummyClass {
+      createBot(system,
+          """
+                  import actors._
+                  import akka.actor._
+                  import scala.concurrent.duration.DurationInt
+                  import scala.reflect.runtime
+                  import scala.reflect.runtime._
+                  import scala.reflect.runtime.universe._
+                  import api.{DummyClass, TextMessage, BotInternalOutcomingMessage}
 
-            """
-                +
-                handler
-                +
-                """
-                    override def apply() = receive
-                    }
-                    scala.reflect.classTag[RuntimeDummy].runtimeClass
-                """,
-            "CompiledBot")
+                  class RuntimeDummy extends DummyClass {
+
+          """
+              +
+              handler
+              +
+              """
+                  override def apply() = receive
+                  }
+                  scala.reflect.classTag[RuntimeDummy].runtimeClass
+              """,
+          botUser)
     }
 }
