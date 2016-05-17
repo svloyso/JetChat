@@ -40,7 +40,11 @@ unmanagedBase <<= baseDirectory { base => base / "lib" }
 fork in Test := false
 javaOptions in Test += "-Dconfig.file=conf/application.test.conf"
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala, DockerPlugin)
+
+lazy val root = (project in file("."))
+  .enablePlugins(PlayScala, DockerPlugin)
+
+
 
 playRunHooks <+= baseDirectory.map(Webpack.apply)
 

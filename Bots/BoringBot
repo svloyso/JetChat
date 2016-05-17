@@ -1,0 +1,42 @@
+        import scala.collection.mutable.ListBuffer
+        val myBot = new Bot("my-bot")
+        myBot storesData[collection.mutable.ListBuffer[String]] "history" initWith new ListBuffer[String]()
+
+        val startState = State("Start"){
+                msg.text match {
+                    case "hello" =>
+                        say("hello")
+                        moveTo("Echo")
+                    case other =>
+                        say("I don't want to talk with impolite ones")
+                }
+            }
+
+        val echoState = State("Echo"){
+                val pattern = """find (\d*)""".r
+                msg.text match {
+                    case pattern(c) =>
+                        say(
+                            data.history.
+                                take(Integer.parseInt(c)).toString()
+                        )
+                        moveTo("Finish")
+                    case other =>
+                        data.history.
+                            append(other)
+                }
+            }
+
+        val talkFinishedState = State("Finish"){
+                msg.text match {
+                    case "sorry" =>
+                        say("OK, let's talk a bit more")
+                        moveTo("Echo")
+                    case other =>
+                        say("Talk is finished. Say \"sorry\" to start it again")
+                }
+            }
+
+        myBot startWith startState
+
+        myBot + startState + echoState + talkFinishedState

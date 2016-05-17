@@ -11,3 +11,5 @@ object Utils {
   def callbackUrl(integrationId: String, redirectUrl: Option[String])(implicit request: Request[AnyContent]): String =
     controllers.routes.IntegrationAuth.callback(integrationId, None, None, redirectUrl).absoluteURL(RequestUtils.secure)
 }
+
+
