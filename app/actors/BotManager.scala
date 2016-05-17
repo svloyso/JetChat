@@ -32,11 +32,6 @@ class BotManager (system: ActorSystem,
       BotCompiler.compileEchoBot(system)
       true
     } else { false }
-    /*, (s:String) => if (s == "test register")  {
-      val echoClass: Class[EchoBot] = classOf[EchoBot]
-      self ! CreateBot(botName="EchoBot", botClass=echoClass)
-      true
-    } else { false }*/
   )
 
   override def preStart(): Unit = {
@@ -46,24 +41,17 @@ class BotManager (system: ActorSystem,
 
     botsDAO.all() foreach {
       case seq => seq foreach {
-          case Bot(id, userId, name, code, true) =>
+          case Bot(userId, code, state, true) =>
             usersDAO.findById(userId) map {
-              case Some(user) => createBotFromCode(user.name, code)
-              case None => log.error(s"Can not find user for bot $name")
+              case Some(user) =>
+                val botClass = compileBot(code)
+                raiseBot(user, botClass, state)
+              case None => log.error(s"Can not find user for bot with userId $userId")
             }
           case _ =>
         }
       }
     }
-
-  def createBot(userName: String, botClass: Class[_ <: BotActor]) = {
-    log.info(s"Creating bot $userName with class $botClass")
-    usersDAO.mergeByLogin(login = userName, name = userName, isBot=true) map {
-      case user =>
-        val botActor = system.actorOf(Props(botClass, system, user))
-        registerBot(user, botActor)
-    }
-  }
 
   def compileBot(botCode: String): Class[BotActor] = {
     val classLoader = getClass.getClassLoader
@@ -79,13 +67,17 @@ class BotManager (system: ActorSystem,
       case user =>
         botsDAO.findByUserId(user.id) map {
           case None =>
-            botsDAO.insert(Bot(userId=user.id, name=botClass.getName, code=botCode, isActive=true))
+            botsDAO.insert(Bot(userId=user.id, code=botCode, state = None, isActive=true))
           case Some(_) =>
+            log.error(s"Try to create already existent bot with userId: ${user.id}")
         }
-        val botActor = system.actorOf(Props(botClass, system, user))
-        registerBot(user, botActor)
+        raiseBot(user, botClass)
     }
+  }
 
+  def raiseBot(botUser: User, botClass: Class[_ <: BotActor], state: Option[String] = None) = {
+    val botActor = system.actorOf(Props(botClass, system, botUser, state))
+    registerBot(botUser, botActor)
   }
 
   def registerBot(botUser: User, botActor: ActorRef) = {
@@ -169,21 +161,26 @@ class BotManager (system: ActorSystem,
       usersDAO.all.map {
         case s: Seq[User] => botSender ! s
       }
+    case UpdateState(botId, newState) =>
+      log.info(s"Updating state of bot $botId: $newState")
+      botsDAO.updateState(botId, newState)
   }
 }
 
-case class CreateBot(userName: String, code: String)
-case class RegisterBot(botUser: User, botActor: ActorRef)
-case class UnregisterBot(botId: Long)
-case class MsgRecv(userId: Long, groupId: Long, topicId: Long, text: String)
-case class DirMsgRecv(fromId: Long, toId: Long, text: String)
-case class BotSend(botId: Long, groupId: Long, topicId: Long, text: String)
-case class BotRecv(userId: Long, groupId: Long, topicId: Long, text: String)
-case class BotDirRecv(fromId: Long, text: String)
-case class BotDirSend(botId: Long, userId: Long, text: String)
-case class GetUserList()
-case class GetUserByName(name: String)
-case class GetUserById(id: Long)
+sealed trait BotMessage
+case class CreateBot(userName: String, code: String) extends BotMessage
+case class RegisterBot(botUser: User, botActor: ActorRef) extends BotMessage
+case class UnregisterBot(botId: Long) extends BotMessage
+case class MsgRecv(userId: Long, groupId: Long, topicId: Long, text: String) extends BotMessage
+case class DirMsgRecv(fromId: Long, toId: Long, text: String) extends BotMessage
+case class BotSend(botId: Long, groupId: Long, topicId: Long, text: String) extends BotMessage
+case class BotRecv(userId: Long, groupId: Long, topicId: Long, text: String) extends BotMessage
+case class BotDirRecv(fromId: Long, text: String) extends BotMessage
+case class BotDirSend(botId: Long, userId: Long, text: String) extends BotMessage
+case class GetUserList() extends BotMessage
+case class GetUserByName(name: String) extends BotMessage
+case class GetUserById(id: Long) extends BotMessage
+case class UpdateState(botId: Long, newState: String) extends BotMessage
 
 object BotManager {
   val DEFAULT_DURATION = 30.seconds

@@ -9,7 +9,7 @@ import models.User
 
 import scala.language.postfixOps
 
-abstract class BotActor(system: ActorSystem, user: User) extends Actor with ActorLogging {
+abstract class BotActor(system: ActorSystem, user: User, state: Option[String] = None) extends Actor with ActorLogging {
   val manager = BotManager.actorSelection(system)
   implicit val timeout = Timeout(5 seconds)
 
@@ -24,6 +24,8 @@ abstract class BotActor(system: ActorSystem, user: User) extends Actor with Acto
       receiveDirect(userId, text)
     case otherMsg => receiveOther(otherMsg)
   }
+
+  def updateState(newState: String) = manager ! UpdateState(user.id, newState)
 
   def send(groupId: Long, topicId: Long, text: String): Unit = manager ! BotSend(user.id, groupId, topicId, text)
   def sendDirect(userId: Long, text: String): Unit = manager ! BotDirSend(user.id, userId, text)

@@ -2,8 +2,6 @@ package actors
 
 import akka.actor.ActorSystem
 
-import scala.reflect.runtime._
-import scala.tools.reflect.ToolBox
 
 /**
   * Created by svloyso on 16.04.16.
@@ -18,17 +16,24 @@ object BotCompiler {
       import models.User
 
 
-      class EchoBotRuntime(system: ActorSystem, user: User) extends BotActor(system, user) with ActorLogging {
+      class EchoBotRuntime(system: ActorSystem, user: User, state: Option[String] = None) extends BotActor(system, user, state) with ActorLogging {
         val UserList  = "(userlist)".r
         val MsgTo     = "to (.*): (.*)".r
+
+        var counter = state.orElse(Some("0")).get.toLong
 
         override def receiveMsg(userId: Long, groupId: Long, topicId: Long, text: String) = text match {
           case UserList(_) => send(groupId, topicId, getUserList.map((u:User) => u.login).mkString(", "))
           case MsgTo(to, msg) => sendDirect(getUserByName(to).get.id, msg)
-          case msg => send(groupId, topicId, text)
+          case msg =>
+            send(groupId, topicId,  s"$counter: $msg")
+            updateState((counter + 1).toString)
+            counter += 1
         }
         override def receiveDirect(userId: Long, text: String) = {
-          sendDirect(userId, text)
+          sendDirect(userId, s"$counter: $text")
+          updateState((counter + 1).toString)
+          counter += 1
         }
       }
       scala.reflect.classTag[EchoBotRuntime].runtimeClass
